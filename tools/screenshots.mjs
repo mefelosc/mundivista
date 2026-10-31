@@ -4,27 +4,34 @@
  * Uso: node tools/screenshots.mjs [baseUrl]
  * Requer um build servido em preview (npm run preview).
  */
+import { existsSync } from 'node:fs';
 import { firefox } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
 const BASE = process.argv[2] ?? 'http://localhost:4173';
 const OUT = path.resolve(import.meta.dirname, '..', 'docs', 'screenshots');
-const executablePath = `${process.env.HOME}/.cache/ms-playwright/firefox-1555/firefox/firefox`;
+const candidates = [
+	process.env.PLAYWRIGHT_FIREFOX_PATH,
+	`${process.env.HOME}/.cache/ms-playwright/firefox-1555/firefox/firefox`
+].filter(Boolean);
+const executablePath = candidates.find((candidate) => existsSync(candidate));
 
 const shots = [
 	{ name: 'landing', url: '/', theme: 'light', viewport: { width: 1440, height: 900 } },
 	{ name: 'landing-dark', url: '/', theme: 'dark', viewport: { width: 1440, height: 900 } },
 	{ name: 'over', url: '/sobre', theme: 'light', viewport: { width: 1440, height: 900 } },
 	{ name: 'explore', url: '/explore', theme: 'light', viewport: { width: 1440, height: 900 } },
-	{ name: 'explore-2d', url: '/explore?projection=flat', theme: 'light', viewport: { width: 1440, height: 900 } },
 	{ name: 'explore-2d-dark', url: '/explore?projection=flat&country=BRA&layer=population', theme: 'dark', viewport: { width: 1440, height: 900 } },
 	{ name: 'explore-history', url: '/explore?layer=history&year=1991', theme: 'light', viewport: { width: 1440, height: 900 } },
-	{ name: 'explore-globe', url: '/explore?globe=1', theme: 'dark', viewport: { width: 1440, height: 900 } },
-	{ name: 'explore-terrain', url: '/explore?terrain=1&layer=physical', theme: 'light', viewport: { width: 1440, height: 900 } },
+	{ name: 'explore-globe', url: '/explore?projection=globe', theme: 'dark', viewport: { width: 1440, height: 900 } },
+	{ name: 'explore-terrain', url: '/explore?projection=globe&terrain=1&layer=physical', theme: 'light', viewport: { width: 1440, height: 900 } },
+	{ name: 'explore-units', url: '/explore?layer=political&country=BRA', theme: 'light', viewport: { width: 1440, height: 900 } },
 	{ name: 'explore-dark', url: '/explore?country=BRA&layer=economy', theme: 'dark', viewport: { width: 1440, height: 900 } },
 	{ name: 'explore-mobile', url: '/explore?country=BRA&layer=political', theme: 'light', viewport: { width: 390, height: 844 } },
 	{ name: 'explore-mobile-dark', url: '/explore?country=JPN&layer=population', theme: 'dark', viewport: { width: 390, height: 844 } },
+	{ name: 'paises', url: '/paises', theme: 'light', viewport: { width: 1440, height: 900 } },
+	{ name: 'paises-mobile', url: '/paises', theme: 'light', viewport: { width: 390, height: 844 } },
 	{ name: 'dossier', url: '/country/BRA', theme: 'light', viewport: { width: 1440, height: 900 } },
 	{ name: 'dossier-dark', url: '/country/JPN', theme: 'dark', viewport: { width: 1440, height: 900 } },
 	{ name: 'play', url: '/play', theme: 'light', viewport: { width: 1440, height: 900 } },
@@ -33,7 +40,7 @@ const shots = [
 ];
 
 await mkdir(OUT, { recursive: true });
-const browser = await firefox.launch({ executablePath });
+const browser = await firefox.launch(executablePath ? { executablePath } : {});
 const errors = [];
 
 for (const shot of shots) {

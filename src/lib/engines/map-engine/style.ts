@@ -15,6 +15,10 @@ export const MAP_LAYER = {
 	lakes: 'lakes',
 	coastline: 'coastline',
 	border: 'countries-border',
+	subdivisionsFill: 'subdivisions-fill',
+	subdivisionsLine: 'subdivisions-line',
+	subdivisionActiveFill: 'subdivision-active-fill',
+	subdivisionActiveLine: 'subdivision-active-line',
 	focusLine: 'countries-focus-line',
 	selected: 'countries-selected',
 	hover: 'countries-hover',
@@ -45,30 +49,30 @@ export interface MapPalette {
 export function mapPalette(theme: ResolvedTheme): MapPalette {
 	return theme === 'dark'
 		? {
-				ocean: '#12100d',
-				land: '#26231c',
-				border: '#5f5748',
-				coast: '#9b8c72',
-				graticule: '#e8ddc9',
-				water: '#16242a',
-				river: '#5f8e99',
-				clay: '#a58a5f',
-				accent: '#d8a84e',
-				text: '#e8ddc9',
-				halo: '#12100d'
+				ocean: '#101820',
+				land: '#1a221c',
+				border: '#66786c',
+				coast: '#9eb1a3',
+				graticule: '#e6eee8',
+				water: '#16262b',
+				river: '#5f95a1',
+				clay: '#b19bc0',
+				accent: '#d0a2b5',
+				text: '#e6eee8',
+				halo: '#0f1411'
 			}
 		: {
-				ocean: '#dfe9ee',
-				land: '#e2d6bf',
-				border: '#8f7c5c',
-				coast: '#6b5940',
-				graticule: '#3d3528',
-				water: '#cfdde0',
-				river: '#4f8ea1',
-				clay: '#8b6a4c',
-				accent: '#7a2f2f',
-				text: '#2a241b',
-				halo: '#f4efe4'
+				ocean: '#dfeaef',
+				land: '#e4e9dd',
+				border: '#7b8c80',
+				coast: '#5c6f62',
+				graticule: '#32443a',
+				water: '#cfe1e4',
+				river: '#4f8894',
+				clay: '#7d6a86',
+				accent: '#7a4963',
+				text: '#22322a',
+				halo: '#f3f6f2'
 			};
 }
 
@@ -78,7 +82,7 @@ export const EQUAL_EARTH_PROJECTION = 'mundivista:equal-earth';
 
 export function createMapStyle(
 	theme: ResolvedTheme = 'light',
-	projection: MapProjection = 'globe'
+	projection: MapProjection = 'flat'
 ): StyleSpecification {
 	const p = mapPalette(theme);
 	const dark = theme === 'dark';
@@ -139,8 +143,8 @@ export function createMapStyle(
 			layout: { visibility: 'none' },
 			paint: {
 				'hillshade-exaggeration': dark ? 0.72 : 0.62,
-				'hillshade-shadow-color': dark ? '#050403' : '#4d412e',
-				'hillshade-highlight-color': dark ? '#d8ccb2' : '#fffaf0',
+				'hillshade-shadow-color': dark ? '#050806' : '#3f4c3f',
+				'hillshade-highlight-color': dark ? '#dbe6dc' : '#f8fbf5',
 				'hillshade-accent-color': dark ? '#4a3f2e' : '#b9a780'
 			}
 		},
@@ -205,6 +209,16 @@ export function createMapStyle(
 			}
 		},
 		{
+			id: MAP_LAYER.subdivisionsFill,
+			type: 'fill',
+			source: 'subdivisions',
+			layout: { visibility: 'none' },
+			paint: {
+				'fill-color': p.clay,
+				'fill-opacity': dark ? 0.16 : 0.1
+			}
+		},
+		{
 			id: MAP_LAYER.border,
 			type: 'line',
 			source: 'countries',
@@ -212,6 +226,38 @@ export function createMapStyle(
 				'line-color': p.border,
 				'line-opacity': dark ? 0.72 : 0.82,
 				'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.45, 4, 0.9, 7, 1.4]
+			}
+		},
+		{
+			id: MAP_LAYER.subdivisionsLine,
+			type: 'line',
+			source: 'subdivisions',
+			layout: { visibility: 'none' },
+			paint: {
+				'line-color': p.border,
+				'line-opacity': dark ? 0.85 : 0.9,
+				'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.5, 4, 0.9, 7, 1.3]
+			}
+		},
+		{
+			id: MAP_LAYER.subdivisionActiveFill,
+			type: 'fill',
+			source: 'subdivisions',
+			filter: ['==', ['get', 'id'], '__none__'],
+			paint: {
+				'fill-color': p.accent,
+				'fill-opacity': dark ? 0.24 : 0.18
+			}
+		},
+		{
+			id: MAP_LAYER.subdivisionActiveLine,
+			type: 'line',
+			source: 'subdivisions',
+			filter: ['==', ['get', 'id'], '__none__'],
+			paint: {
+				'line-color': p.accent,
+				'line-opacity': 0.95,
+				'line-width': 1.8
 			}
 		},
 		{
@@ -335,6 +381,11 @@ export function createMapStyle(
 			cities: {
 				type: 'geojson',
 				data: { type: 'FeatureCollection', features: [] }
+			},
+			subdivisions: {
+				type: 'geojson',
+				data: { type: 'FeatureCollection', features: [] },
+				promoteId: 'id'
 			},
 			'country-hits': {
 				type: 'geojson',

@@ -1,7 +1,7 @@
 # Handoff — como continuar em uma nova sessão
 
 **Estado:** P0 e P1 do roadmap executados em 2026-10-31. O projeto está em
-`~/projects/foss/mundivista`, com 73 testes, `svelte-check` sem erros, build estático,
+`~/projects/foss/mundivista`, com 77 testes, `svelte-check` sem erros, build estático,
 axe sem violações sérias e smoke test em Firefox.
 
 ---
@@ -49,11 +49,12 @@ Prioridades abertas (ver ROADMAP §3):
 cd ~/projects/foss/mundivista
 npm run dev        # dev
 npm run check      # svelte-check (deve dar 0)
-npm test           # 73 testes
+npm test           # 77 testes
 npm run build      # build estático em build/
 npm run preview    # preview do build (porta 4173)
 npm run data:build # regenera dados com cache
 npm run data:refresh
+npm run data:subdivisions # unidades administrativas por país
 npm run shots      # screenshots em docs/screenshots
 npm run smoke      # interação no preview
 npm run a11y       # axe-core WCAG 2.1 AA
@@ -82,7 +83,7 @@ src/
     data/{disputed,timeline,organizations,historical,snippets,cities,silhouettes}
     engines/{map-engine,game-engine,scoring-engine}/
   routes/{explore,country/[code],play,game/[slug],sobre}
-tools/{build-data,screenshots,smoke,a11y}.mjs
+tools/{build-data,build-subdivisions,screenshots,smoke,a11y}.mjs
 docs/{ROADMAP,INSPIRATION,HANDOFF}.md
 ```
 
@@ -90,9 +91,25 @@ docs/{ROADMAP,INSPIRATION,HANDOFF}.md
 
 ## Decisões desta sessão
 
-- **Identidade:** direção B (Atlas Editorial); o escuro é o atlas à noite.
-- **Mapa:** Globo como padrão e 2D em Equal Earth (`addProjection` + proj4 no main e no
-  worker); relevo 3D apenas no globo (DEM em Mercator); crossfade por duas camadas de fill.
+- **Identidade:** direção B (Atlas Editorial); o escuro é o atlas à noite. Azul/água só
+  dentro do mapa; a UI fora dele fica na paleta papel frio/verde/ametista/malva.
+- **Mapa:** abre no mapa base **2D em Equal Earth** (`addProjection` + proj4 no main e no
+  worker), sem camada temática; globo 3D e relevo ficam como opções no globo (DEM em
+  Mercator). Crossfade por duas camadas de fill.
+- **Camadas:** a camada `standard` (Padrão) é o estado inicial e não entra na lista de seis
+  camadas temáticas; clicar de novo na camada ativa volta a ela.
+- **Cards/dossiê:** o card virou ficha em blocos (identidade, métricas, abas curtas,
+  cartões de indicador) sem mini-mapa redundante; o dossiê ganhou nav de seções com scroll
+  spy, cards de seção, métricas com série e barra lateral fixa.
+- **Portal/Play/HUD:** portal em tela cheia com mapa-múndi de fundo e quatro entradas
+  grandes; Play como sala de jogos em cards; configurações com idioma, tema, som e texto;
+  `focusCountry` centraliza o país ao lado do card e a bandeira cobre o território no acerto.
+- **HUD:** rail de camadas recolhível (persistido em `mundivista:rail`), legenda contextual
+  recolhível, descrição da camada dentro da legenda e controles agrupados no canto inferior
+  direito. No mobile, os controles ficam no topo direito para não ficarem sob o card.
+- **Unidades administrativas:** na camada política, o país selecionado carrega sob demanda
+  `generated/subdivisions/{ADM0_A3}.json` (Natural Earth 1:10m, simplificado) e desenha
+  contornos + rótulos, além da lista no card. O nível varia por país.
 - **Microestados:** pontos de capital clicáveis (`cities` com `micro: true`).
 - **História:** timeline 1945–2026 com eventos curados e recorte de blocos; usa polígonos
   atuais e diz isso. CShapes não foi integrado.
@@ -105,7 +122,12 @@ docs/{ROADMAP,INSPIRATION,HANDOFF}.md
 - **Disputados:** lista curada (KOS, PSX, SAH, FLK, KAS, IOT), hachura e nota; Israel não
   é hachurado só porque o Natural Earth marca TYPE=Disputed.
 - **Dados:** 32 indicadores, séries 2016–2025, cidades, litoral e silhuetas no pipeline.
+  Códigos históricos do WB são resolvidos por candidatos (COD, NOR, ROU, TLS, PSE, NRU);
+  Somalilândia tem fatos próprios e não herda Somália; lacunas sem série continuam explícitas.
 - **Jogos:** 9 jogos; novos Silhuetas, Cadeia de Fronteiras, Bandeiras e Economia em Números; progresso persistente.
+  Rankings usa montagem por cliques (pool + lista), sem setas; a interface é toda focável.
+  A biblioteca usa capas visuais e tema por categoria; no jogo de países os rótulos do mapa
+  ficam ocultos, e no jogo de bandeiras as alternativas não mostram bandeiras.
 - **Som:** `src/lib/sound.svelte.ts` sintetiza clique/acerto/erro/fim com WebAudio; botão de mudo no TopBar.
 - **Busca:** command palette carregada sob demanda no TopBar, disponível em todas as rotas.
 

@@ -8,13 +8,16 @@
 		label?: string;
 		/** 'points' para indicadores já em %, evitando “+170%” sobre uma taxa. */
 		delta?: 'percent' | 'points';
+		/** Versão compacta para cards: esconde mín./máx. */
+		compact?: boolean;
 	}
 	let {
 		series,
 		format = (v) => formatDec(v, 1),
 		height = 52,
 		label = 'Série temporal',
-		delta: deltaMode = 'percent'
+		delta: deltaMode = 'percent',
+		compact = false
 	}: Props = $props();
 
 	let hover = $state<number | null>(null);
@@ -41,8 +44,6 @@
 	);
 	const first = $derived(series?.[0]);
 	const last = $derived(series?.[series.length - 1]);
-	const min = $derived(points.length ? Math.min(...series.map(([, v]) => v)) : null);
-	const max = $derived(points.length ? Math.max(...series.map(([, v]) => v)) : null);
 	const change = $derived(first && last ? last[1] - first[1] : null);
 	const delta = $derived(
 		change === null
@@ -68,7 +69,7 @@
 	}
 </script>
 
-<div class="spark" style:--h={`${height}px`}>
+<div class="spark" class:compact style:--h={`${height}px`}>
 	<div class="top">
 		<span class="years">{first?.[0] ?? '—'}–{last?.[0] ?? '—'}</span>
 		{#if delta !== null}
@@ -113,11 +114,6 @@
 				</div>
 			{/if}
 		</div>
-		<div class="range">
-			<span>{format(min ?? 0)}</span>
-			<span class="range-label">mín · máx</span>
-			<span>{format(max ?? 0)}</span>
-		</div>
 	{:else}
 		<p class="empty">Série não disponível.</p>
 	{/if}
@@ -129,6 +125,14 @@
 		padding-top: 0.35rem;
 		margin-top: 0.4rem;
 	}
+	.spark.compact {
+		padding-top: 0.25rem;
+		margin-top: 0.3rem;
+	}
+	.spark.compact .years,
+	.spark.compact .delta {
+		font-size: 0.6rem;
+	}
 	.top {
 		display: flex;
 		align-items: baseline;
@@ -137,13 +141,13 @@
 	}
 	.years {
 		font-family: var(--font-mono);
-		font-size: 0.66rem;
+		font-size: 0.7rem;
 		letter-spacing: 0.06em;
 		color: var(--text-4);
 	}
 	.delta {
 		font-family: var(--font-mono);
-		font-size: 0.68rem;
+		font-size: 0.72rem;
 		color: var(--positive);
 	}
 	.delta.down {
@@ -215,18 +219,6 @@
 		font-family: var(--font-mono);
 		font-size: 0.58rem;
 		color: var(--text-4);
-	}
-	.range {
-		display: flex;
-		justify-content: space-between;
-		gap: 0.4rem;
-		font-family: var(--font-mono);
-		font-size: 0.62rem;
-		color: var(--text-4);
-	}
-	.range-label {
-		color: var(--text-3);
-		letter-spacing: 0.04em;
 	}
 	.empty {
 		margin: 0.2rem 0 0;

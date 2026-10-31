@@ -57,6 +57,8 @@ export interface GameDefinition {
 	mechanic: string;
 	difficulty: 'Fácil' | 'Médio' | 'Difícil';
 	icon: string;
+	/** Esconde os nomes dos países no mapa durante as rodadas de mapa. */
+	hideMapLabels?: boolean;
 	build: (seed?: number) => GameRound[];
 }
 

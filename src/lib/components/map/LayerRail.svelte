@@ -1,6 +1,7 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import Icon from '#lib/components/ui/Icon.svelte';
-	import { mapLayers } from '#lib/configurations/map-layers';
+	import { mapLayers, standardLayer } from '#lib/configurations/map-layers';
 	import { organizations } from '#lib/data/organizations';
 	import type { LayerId } from '#lib/types';
 
@@ -13,35 +14,74 @@
 
 	let { active, onchange, bloc = null, onbloc }: Props = $props();
 
-	const activeLayer = $derived(mapLayers.find((l) => l.id === active) ?? mapLayers[0]);
+	const allLayers = $derived([standardLayer, ...mapLayers]);
+	const activeLayer = $derived(allLayers.find((l) => l.id === active) ?? standardLayer);
+	const total = String(mapLayers.length).padStart(2, '0');
 	const availableBlocs = $derived(
 		activeLayer.blocs ? organizations.filter((o) => activeLayer.blocs!.includes(o.id)) : []
 	);
+
+	let collapsed = $state(false);
+
+	onMount(() => {
+		collapsed = localStorage.getItem('mundivista:rail') === 'collapsed';
+	});
+
+	function toggleCollapsed() {
+		collapsed = !collapsed;
+		localStorage.setItem('mundivista:rail', collapsed ? 'collapsed' : 'open');
+	}
 </script>
 
-<aside class="rail" aria-label="Camadas do mapa">
+<aside class="rail" class:collapsed aria-label="Camadas do mapa">
 	<div class="head">
-		<span class="eyebrow">Camadas</span>
-		<span class="index">{activeLayer.index}/06</span>
+		{#if !collapsed}
+			<span class="eyebrow">Camadas</span>
+			<span class="index">{activeLayer.index}/{total}</span>
+		{/if}
+		<button
+			type="button"
+			class="rail-toggle"
+			aria-expanded={!collapsed}
+			aria-label={collapsed ? 'Expandir camadas' : 'Recolher camadas'}
+			title={collapsed ? 'Expandir camadas' : 'Recolher camadas'}
+			onclick={toggleCollapsed}
+		>
+			<Icon name="chevronRight" size={14} />
+		</button>
 	</div>
 	<div class="layers" role="tablist" aria-orientation="vertical">
+		<button
+			type="button"
+			role="tab"
+			aria-selected={active === standardLayer.id}
+			class:active={active === standardLayer.id}
+			class="base"
+			title={`${standardLayer.label} · ${standardLayer.description}`}
+			onclick={() => onchange(standardLayer.id)}
+		>
+			<span class="num">{standardLayer.index}</span>
+			<Icon name={standardLayer.icon} size={17} />
+			<span class="label">{standardLayer.short}</span>
+		</button>
+		<span class="divider" aria-hidden="true"></span>
 		{#each mapLayers as layer (layer.id)}
 			<button
 				type="button"
 				role="tab"
 				aria-selected={active === layer.id}
 				class:active={active === layer.id}
-				title={layer.description}
+				title={`${layer.label} · ${layer.description}${active === layer.id ? ' · clique de novo para voltar ao mapa padrão' : ''}`}
 				onclick={() => onchange(layer.id)}
 			>
 				<span class="num">{layer.index}</span>
-				<Icon name={layer.icon} size={16} />
+				<Icon name={layer.icon} size={17} />
 				<span class="label">{layer.short}</span>
 			</button>
 		{/each}
 	</div>
 
-	{#if availableBlocs.length && onbloc}
+	{#if availableBlocs.length && onbloc && !collapsed}
 		<div class="blocs" aria-label="Blocos">
 			<span class="eyebrow">Blocos</span>
 			<div class="chips">
@@ -69,43 +109,77 @@
 		z-index: 30;
 		display: flex;
 		flex-direction: column;
-		gap: 0.45rem;
+		gap: 0.4rem;
 		width: var(--rail-w);
+		transition: width 0.2s var(--ease-out-soft);
+	}
+	.rail.collapsed {
+		width: 3.15rem;
 	}
 	.head {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 0 0.15rem;
+		gap: 0.3rem;
+		min-height: 1.5rem;
+		padding: 0 0.1rem 0 0.2rem;
 	}
 	.head .eyebrow {
-		font-size: 0.52rem;
+		font-size: 0.62rem;
 	}
 	.index {
+		margin-left: auto;
 		font-family: var(--font-mono);
-		font-size: 0.48rem;
+		font-size: 0.58rem;
 		color: var(--text-4);
+	}
+	.rail-toggle {
+		display: grid;
+		place-items: center;
+		width: 1.5rem;
+		height: 1.5rem;
+		flex-shrink: 0;
+		border: 1px solid var(--line);
+		border-radius: 0.15rem;
+		background: var(--surface-2);
+		color: var(--text-3);
+		transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+	}
+	.rail-toggle :global(svg) {
+		transition: transform 0.2s var(--ease-out-soft);
+	}
+	.rail-toggle:hover {
+		color: var(--text-1);
+		border-color: var(--line-strong);
+		background: var(--surface-3);
+	}
+	.collapsed .rail-toggle :global(svg) {
+		transform: rotate(180deg);
+	}
+	.collapsed .rail-toggle {
+		margin: 0 auto;
 	}
 	.layers {
 		display: flex;
 		flex-direction: column;
-		padding: 0.18rem;
-		background: var(--surface-2);
+		padding: 0.22rem;
+		background: color-mix(in oklab, var(--surface-2) 95%, transparent);
 		border: 1px solid var(--line);
-		border-radius: 0.2rem;
-		box-shadow: 0 14px 30px -26px rgb(0 0 0 / 0.55);
+		border-radius: 0.25rem;
+		box-shadow: 0 16px 34px -28px rgb(0 0 0 / 0.55);
 	}
 	.layers button {
 		position: relative;
 		display: flex;
 		align-items: center;
-		gap: 0.42rem;
+		gap: 0.5rem;
+		min-height: 2.4rem;
 		border: 0;
 		background: transparent;
 		color: var(--text-3);
-		border-radius: 0.1rem;
-		padding: 0.46rem 0.4rem;
-		font-size: 0.71rem;
+		border-radius: 0.16rem;
+		padding: 0.5rem 0.48rem;
+		font-size: 0.86rem;
 		font-weight: 500;
 		text-align: left;
 		white-space: nowrap;
@@ -113,9 +187,12 @@
 	}
 	.layers .num {
 		font-family: var(--font-mono);
-		font-size: 0.46rem;
+		font-size: 0.56rem;
 		color: var(--text-4);
-		width: 1rem;
+		width: 1.1rem;
+		flex-shrink: 0;
+	}
+	.layers :global(svg) {
 		flex-shrink: 0;
 	}
 	.layers .label {
@@ -127,41 +204,59 @@
 		background: var(--surface-3);
 		color: var(--text-1);
 	}
+	.layers .divider {
+		height: 1px;
+		margin: 0.25rem 0.35rem;
+		background: var(--line);
+	}
 	.layers button.active {
-		background: color-mix(in oklab, var(--accent-1) 15%, var(--surface-2));
+		background: color-mix(in oklab, var(--accent-1) 14%, var(--surface-2));
 		color: var(--text-1);
-		box-shadow: inset 2px 0 0 var(--accent-1);
+		box-shadow: inset 3px 0 0 var(--accent-1);
 	}
 	.layers button.active .num,
 	.layers button.active :global(svg) {
 		color: var(--accent-0);
 	}
+	.collapsed .layers button {
+		justify-content: center;
+		gap: 0;
+		padding: 0.5rem 0.3rem;
+	}
+	.collapsed .num,
+	.collapsed .label,
+	.collapsed .divider {
+		display: none;
+	}
+	.collapsed .layers button.active {
+		box-shadow: inset 0 -3px 0 var(--accent-1);
+	}
 	.blocs {
 		display: flex;
 		flex-direction: column;
-		gap: 0.35rem;
-		padding: 0.55rem 0.5rem;
+		gap: 0.4rem;
+		padding: 0.6rem 0.55rem;
 		background: var(--surface-2);
 		border: 1px solid var(--line);
-		border-radius: 0.2rem;
+		border-radius: 0.25rem;
 	}
 	.blocs .eyebrow {
-		font-size: 0.48rem;
+		font-size: 0.52rem;
 	}
 	.chips {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.22rem;
+		gap: 0.25rem;
 	}
 	.chips button {
 		border: 1px solid var(--line);
 		background: transparent;
 		color: var(--text-3);
-		border-radius: 0.1rem;
-		padding: 0.18rem 0.34rem;
+		border-radius: 0.15rem;
+		padding: 0.22rem 0.38rem;
 		font-family: var(--font-mono);
-		font-size: 0.53rem;
-		letter-spacing: 0.05em;
+		font-size: 0.56rem;
+		letter-spacing: 0.04em;
 		transition: all 0.15s ease;
 	}
 	.chips button:hover {
@@ -174,7 +269,8 @@
 		color: var(--accent-0);
 	}
 	@media (max-width: 900px) {
-		.rail {
+		.rail,
+		.rail.collapsed {
 			left: 0;
 			right: 0;
 			top: auto;
@@ -201,20 +297,34 @@
 		.layers::-webkit-scrollbar {
 			display: none;
 		}
-		.layers button {
+		.layers button,
+		.collapsed .layers button {
 			flex-direction: column;
-			gap: 0.18rem;
-			font-size: 0.54rem;
-			padding: 0.3rem 0.5rem;
-			min-width: 3.4rem;
+			gap: 0.2rem;
+			min-height: auto;
+			font-size: 0.58rem;
+			padding: 0.32rem 0.5rem;
+			min-width: 3.6rem;
 			align-items: center;
 			box-shadow: none;
 		}
-		.layers .num {
+		.layers .num,
+		.collapsed .num {
 			display: none;
 		}
-		.layers button.active {
+		.collapsed .label {
+			display: block;
+		}
+		.layers button.active,
+		.collapsed .layers button.active {
 			box-shadow: inset 0 -2px 0 var(--accent-1);
+		}
+		.layers .divider {
+			display: block;
+			width: 1px;
+			height: auto;
+			align-self: stretch;
+			margin: 0.2rem 0.1rem;
 		}
 		.blocs {
 			flex-direction: row;

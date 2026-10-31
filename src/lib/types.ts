@@ -112,7 +112,14 @@ export interface DataManifest {
 	};
 }
 
-export type LayerId = 'political' | 'physical' | 'population' | 'economy' | 'geopolitics' | 'history';
+export type LayerId =
+	| 'standard'
+	| 'political'
+	| 'physical'
+	| 'population'
+	| 'economy'
+	| 'geopolitics'
+	| 'history';
 
 export type CardSection =
 	| 'identity'

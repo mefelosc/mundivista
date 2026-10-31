@@ -54,7 +54,7 @@ const SOURCES = {
 		name: 'World Bank Open Data',
 		url: 'https://data.worldbank.org',
 		license: 'CC BY 4.0',
-		note: 'Série mais recente disponível por país dentro da janela consultada.'
+		note: 'Série mais recente disponível por país dentro da janela consultada. Códigos históricos do Natural Earth são normalizados; territórios sem série aparecem como não disponíveis.'
 	}
 };
 
@@ -97,17 +97,55 @@ const WB_YEARS = '2016:2025';
 
 /* Hachura apenas onde soberania ou traçado são disputados de forma documentada.
    Israel não entra: o Estado é reconhecido; o que se disputa são fronteiras. */
-const DISPUTED_CODES = new Set(['KOS', 'PSX', 'SAH', 'FLK', 'KAS', 'IOT']);
+const DISPUTED_CODES = new Set(['KOS', 'PSX', 'SAH', 'FLK', 'KAS', 'IOT', 'SOL']);
 
 /* Códigos divergentes entre Natural Earth e World Bank / mledoze. */
 const CODE_ALIASES = {
 	KOS: { wb: 'XKX', rc: 'XKX' },
 	SDS: { wb: 'SSD', rc: 'SSD' },
-	SOL: { wb: 'SOM', rc: 'SOM' }, // Somalilândia: sem série própria no WB
+	SOL: { wb: null, rc: null }, // Somalilândia: sem série própria; não herdar a Somália
 	SAH: { wb: null, rc: null }, // Saara Ocidental
 	ATA: { wb: null, rc: null },
 	NCL: { wb: 'NCL', rc: 'NCL' },
-	CYN: { wb: null, rc: null }
+	CYN: { wb: null, rc: null },
+	// Natural Earth ainda carrega códigos históricos do Banco Mundial.
+	COD: { wb: 'COD', rc: 'COD' }, // ZAR -> COD
+	NOR: { wb: 'NOR', rc: 'NOR' }, // WB_A3 ausente no recorte
+	ROU: { wb: 'ROU', rc: 'ROU' }, // ROM -> ROU
+	TLS: { wb: 'TLS', rc: 'TLS' }, // TMP -> TLS
+	PSX: { wb: 'PSE', rc: 'PSE' }, // WBG -> PSE
+	NRU: { wb: 'NRU', rc: 'NRU' } // WB_A3 ausente no recorte
+};
+
+/* Fatos próprios para territórios que não têm registro no mledoze/WB.
+   Somalilândia não deve herdar capital, área, moeda ou população da Somália. */
+const COUNTRY_OVERRIDES = {
+	FSM: {
+		currency: [{ code: 'USD', name: 'US dollar', symbol: '$' }],
+		factSource: 'mledoze + curadoria'
+	},
+	SOL: {
+		official: 'Republic of Somaliland',
+		iso2: '',
+		iso3: 'SOL',
+		capital: 'Hargeisa',
+		capitalLatLng: [9.56, 44.07],
+		continent: 'África',
+		region: 'África',
+		subregion: 'África Oriental',
+		areaKm2: 176120,
+		landlocked: false,
+		borders: ['DJI', 'ETH', 'SOM'],
+		currency: [{ code: 'SLS', name: 'Somaliland shilling', symbol: 'Sl' }],
+		languages: ['Somali', 'Árabe'],
+		latlng: [9.5, 46.5],
+		unMember: false,
+		independent: false,
+		sovereign: null,
+		type: 'Território separatista',
+		status: 'Breakaway',
+		factSource: 'Curadoria Mundivista'
+	}
 };
 
 const REGION_PT = {
@@ -284,42 +322,129 @@ function polygonLabelPoint(rings) {
 	return best ?? [(minX + maxX) / 2, (minY + maxY) / 2];
 }
 
+function marineCandidates(rings) {
+	const outer = rings?.[0];
+	if (!outer?.length) return [];
+	let minX = Infinity;
+	let maxX = -Infinity;
+	let minY = Infinity;
+	let maxY = -Infinity;
+	for (const [x, y] of outer) {
+		if (x < minX) minX = x;
+		if (x > maxX) maxX = x;
+		if (y < minY) minY = y;
+		if (y > maxY) maxY = y;
+	}
+	const spanX = maxX - minX;
+	const spanY = maxY - minY;
+	if (!(spanX > 0) || !(spanY > 0)) return [];
+
+	const stepsX = Math.max(4, Math.min(18, Math.round(spanX / 7) + 2));
+	const stepsY = Math.max(4, Math.min(18, Math.round(spanY / 7) + 2));
+	const candidates = [];
+	for (let ix = 1; ix < stepsX; ix++) {
+		for (let iy = 1; iy < stepsY; iy++) {
+			const lng = minX + (spanX * ix) / stepsX;
+			const lat = minY + (spanY * iy) / stepsY;
+			if (!pointInPolygon(lng, lat, rings)) continue;
+			candidates.push({ lng, lat, distance: ringDistanceSq(lng, lat, outer) });
+		}
+	}
+	return { candidates, spanX, spanY };
+}
+
+function marineFeaturePoints(geometries, kind) {
+	const collected = [];
+	let largestSpan = 0;
+	for (const geometry of Array.isArray(geometries) ? geometries : [geometries]) {
+		const parts =
+			geometry.type === 'Polygon'
+				? [geometry.coordinates]
+				: geometry.type === 'MultiPolygon'
+					? geometry.coordinates
+					: [];
+		for (const part of parts) {
+			const result = marineCandidates(part);
+			if (!result || !result.candidates?.length) continue;
+			collected.push(...result.candidates);
+			largestSpan = Math.max(largestSpan, Math.min(result.spanX, result.spanY));
+		}
+	}
+	if (!collected.length) {
+		const point = polygonLabelPoint(parts.flat?.() ?? []);
+		return point ? [{ lng: point[0], lat: point[1] }] : [];
+	}
+
+	const maxPoints = kind === 'ocean' ? 7 : kind === 'sea' ? 2 : 1;
+	const spacing =
+		kind === 'ocean'
+			? Math.max(5, Math.min(25, largestSpan / 4))
+			: Math.max(2, Math.min(10, largestSpan / 2.5));
+	const midLat = collected.reduce((sum, point) => sum + point.lat, 0) / collected.length;
+	const cosLat = Math.cos((midLat * Math.PI) / 180);
+	collected.sort((a, b) => b.distance - a.distance);
+
+	const chosen = [];
+	for (const candidate of collected) {
+		if (chosen.length >= maxPoints) break;
+		const farEnough = chosen.every(
+			(point) =>
+				Math.hypot((point.lng - candidate.lng) * cosLat, point.lat - candidate.lat) >= spacing
+		);
+		if (farEnough) chosen.push(candidate);
+	}
+	// Se a geometria for estreita, relaxa o espaçamento para não deixar o nome de fora.
+	if (chosen.length === 0) chosen.push(collected[0]);
+	return chosen;
+}
+
 function marineLabelRows(collection) {
 	const MIN_ZOOM = { ocean: 0.2, sea: 3.2, bay: 3.4, gulf: 3.4, channel: 4, strait: 4.2 };
 	const chosen = new Map();
+
 	for (const feature of collection.features) {
 		const props = feature.properties;
 		let name = (props.name_pt || props.name_en || props.name || '').trim();
 		if (!name) continue;
 		name = name.charAt(0).toLocaleUpperCase('pt-BR') + name.slice(1);
-		const geometry = feature.geometry;
-		const rings =
-			geometry.type === 'Polygon'
-				? geometry.coordinates
-				: geometry.type === 'MultiPolygon'
-					? geometry.coordinates.flat()
-					: [];
-		if (!rings.length) continue;
-		const point = polygonLabelPoint(rings);
-		if (!point) continue;
 		const kind = props.featurecla || 'sea';
 		const key = `${name.toLowerCase()}|${kind}`;
-		const size = (feature.bbox?.[2] - feature.bbox?.[0]) * (feature.bbox?.[3] - feature.bbox?.[1]) || 0;
-		const row = {
-			name,
-			lat: Math.round(point[1] * 10000) / 10000,
-			lng: Math.round(point[0] * 10000) / 10000,
-			kind,
-			minZoom: MIN_ZOOM[kind] ?? 2.4,
-			priority: kind === 'ocean' ? 10 : kind === 'sea' ? 100 : 120,
-			size
-		};
+		const size =
+			(feature.bbox?.[2] - feature.bbox?.[0]) * (feature.bbox?.[3] - feature.bbox?.[1]) || 0;
 		const existing = chosen.get(key);
-		if (!existing || row.size > existing.size) chosen.set(key, row);
+		if (existing) {
+			existing.geometries.push(feature.geometry);
+			existing.size += size;
+		} else {
+			chosen.set(key, { name, kind, geometries: [feature.geometry], size });
+		}
 	}
-	return [...chosen.values()]
-		.sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name, 'pt-BR'))
-		.map(({ size, ...row }) => row);
+
+	const rows = [];
+	for (const entry of chosen.values()) {
+		const points = marineFeaturePoints(entry.geometries, entry.kind);
+		const baseZoom = MIN_ZOOM[entry.kind] ?? 2.4;
+		const basePriority = entry.kind === 'ocean' ? 10 : entry.kind === 'sea' ? 100 : 120;
+		points.forEach((point, index) => {
+			rows.push({
+				name: entry.name,
+				lat: Math.round(point.lat * 10000) / 10000,
+				lng: Math.round(point.lng * 10000) / 10000,
+				kind: entry.kind,
+				minZoom:
+					index === 0
+						? baseZoom
+						: entry.kind === 'ocean'
+							? Math.max(baseZoom, index === 1 ? 1.2 : 2.4 + (index - 2) * 0.5)
+							: baseZoom,
+				priority: basePriority + index * 0.05
+			});
+		});
+	}
+
+	return rows.sort(
+		(a, b) => a.priority - b.priority || a.name.localeCompare(b.name, 'pt-BR')
+	);
 }
 
 const norm = (s) =>
@@ -524,6 +649,27 @@ async function main() {
 		await sleep(1200);
 	}
 
+	/* Códigos com pelo menos uma série do Banco Mundial. */
+	const wbCoveredCodes = new Set();
+	for (const map of Object.values(wb)) {
+		if (map instanceof Map) for (const code of map.keys()) wbCoveredCodes.add(code);
+	}
+
+	function resolveWbCode(p, alias, fact) {
+		if (alias.wb && wbCoveredCodes.has(alias.wb)) return alias.wb;
+		const candidates = [
+			p.WB_A3,
+			p.ISO_A3_EH,
+			p.ISO_A3,
+			p.ADM0_A3,
+			fact?.cca3,
+			fact?.cca2
+		]
+			.map((code) => (code && code !== '-99' ? code : null))
+			.filter(Boolean);
+		return candidates.find((code) => wbCoveredCodes.has(code)) ?? null;
+	}
+
 	/* ---------- países ---------- */
 	const used = new Set();
 	const usedRc = new Set();
@@ -551,7 +697,7 @@ async function main() {
 			fact = rc.find((c) => norm(c.translations?.por?.common) === norm(p.NAME_PT)) || null;
 		}
 
-		const wbCode = alias.wb ?? (p.WB_A3 && p.WB_A3 !== '-99' ? p.WB_A3 : null);
+		const wbCode = resolveWbCode(p, alias, fact);
 
 		const namePt = (p.NAME_PT || '').trim() || p.NAME || p.NAME_EN;
 		const iso2 = fact?.cca2 || (p.ISO_A2 !== '-99' ? p.ISO_A2 : '') || '';
@@ -606,6 +752,7 @@ async function main() {
 			indicators,
 			factSource: fact ? 'mledoze' : null
 		};
+		Object.assign(c, COUNTRY_OVERRIDES[code] ?? {});
 		countries.push(c);
 		if (fact) usedRc.add(fact.cca3);
 		used.add(code);
@@ -808,6 +955,12 @@ async function main() {
 	);
 
 	console.log(`\n✓ ${countries.length} países/territórios com polígono`);
+	const withPopulation = countries.filter((country) => country.indicators.population);
+	console.log(`✓ população: ${withPopulation.length}/${countries.length} com série do Banco Mundial`);
+	const missingPopulation = countries.filter((country) => !country.indicators.population);
+	if (missingPopulation.length) {
+		console.log('  sem série: ' + missingPopulation.map((country) => country.code).join(' '));
+	}
 	console.log(`✓ ${missing.length} Estados-membros da ONU sem polígono em 1:50m`);
 	if (missing.length) console.log('  ' + missing.map((c) => c.name.common).join(', '));
 	console.log('✓ cobertura de indicadores:');

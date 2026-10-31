@@ -1,8 +1,6 @@
 <script lang="ts">
 	import Icon from '#lib/components/ui/Icon.svelte';
 	import StatRow from './StatRow.svelte';
-	import Sparkline from './Sparkline.svelte';
-	import LocatorMap from './LocatorMap.svelte';
 	import { capitalInPortuguese } from '#lib/data/capitals-pt';
 	import {
 		indicatorMeta,
@@ -18,6 +16,7 @@
 	import { organizationsForCountry } from '#lib/data/organizations';
 	import { snippetsByCountry } from '#lib/data/snippets';
 	import { formatArea, formatIndicatorValue } from '#lib/format';
+	import type { SubdivisionCollection, SubdivisionProperties } from '#lib/data/subdivisions';
 	import type { Country, IndicatorKey } from '#lib/types';
 	import type { ResolvedLayer } from '#lib/configurations/map-layers';
 
@@ -28,6 +27,11 @@
 		onnavigate: (code: string) => void;
 		neighborsHighlighted?: boolean;
 		ontoggleneighbors?: () => void;
+		subdivisions?: SubdivisionCollection | null;
+		subdivisionsLoading?: boolean;
+		activeSubdivision?: string | null;
+		onunit?: (id: string | null) => void;
+		onfly?: (center: [number, number], zoom?: number) => void;
 	}
 
 	let {
@@ -36,21 +40,27 @@
 		onclose,
 		onnavigate,
 		neighborsHighlighted = false,
-		ontoggleneighbors
+		ontoggleneighbors,
+		subdivisions = null,
+		subdivisionsLoading = false,
+		activeSubdivision = null,
+		onunit,
+		onfly
 	}: Props = $props();
 
 	type TabId = 'overview' | 'demography' | 'economy' | 'environment' | 'geopolitics' | 'history';
 
-	const TABS: { id: TabId; label: string; index: string }[] = [
-		{ id: 'overview', label: 'Visão geral', index: '01' },
-		{ id: 'demography', label: 'Demografia', index: '02' },
-		{ id: 'economy', label: 'Economia', index: '03' },
-		{ id: 'environment', label: 'Meio físico', index: '04' },
-		{ id: 'geopolitics', label: 'Geopolítica', index: '05' },
-		{ id: 'history', label: 'História', index: '06' }
+	const TABS: { id: TabId; label: string; short: string }[] = [
+		{ id: 'overview', label: 'Visão geral', short: 'Geral' },
+		{ id: 'demography', label: 'Demografia', short: 'Demografia' },
+		{ id: 'economy', label: 'Economia', short: 'Economia' },
+		{ id: 'environment', label: 'Meio físico', short: 'Físico' },
+		{ id: 'geopolitics', label: 'Geopolítica', short: 'Geopolítica' },
+		{ id: 'history', label: 'História', short: 'História' }
 	];
 
 	const TAB_FOR_LAYER: Record<string, TabId> = {
+		standard: 'overview',
 		political: 'overview',
 		physical: 'environment',
 		population: 'demography',
@@ -66,6 +76,8 @@
 	let dragging = $state(false);
 	let dragStart = 0;
 	let sheetEl: HTMLElement | null = null;
+	const UNIT_LIMIT = 18;
+	let unitLimit = $state(UNIT_LIMIT);
 
 	const capital = $derived(capitalInPortuguese(country.code, country.capital));
 	const historical = $derived(getHistorical(country.code));
@@ -80,6 +92,9 @@
 	const sovereign = $derived(sovereignCountry(country));
 	const dependency = $derived(dependencyLabel(country));
 	const accent = $derived(layer.palette?.[layer.palette.length - 1] ?? 'var(--accent-1)');
+
+	const units = $derived(subdivisions?.features.map((feature) => feature.properties) ?? []);
+	const shownUnits = $derived(units.slice(0, unitLimit));
 
 	const currency = $derived(
 		country.currency.length
@@ -103,19 +118,43 @@
 	);
 
 	const glance = $derived.by(() => {
-		const items: { key: IndicatorKey | 'area' | 'capital'; label: string; value: string; year?: number }[] = [];
+		const items: {
+			key: IndicatorKey | 'area' | 'capital';
+			label: string;
+			value: string;
+			year?: number | null;
+			meta?: string | null;
+		}[] = [];
 		const pop = country.indicators.population;
-		if (pop)
-			items.push({ key: 'population', label: 'População', value: formatIndicatorValue('population', pop), year: pop.y });
+		const popRank = rankOf(country.code, 'population');
+		items.push({
+			key: 'population',
+			label: 'População',
+			value: pop ? formatIndicatorValue('population', pop) : '—',
+			year: pop?.y,
+			meta: popRank ? `${popRank.rank}º de ${popRank.total}` : null
+		});
 		const gdp = country.indicators.gdpPerCapita;
-		if (gdp)
-			items.push({ key: 'gdpPerCapita', label: 'PIB per capita', value: formatIndicatorValue('gdpPerCapita', gdp), year: gdp.y });
+		const gdpRank = rankOf(country.code, 'gdpPerCapita');
+		items.push({
+			key: 'gdpPerCapita',
+			label: 'PIB per capita',
+			value: gdp ? formatIndicatorValue('gdpPerCapita', gdp) : '—',
+			year: gdp?.y,
+			meta: gdpRank ? `${gdpRank.rank}º de ${gdpRank.total}` : null
+		});
 		items.push({
 			key: 'area',
 			label: 'Área',
-			value: country.areaKm2 ? formatArea(country.areaKm2) : 'Não disponível'
+			value: country.areaKm2 ? formatArea(country.areaKm2) : '—',
+			meta: 'superfície terrestre'
 		});
-		items.push({ key: 'capital', label: 'Capital', value: capital ?? 'Não disponível' });
+		items.push({
+			key: 'capital',
+			label: 'Capital',
+			value: capital ?? '—',
+			meta: country.unMember ? 'Estado-membro da ONU' : 'Estatuto não membro'
+		});
 		return items;
 	});
 
@@ -146,8 +185,7 @@
 				value: value ? formatIndicatorValue(key, value) : 'Não disponível',
 				year: value?.y ?? null,
 				percentile: rank?.percentile ?? null,
-				comparison,
-				series: value?.s ?? null
+				comparison
 			};
 		});
 	});
@@ -176,18 +214,15 @@
 		copied = false;
 		dragOffset = 0;
 		snap = 'half';
+		unitLimit = UNIT_LIMIT;
 	});
 
-	function fmt(key: IndicatorKey, value: number): string {
-		return formatIndicatorValue(key, { v: value, y: 0 });
-	}
-
-	async function share() {
+	function share() {
 		try {
 			if (navigator.share) {
-				await navigator.share({ title: `${country.name} — Mundivista`, url: shareUrl });
+				navigator.share({ title: `${country.name} — Mundivista`, url: shareUrl });
 			} else {
-				await navigator.clipboard.writeText(shareUrl);
+				navigator.clipboard.writeText(shareUrl);
 				copied = true;
 				setTimeout(() => (copied = false), 1800);
 			}
@@ -233,6 +268,12 @@
 			snap = snap === 'full' ? 'half' : 'peek';
 		}
 	}
+
+	function toggleUnit(unit: SubdivisionProperties) {
+		const next = activeSubdivision === unit.id ? null : unit.id;
+		onunit?.(next);
+		if (next && unit.label) onfly?.(unit.label, 5);
+	}
 </script>
 
 <aside
@@ -257,53 +298,42 @@
 		<span></span><span></span><span></span>
 	</div>
 
-	<header>
-		<div class="flag-wrap">
-			{#if country.iso2}
-				<span class={`flag fi fi-${country.iso2}`}></span>
-			{:else}
-				<span class="flag-fallback">{country.code}</span>
-			{/if}
-		</div>
-		<div class="titles">
-			<h2>{country.name}</h2>
-			<p>{country.nameEn}{dependency ?? country.type ? ` · ${dependency ?? country.type}` : ''}</p>
+	<header class="card-head">
+		<div class="country-id">
+			<div class="flag-wrap">
+				{#if country.iso2}
+					<span class={`flag fi fi-${country.iso2}`}></span>
+				{:else}
+					<span class="flag-fallback">{country.code}</span>
+				{/if}
+			</div>
+			<div class="titles">
+				<span class="eyebrow">{layer.label}{country.continent ? ` · ${country.continent}` : ''}</span>
+				<h2>{country.name}</h2>
+				<p>
+					{country.nameEn}{dependency ?? country.type ? ` · ${dependency ?? country.type}` : ''} · {country.code}
+				</p>
+			</div>
 		</div>
 		<div class="head-actions">
 			<button type="button" class="icon-btn" onclick={share} aria-label="Compartilhar país" title="Compartilhar">
-				<Icon name={copied ? 'check' : 'link'} size={14} />
+				<Icon name={copied ? 'check' : 'link'} size={15} />
 			</button>
 			<button class="icon-btn" type="button" onclick={onclose} aria-label="Fechar card">
-				<Icon name="close" size={15} />
+				<Icon name="close" size={16} />
 			</button>
 		</div>
 	</header>
 
-	<div class="meta">
-		<span class="pill">{layer.label}</span>
-		{#if country.continent}<span>{country.continent}</span>{/if}
-		{#if country.subregion}<span class="dim">{country.subregion}</span>{/if}
-		<span class="mono">{country.code}</span>
-	</div>
-
-	<div class="links">
-		<a href={wikipediaUrl} target="_blank" rel="noopener noreferrer">
-			<Icon name="book" size={12} /> Wikipédia
-		</a>
-		<a href={britannicaUrl} target="_blank" rel="noopener noreferrer">
-			<Icon name="external" size={12} /> Britannica
-		</a>
-		<a class="dossier-link" href={dossierUrl}>
-			<Icon name="dossier" size={12} /> Abrir dossiê
-		</a>
-	</div>
-
-	<div class="glance" aria-label="Resumo">
+	<div class="key-metrics" aria-label="Resumo">
 		{#each glance as item (item.key)}
-			<div>
-				<span class="glance-label">{item.label}</span>
+			<div class="key" class:small={item.key === 'capital'}>
+				<span class="key-label">{item.label}</span>
 				<strong>{item.value}</strong>
-				{#if item.year}<em>{item.year}</em>{/if}
+				<span class="key-meta">
+					{#if item.meta}{item.meta}{/if}
+					{#if item.year}{#if item.meta} · {/if}{item.year}{/if}
+				</span>
 			</div>
 		{/each}
 	</div>
@@ -319,171 +349,237 @@
 				onclick={() => (tab = t.id)}
 				onkeydown={(event) => onTabKey(event, i)}
 			>
-				<span>{t.index}</span>{t.label}
+				{t.short}
 			</button>
 		{/each}
 	</div>
 
 	<div class="body" role="tabpanel" tabindex="0" aria-label={TABS.find((t) => t.id === tab)?.label}>
 		{#key tab}
-		<div class="panel-content">
-		{#if tab === 'overview'}
-			<LocatorMap {country} {neighbors} />
-			<section>
-				<h3>Identidade</h3>
-				<StatRow label="Capital" value={capital ?? 'Não disponível'} />
-				<StatRow label="Continente" value={country.continent ?? 'Não disponível'} />
-				<StatRow label="Sub-região" value={country.subregion ?? 'Não disponível'} />
-				<StatRow
-					label="Área"
-					value={country.areaKm2 ? formatArea(country.areaKm2) : 'Não disponível'}
-				/>
-				<StatRow label="Moeda" value={currency} />
-				<StatRow
-					label="Idiomas"
-					value={country.languages.length ? country.languages.join(', ') : 'Não disponível'}
-				/>
-				<StatRow label="Membro da ONU" value={country.unMember === null ? 'Não disponível' : country.unMember ? 'Sim' : 'Não'} />
-				{#if sovereign}
-					<StatRow label="Soberania" value={sovereign.name} note={dependency ?? undefined} />
-				{/if}
-				<StatRow label="Sem litoral" value={country.landlocked === null ? 'Não disponível' : country.landlocked ? 'Sim' : 'Não'} />
-				{#if disputed}
-					<StatRow label="Estatuto" value={disputed.label} note={disputed.note} />
-				{/if}
-			</section>
-			<section>
-				<div class="section-head">
-					<h3>Países vizinhos</h3>
-					{#if neighbors.length && ontoggleneighbors}
-						<button
-							type="button"
-							class="highlight-toggle"
-							class:active={neighborsHighlighted}
-							onclick={ontoggleneighbors}
-							aria-pressed={neighborsHighlighted}
-							title="Destacar os vizinhos na camada do mapa"
-						>
-							<Icon name={neighborsHighlighted ? 'eyeOff' : 'eye'} size={11} />
-							{neighborsHighlighted ? 'Remover destaque' : 'Destacar no mapa'}
-						</button>
-					{/if}
-				</div>
-				{#if neighbors.length}
-					<div class="neighbors">
-						{#each neighbors as neighbor (neighbor.code)}
-							<button type="button" onclick={() => onnavigate(neighbor.code)}>
-								{#if neighbor.iso2}<span class="fi fi-{neighbor.iso2} mini"></span>{/if}
-								{neighbor.name}
-							</button>
-						{/each}
-					</div>
-				{:else}
-					<p class="empty">Sem fronteiras terrestres.</p>
-				{/if}
-			</section>
-			{#if snippet}
-				<section class="snippet">
-					<span class="eyebrow">Leitura rápida</span>
-					<h3>{snippet.title}</h3>
-					<p>{snippet.body}</p>
-					<a href={snippet.sourceUrl} target="_blank" rel="noopener noreferrer">
-						{snippet.source} <Icon name="external" size={11} />
-					</a>
-				</section>
-			{/if}
-		{:else if tab === 'history'}
-			<section>
-				<h3>Marcos</h3>
-				{#if historical?.independence}
-					<StatRow
-						label="Independência"
-						value={String(historical.independence)}
-						note={historical.independenceFrom ? `De: ${historical.independenceFrom}` : historical.note}
-					/>
-				{/if}
-				{#if formerNames}
-					<StatRow label="Nomes anteriores" value={formerNames} />
-				{/if}
-				{#if !historical}
-					<p class="empty">Sem registro histórico curado para este país.</p>
-				{/if}
-			</section>
-			{#if historicalOrgs.length}
-				<section>
-					<h3>Federações e blocos históricos</h3>
-					<div class="orgs">
-						{#each historicalOrgs as org (org.id)}
-							<div class="org">
-								<span>{org.short}</span>
-								<p>{org.name} · {org.founded}–{org.dissolved ?? 'hoje'}</p>
+			<div class="panel-content">
+				{#if tab === 'overview'}
+					<section class="block">
+						<div class="block-head">
+							<h3>Identidade</h3>
+						</div>
+						<div class="facts-grid">
+							<StatRow compact label="Nome oficial" value={country.official ?? country.nameEn} />
+							<StatRow compact label="Continente" value={country.continent ?? 'Não disponível'} />
+							<StatRow compact label="Sub-região" value={country.subregion ?? 'Não disponível'} />
+							<StatRow compact label="Moeda" value={currency} />
+							<StatRow
+								compact
+								label="Idiomas"
+								value={country.languages.length ? country.languages.join(', ') : 'Não disponível'}
+							/>
+							<StatRow label="Membro da ONU" compact value={country.unMember === null ? 'Não disponível' : country.unMember ? 'Sim' : 'Não'} />
+							<StatRow label="Sem litoral" compact value={country.landlocked === null ? 'Não disponível' : country.landlocked ? 'Sim' : 'Não'} />
+							{#if sovereign}
+								<StatRow compact label="Soberania" value={sovereign.name} note={dependency ?? undefined} />
+							{:else}
+								<StatRow compact label="Estatuto" value={country.type ?? disputed?.label ?? 'Soberano'} />
+							{/if}
+						</div>
+						{#if disputed}
+							<p class="note">
+								{disputed.label}. {disputed.note}
+								<a href={disputed.source.url} target="_blank" rel="noopener noreferrer">
+									Fonte <Icon name="external" size={10} />
+								</a>
+							</p>
+						{/if}
+					</section>
+
+					<section class="block">
+						<div class="block-head">
+							<h3>Países vizinhos</h3>
+							{#if neighbors.length && ontoggleneighbors}
+								<button
+									type="button"
+									class="block-action"
+									class:active={neighborsHighlighted}
+									onclick={ontoggleneighbors}
+									aria-pressed={neighborsHighlighted}
+								>
+									<Icon name={neighborsHighlighted ? 'eyeOff' : 'eye'} size={12} />
+									{neighborsHighlighted ? 'Remover destaque' : 'Destacar'}
+								</button>
+							{/if}
+						</div>
+						{#if neighbors.length}
+							<div class="neighbors">
+								{#each neighbors as neighbor (neighbor.code)}
+									<button type="button" onclick={() => onnavigate(neighbor.code)}>
+										{#if neighbor.iso2}<span class="fi fi-{neighbor.iso2} mini"></span>{/if}
+										{neighbor.name}
+									</button>
+								{/each}
 							</div>
-						{/each}
-					</div>
-					<p class="note">Federações históricas usam os polígonos atuais como aproximação; não são fronteiras do período.</p>
-				</section>
-			{/if}
-			{#if historical?.note && !historical.independence}
-				<p class="note">{historical.note}</p>
-			{/if}
-		{:else if tab === 'geopolitics'}
-			<section>
-				<h3>Organizações</h3>
-				{#if currentOrgs.length}
-					<div class="orgs">
-						{#each currentOrgs as org (org.id)}
-							<div class="org">
-								<span>{org.short}</span>
-								<p>{org.name}{org.since?.[country.code] ? ` · desde ${org.since[country.code]}` : ''}</p>
-							</div>
-						{/each}
-					</div>
-				{:else}
-					<p class="empty">Nenhum bloco curado para este país neste recorte.</p>
-				{/if}
-			</section>
-			<section>
-				<h3>Governança e defesa</h3>
-				{#each geopoliticsRows as row (row.key)}
-					<StatRow
-						label={row.label}
-						value={row.value}
-						year={row.year}
-						percentile={row.percentile}
-						accent={accent}
-					/>
-				{/each}
-			</section>
-		{:else}
-			<section>
-				<h3>{TABS.find((t) => t.id === tab)?.label}</h3>
-				{#each rows as row (row.key)}
-					<StatRow
-						label={row.label}
-						value={row.value}
-						year={row.year}
-						percentile={row.percentile}
-						comparison={row.comparison}
-						accent={accent}
-					/>
-					{#if row.series && row.series.length > 2}
-						<Sparkline
-							series={row.series}
-							label={row.label}
-							format={(v) => fmt(row.key, v)}
-							delta={indicatorMeta[row.key]?.unit.includes('%') ? 'points' : 'percent'}
-						/>
+						{:else}
+							<p class="empty">Sem fronteiras terrestres.</p>
+						{/if}
+					</section>
+
+					{#if layer.showSubdivisions}
+						<details class="block units-block" open>
+							<summary>
+								<span>Unidades e estados</span>
+								{#if units.length}<em>{units.length}</em>{/if}
+								<Icon name="chevronDown" size={14} />
+							</summary>
+							{#if subdivisionsLoading}
+								<p class="empty">Carregando unidades administrativas…</p>
+							{:else if units.length}
+								<div class="units">
+									{#each shownUnits as unit (unit.id)}
+										<button
+											type="button"
+											class:active={activeSubdivision === unit.id}
+											onclick={() => toggleUnit(unit)}
+											title={`${unit.name} · ${unit.type}${unit.label ? ' · centralizar no mapa' : ''}`}
+										>
+											<span>{unit.name}</span>
+											<em>{unit.type}</em>
+										</button>
+									{/each}
+								</div>
+								{#if units.length > UNIT_LIMIT}
+									<button
+										type="button"
+										class="more"
+										onclick={() => (unitLimit = unitLimit >= units.length ? UNIT_LIMIT : units.length)}
+									>
+										{unitLimit >= units.length ? 'Mostrar menos' : `Mostrar todas as ${units.length}`}
+									</button>
+								{/if}
+								<p class="source-note">
+									Natural Earth 1:10m · primeiro nível administrativo. O nível varia por país.
+								</p>
+							{:else}
+								<p class="empty">Sem unidades de primeiro nível na base para este território.</p>
+							{/if}
+						</details>
 					{/if}
-				{/each}
-			</section>
-			{/if}
-		</div>
+
+					{#if snippet}
+						<section class="snippet">
+							<span class="eyebrow">Leitura rápida</span>
+							<h3>{snippet.title}</h3>
+							<p>{snippet.body}</p>
+							<a href={snippet.sourceUrl} target="_blank" rel="noopener noreferrer">
+								{snippet.source} <Icon name="external" size={11} />
+							</a>
+						</section>
+					{/if}
+				{:else if tab === 'history'}
+					<section class="block">
+						<div class="block-head"><h3>Marcos</h3></div>
+						<div class="facts-grid">
+							{#if historical?.independence}
+								<StatRow
+									compact
+									label="Independência"
+									value={String(historical.independence)}
+									note={historical.independenceFrom ? `De: ${historical.independenceFrom}` : historical.note}
+								/>
+							{/if}
+							{#if formerNames}
+								<StatRow compact label="Nomes anteriores" value={formerNames} />
+							{/if}
+						</div>
+						{#if !historical}
+							<p class="empty">Sem registro histórico curado para este país.</p>
+						{/if}
+					</section>
+					{#if historicalOrgs.length}
+						<section class="block">
+							<div class="block-head"><h3>Federações e blocos históricos</h3></div>
+							<div class="orgs">
+								{#each historicalOrgs as org (org.id)}
+									<div class="org">
+										<span>{org.short}</span>
+										<p>{org.name}</p>
+										<em>{org.founded}–{org.dissolved ?? 'hoje'}</em>
+									</div>
+								{/each}
+							</div>
+							<p class="source-note">Federações históricas usam os polígonos atuais como aproximação.</p>
+						</section>
+					{/if}
+					{#if historical?.note && !historical.independence}
+						<p class="note">{historical.note}</p>
+					{/if}
+				{:else if tab === 'geopolitics'}
+					<section class="block">
+						<div class="block-head"><h3>Organizações</h3></div>
+						{#if currentOrgs.length}
+							<div class="orgs">
+								{#each currentOrgs as org (org.id)}
+									<div class="org">
+										<span>{org.short}</span>
+										<p>{org.name}</p>
+										{#if org.since?.[country.code]}<em>desde {org.since[country.code]}</em>{/if}
+									</div>
+								{/each}
+							</div>
+						{:else}
+							<p class="empty">Nenhum bloco curado para este país neste recorte.</p>
+						{/if}
+					</section>
+					<section class="block">
+						<div class="block-head"><h3>Governança e defesa</h3></div>
+						<div class="metrics-grid">
+							{#each geopoliticsRows as row (row.key)}
+								<StatRow
+									variant="metric"
+									compact
+									label={row.label}
+									value={row.value}
+									year={row.year}
+									percentile={row.percentile}
+									accent={accent}
+								/>
+							{/each}
+						</div>
+					</section>
+				{:else}
+					<div class="metrics-grid">
+						{#each rows as row (row.key)}
+							<StatRow
+								variant="metric"
+								compact
+								label={row.label}
+								value={row.value}
+								year={row.year}
+								percentile={row.percentile}
+								comparison={row.comparison}
+								accent={accent}
+							/>
+						{/each}
+					</div>
+					<p class="dossier-hint">
+						<a href={dossierUrl}>
+							Ver séries, comparações e método no dossiê <Icon name="arrowRight" size={12} />
+						</a>
+					</p>
+				{/if}
+			</div>
 		{/key}
 	</div>
 
-	<footer>
+	<footer class="card-foot">
 		<span>Dados: {retrievedAt}</span>
-		<a href="/sobre">Fontes e métodos</a>
+		<nav aria-label="Links do país">
+			<a href={wikipediaUrl} target="_blank" rel="noopener noreferrer" title="Wikipédia">
+				<Icon name="book" size={12} /><span>Wikipédia</span>
+			</a>
+			<a href={britannicaUrl} target="_blank" rel="noopener noreferrer" title="Britannica">
+				<Icon name="external" size={12} /><span>Britannica</span>
+			</a>
+			<a class="dossier-link" href={dossierUrl}>
+				<Icon name="dossier" size={12} /><span>Dossiê</span>
+			</a>
+		</nav>
 	</footer>
 </aside>
 {#if snap === 'full'}
@@ -504,65 +600,76 @@
 		max-width: calc(100vw - 1.5rem);
 		display: flex;
 		flex-direction: column;
-		border-radius: 0.2rem;
+		border-radius: 0.25rem;
 		overflow: hidden;
 	}
 	.handle {
 		display: none;
 	}
-	header {
+	.card-head {
 		display: flex;
 		align-items: flex-start;
-		gap: 0.65rem;
-		padding: 0.8rem 0.8rem 0.55rem;
+		gap: 0.75rem;
+		padding: 0.9rem 1rem 0.75rem;
+	}
+	.country-id {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.7rem;
+		min-width: 0;
+		flex: 1;
 	}
 	.flag-wrap {
 		flex-shrink: 0;
 	}
 	.flag {
 		display: block;
-		width: 2.15rem;
-		height: 1.45rem;
+		width: 3.1rem;
+		height: 2.05rem;
 		border: 1px solid var(--line-strong);
 		background-size: cover;
 	}
 	.flag-fallback {
 		display: grid;
 		place-items: center;
-		width: 2.15rem;
-		height: 1.45rem;
+		width: 3.1rem;
+		height: 2.05rem;
 		border: 1px solid var(--line-strong);
 		font-family: var(--font-mono);
-		font-size: 0.754rem;
+		font-size: 0.8rem;
 		color: var(--text-3);
 	}
 	.titles {
 		min-width: 0;
-		flex: 1;
+	}
+	.titles .eyebrow {
+		font-size: 0.58rem;
 	}
 	h2 {
-		margin: 0;
+		margin: 0.16rem 0 0;
 		font-family: var(--font-display);
-		font-size: 1.380rem;
+		font-size: 1.5rem;
 		font-weight: 600;
-		line-height: 1.1;
-		letter-spacing: -0.01em;
+		line-height: 1.05;
+		letter-spacing: -0.015em;
 	}
 	.titles p {
-		margin: 0.18rem 0 0;
-		font-size: 0.780rem;
+		margin: 0.2rem 0 0;
+		font-size: 0.68rem;
+		line-height: 1.35;
 		color: var(--text-4);
 	}
 	.head-actions {
 		display: flex;
-		gap: 2px;
+		gap: 0.15rem;
+		flex-shrink: 0;
 	}
 	.icon-btn {
 		border: 1px solid transparent;
 		background: transparent;
 		color: var(--text-3);
-		border-radius: 0.1rem;
-		padding: 0.3rem;
+		border-radius: 0.15rem;
+		padding: 0.35rem;
 		display: grid;
 		place-items: center;
 	}
@@ -571,123 +678,78 @@
 		background: var(--surface-3);
 		border-color: var(--line);
 	}
-	.meta {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0 0.8rem 0.55rem;
-		font-size: 0.754rem;
-		color: var(--text-3);
-		border-bottom: 1px solid var(--line);
-	}
-	.meta .dim {
-		color: var(--text-4);
-	}
-	.pill {
-		border: 1px solid color-mix(in oklab, var(--accent-1) 40%, transparent);
-		color: var(--accent-0);
-		background: color-mix(in oklab, var(--accent-1) 9%, transparent);
-		border-radius: 0.1rem;
-		padding: 0.1rem 0.35rem;
-		font-family: var(--font-mono);
-		font-size: 0.700rem;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-	}
-	.mono {
-		margin-left: auto;
-		font-family: var(--font-mono);
-		font-size: 0.676rem;
-		letter-spacing: 0.08em;
-	}
-	.links {
-		display: flex;
-		align-items: center;
-		gap: 0.3rem;
-		padding: 0.45rem 0.8rem;
-		border-bottom: 1px solid var(--line);
-	}
-	.links a {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.25rem;
-		border: 1px solid var(--line);
-		color: var(--text-3);
-		padding: 0.2rem 0.4rem;
-		font-size: 0.715rem;
-		text-decoration: none;
-		transition: all 0.15s ease;
-	}
-	.links a:hover {
-		color: var(--accent-0);
-		border-color: color-mix(in oklab, var(--accent-1) 45%, transparent);
-		background: color-mix(in oklab, var(--accent-1) 7%, transparent);
-	}
-	.links .dossier-link {
-		margin-left: auto;
-	}
-	.glance {
+	.key-metrics {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: 0;
+		border-top: 1px solid var(--line);
 		border-bottom: 1px solid var(--line);
+		background: var(--surface-1);
 	}
-	.glance div {
-		padding: 0.42rem 0.8rem;
-		border-right: 1px solid var(--line);
-		border-bottom: 1px solid var(--line);
+	.key {
 		display: flex;
 		flex-direction: column;
 		gap: 0.1rem;
+		min-width: 0;
+		padding: 0.62rem 1rem;
+		border-right: 1px solid var(--line);
+		border-bottom: 1px solid var(--line);
 	}
-	.glance div:nth-child(2n) {
+	.key:nth-child(2n) {
 		border-right: 0;
 	}
-	.glance div:nth-last-child(-n + 2) {
+	.key:nth-last-child(-n + 2) {
 		border-bottom: 0;
 	}
-	.glance-label {
+	.key-label {
 		font-family: var(--font-mono);
-		font-size: 0.700rem;
+		font-size: 0.55rem;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
 		color: var(--text-4);
 	}
-	.glance strong {
+	.key strong {
+		margin-top: 0.1rem;
 		font-family: var(--font-display);
-		font-size: 1.150rem;
-		font-weight: 550;
+		font-size: 1.28rem;
+		font-weight: 600;
+		line-height: 1.05;
 		color: var(--text-1);
-		line-height: 1.1;
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
-	.glance em {
-		font-style: normal;
+	.key.small strong {
+		font-size: 1.05rem;
+	}
+	.key-meta {
+		min-height: 0.8rem;
 		font-family: var(--font-mono);
-		font-size: 0.700rem;
+		font-size: 0.54rem;
 		color: var(--text-4);
 	}
 	.tabs {
 		display: flex;
-		flex-wrap: wrap;
+		gap: 0.1rem;
+		padding: 0 0.6rem;
 		border-bottom: 1px solid var(--line);
 		background: var(--surface-1);
+		overflow-x: auto;
+		scrollbar-width: none;
+	}
+	.tabs::-webkit-scrollbar {
+		display: none;
 	}
 	.tabs button {
-		display: inline-flex;
-		align-items: baseline;
-		gap: 0.24rem;
+		flex-shrink: 0;
 		border: 0;
 		border-bottom: 2px solid transparent;
 		background: transparent;
 		color: var(--text-3);
-		padding: 0.45rem 0.55rem;
-		font-size: 0.780rem;
+		padding: 0.58rem 0.55rem 0.5rem;
+		font-size: 0.78rem;
+		font-weight: 500;
 		white-space: nowrap;
-	}
-	.tabs button span {
-		font-family: var(--font-mono);
-		font-size: 0.700rem;
-		color: var(--text-4);
 	}
 	.tabs button:hover {
 		color: var(--text-1);
@@ -696,107 +758,81 @@
 		color: var(--text-1);
 		border-bottom-color: var(--accent-1);
 	}
-	.tabs button.active span {
-		color: var(--accent-1);
-	}
 	.body {
 		flex: 1;
 		overflow-y: auto;
-		padding: 0.7rem 0.8rem 0.9rem;
+		padding: 0.9rem 1rem 1.1rem;
 	}
 	.panel-content {
-		animation: fade-up 0.32s var(--ease-out-soft) both;
+		animation: fade-up 0.28s var(--ease-out-soft) both;
 	}
-	.body :global(.locator) {
-		margin-bottom: 0.75rem;
+	.block {
+		margin-bottom: 1.25rem;
 	}
-	section {
-		margin-bottom: 0.9rem;
+	.block:last-child {
+		margin-bottom: 0;
 	}
-	h3 {
-		margin: 0 0 0.25rem;
-		font-family: var(--font-mono);
-		font-size: 0.676rem;
-		font-weight: 500;
-		letter-spacing: 0.14em;
-		text-transform: uppercase;
-		color: var(--text-4);
-	}
-	.section-head {
+	.block-head {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 0.5rem;
-		margin-bottom: 0.25rem;
+		margin-bottom: 0.6rem;
 	}
-	.section-head h3 {
+	h3 {
 		margin: 0;
+		font-family: var(--font-display);
+		font-size: 1.06rem;
+		font-weight: 600;
+		letter-spacing: -0.01em;
+		color: var(--text-1);
 	}
-	.highlight-toggle {
+	.block-action {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.25rem;
 		border: 1px solid var(--line);
 		background: var(--surface-1);
 		color: var(--text-3);
-		padding: 0.18rem 0.38rem;
+		padding: 0.24rem 0.42rem;
 		font-family: var(--font-mono);
-		font-size: 0.700rem;
+		font-size: 0.56rem;
 		letter-spacing: 0.03em;
 	}
-	.highlight-toggle:hover {
+	.block-action:hover {
 		color: var(--text-1);
 		border-color: var(--line-strong);
 	}
-	.highlight-toggle.active {
+	.block-action.active {
 		color: var(--accent-0);
 		border-color: color-mix(in oklab, var(--accent-1) 50%, transparent);
 		background: color-mix(in oklab, var(--accent-1) 12%, var(--surface-1));
 	}
-	.orgs {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-		margin-top: 0.3rem;
+	.facts-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.6rem 1rem;
 	}
-	.org {
-		display: flex;
-		align-items: baseline;
+	.metrics-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
 		gap: 0.45rem;
-		padding: 0.3rem 0.4rem;
-		background: var(--surface-1);
-		border: 1px solid var(--line);
-	}
-	.org span {
-		font-family: var(--font-mono);
-		font-size: 0.702rem;
-		color: var(--accent-0);
-		letter-spacing: 0.06em;
-		white-space: nowrap;
-	}
-	.org p {
-		margin: 0;
-		font-size: 0.754rem;
-		color: var(--text-3);
-		line-height: 1.35;
 	}
 	.neighbors {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.28rem;
-		margin-top: 0.35rem;
 	}
 	.neighbors button {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.28rem;
+		gap: 0.3rem;
 		border: 1px solid var(--line);
 		background: var(--surface-1);
 		color: var(--text-2);
-		border-radius: 0.1rem;
-		padding: 0.2rem 0.42rem 0.2rem 0.32rem;
-		font-size: 0.754rem;
-		transition: all 0.15s ease;
+		padding: 0.26rem 0.46rem 0.26rem 0.36rem;
+		font-size: 0.7rem;
+		transition: border-color 0.15s ease, background 0.15s ease;
 	}
 	.neighbors button:hover {
 		color: var(--text-1);
@@ -804,67 +840,218 @@
 		background: var(--surface-3);
 	}
 	.mini {
-		width: 0.9rem;
-		height: 0.64rem;
+		width: 1.15rem;
+		height: 0.78rem;
 		background-size: cover;
 	}
-	.empty {
-		margin: 0.3rem 0 0;
-		font-size: 0.806rem;
+	.units-block {
+		border-top: 1px solid var(--line);
+		padding-top: 0.7rem;
+	}
+	.units-block summary {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		cursor: pointer;
+		list-style: none;
+		font-family: var(--font-display);
+		font-size: 1.06rem;
+		font-weight: 600;
+		color: var(--text-1);
+	}
+	.units-block summary::-webkit-details-marker {
+		display: none;
+	}
+	.units-block summary em {
+		font-style: normal;
+		font-family: var(--font-mono);
+		font-size: 0.58rem;
 		color: var(--text-4);
 	}
+	.units-block summary :global(svg) {
+		margin-left: auto;
+		color: var(--text-4);
+		transition: transform 0.2s var(--ease-out-soft);
+	}
+	.units-block[open] summary :global(svg) {
+		transform: rotate(180deg);
+	}
+	.units-block[open] summary {
+		margin-bottom: 0.55rem;
+	}
+	.units {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.24rem;
+	}
+	.units button {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.06rem;
+		min-width: 0;
+		border: 1px solid var(--line);
+		background: var(--surface-1);
+		color: var(--text-2);
+		padding: 0.3rem 0.42rem;
+		text-align: left;
+		transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+	}
+	.units button:hover {
+		color: var(--text-1);
+		border-color: var(--line-strong);
+		background: var(--surface-3);
+	}
+	.units button.active {
+		color: var(--accent-0);
+		border-color: color-mix(in oklab, var(--accent-1) 55%, transparent);
+		background: color-mix(in oklab, var(--accent-1) 12%, var(--surface-1));
+	}
+	.units button span {
+		max-width: 100%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font-size: 0.7rem;
+		line-height: 1.25;
+	}
+	.units button em {
+		font-style: normal;
+		font-family: var(--font-mono);
+		font-size: 0.48rem;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--text-4);
+	}
+	.more {
+		margin-top: 0.35rem;
+		border: 1px solid var(--line);
+		background: var(--surface-1);
+		color: var(--text-3);
+		font-family: var(--font-mono);
+		font-size: 0.54rem;
+		letter-spacing: 0.03em;
+		padding: 0.3rem 0.45rem;
+	}
+	.more:hover {
+		color: var(--text-1);
+		border-color: var(--line-strong);
+	}
+	.source-note,
 	.note {
-		margin: 0.35rem 0 0;
-		font-size: 0.754rem;
+		margin: 0.45rem 0 0;
+		font-size: 0.6rem;
 		line-height: 1.45;
 		color: var(--text-4);
 	}
+	.note a {
+		color: var(--accent-0);
+		text-decoration: none;
+		white-space: nowrap;
+	}
+	.orgs {
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+	}
+	.org {
+		display: grid;
+		grid-template-columns: 3.2rem 1fr auto;
+		align-items: baseline;
+		gap: 0.5rem;
+		padding: 0.42rem 0.5rem;
+		border: 1px solid var(--line);
+		background: var(--surface-1);
+	}
+	.org span {
+		font-family: var(--font-mono);
+		font-size: 0.58rem;
+		color: var(--accent-0);
+		letter-spacing: 0.05em;
+	}
+	.org p {
+		margin: 0;
+		font-size: 0.7rem;
+		line-height: 1.35;
+		color: var(--text-2);
+	}
+	.org em {
+		font-style: normal;
+		font-family: var(--font-mono);
+		font-size: 0.52rem;
+		color: var(--text-4);
+		white-space: nowrap;
+	}
 	.snippet {
-		margin-top: 0.4rem;
-		padding: 0.65rem;
-		border: 1px solid color-mix(in oklab, var(--water-0) 30%, transparent);
-		background: color-mix(in oklab, var(--water-0) 7%, transparent);
+		padding: 0.85rem 0.9rem;
+		border: 1px solid color-mix(in oklab, var(--clay) 32%, transparent);
+		border-radius: 0.2rem;
+		background: color-mix(in oklab, var(--clay) 6%, transparent);
 	}
 	.snippet h3 {
-		margin: 0.3rem 0 0.32rem;
-		font-family: var(--font-display);
-		font-size: 1.170rem;
-		font-weight: 600;
-		letter-spacing: -0.01em;
-		text-transform: none;
-		color: var(--text-1);
+		margin: 0.25rem 0 0.35rem;
+		font-size: 1.12rem;
 	}
 	.snippet p {
-		margin: 0 0 0.4rem;
-		font-size: 0.819rem;
+		margin: 0 0 0.45rem;
+		font-size: 0.76rem;
 		line-height: 1.55;
 		color: var(--text-2);
 	}
 	.snippet a {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.25rem;
-		font-size: 0.702rem;
-		color: var(--water-1);
+		gap: 0.22rem;
+		font-size: 0.62rem;
+		color: var(--accent-0);
 		text-decoration: none;
 	}
-	footer {
-		display: flex;
+	.dossier-hint {
+		margin: 0.6rem 0 0;
+	}
+	.dossier-hint a {
+		display: inline-flex;
 		align-items: center;
-		gap: 0.6rem;
-		padding: 0.42rem 0.8rem;
-		border-top: 1px solid var(--line);
+		gap: 0.3rem;
 		font-family: var(--font-mono);
-		font-size: 0.700rem;
+		font-size: 0.58rem;
+		color: var(--accent-0);
+		text-decoration: none;
+	}
+	.empty {
+		margin: 0.2rem 0 0;
+		font-size: 0.72rem;
 		color: var(--text-4);
 	}
-	footer a {
+	.card-foot {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.6rem;
+		padding: 0.5rem 1rem;
+		border-top: 1px solid var(--line);
+		background: var(--surface-1);
+		font-family: var(--font-mono);
+		font-size: 0.6rem;
+		color: var(--text-4);
+	}
+	.card-foot nav {
+		display: flex;
+		align-items: center;
+		gap: 0.65rem;
+	}
+	.card-foot a {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
 		color: var(--text-3);
 		text-decoration: none;
-		white-space: nowrap;
 	}
-	footer a:hover {
-		color: var(--text-1);
+	.card-foot a:hover {
+		color: var(--accent-0);
+	}
+	.card-foot .dossier-link {
+		color: var(--accent-0);
 	}
 	.scrim {
 		display: none;
@@ -879,8 +1066,8 @@
 			max-width: none;
 			transform: translateY(var(--drag, 0));
 			transition: height 0.26s var(--ease-out-soft), transform 0.18s ease;
-			height: 56vh;
-			max-height: calc(100dvh - var(--header-h) - 8rem);
+			height: 62vh;
+			max-height: calc(100dvh - var(--header-h) - 7.4rem);
 		}
 		.card.dragging {
 			transition: none;
@@ -889,14 +1076,14 @@
 			height: 30vh;
 		}
 		.snap-half {
-			height: 56vh;
+			height: 62vh;
 		}
 		.snap-full {
-			height: calc(100dvh - var(--header-h) - 8rem);
+			height: calc(100dvh - var(--header-h) - 7.4rem);
 		}
-		.snap-peek .body,
-		.snap-peek .glance,
-		.snap-peek .tabs {
+		.snap-peek .key-metrics,
+		.snap-peek .tabs,
+		.snap-peek .body {
 			display: none;
 		}
 		.handle {
@@ -913,12 +1100,11 @@
 			height: 2px;
 			background: var(--line-strong);
 		}
-		header {
-			padding-top: 0.2rem;
+		.card-head {
+			padding-top: 0.25rem;
 		}
-		.links {
-			padding-top: 0.35rem;
-			padding-bottom: 0.35rem;
+		.key strong {
+			font-size: 1.16rem;
 		}
 		.scrim {
 			display: block;
@@ -930,11 +1116,15 @@
 		}
 	}
 	@media (max-width: 480px) {
-		.glance strong {
-			font-size: 1.144rem;
+		.facts-grid,
+		.metrics-grid {
+			grid-template-columns: 1fr;
 		}
-		.links a {
-			font-size: 0.650rem;
+		.card-foot > span {
+			display: none;
+		}
+		.card-foot {
+			justify-content: flex-end;
 		}
 	}
 </style>

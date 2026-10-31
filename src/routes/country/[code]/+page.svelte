@@ -1,9 +1,9 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import TopBar from '#lib/components/navigation/TopBar.svelte';
 	import Icon from '#lib/components/ui/Icon.svelte';
 	import LocatorMap from '#lib/components/cards/LocatorMap.svelte';
 	import StatRow from '#lib/components/cards/StatRow.svelte';
-	import Sparkline from '#lib/components/cards/Sparkline.svelte';
 	import {
 		countries,
 		getCountry,
@@ -39,8 +39,82 @@
 	const sovereign = $derived(country ? sovereignCountry(country) : null);
 	const dependency = $derived(country ? dependencyLabel(country) : null);
 
+	const glance = $derived.by(() => {
+		if (!country) return [];
+		const pop = country.indicators.population;
+		const popRank = rankOf(country.code, 'population');
+		const gdp = country.indicators.gdpPerCapita;
+		const gdpRank = rankOf(country.code, 'gdpPerCapita');
+		return [
+			{
+				key: 'population',
+				label: 'População',
+				value: pop ? formatCompact(pop.v) : '—',
+				year: pop?.y ?? null,
+				meta: popRank ? `${popRank.rank}º de ${popRank.total}` : 'habitantes'
+			},
+			{
+				key: 'gdp',
+				label: 'PIB per capita',
+				value: gdp ? formatIndicatorValue('gdpPerCapita', gdp) : '—',
+				year: gdp?.y ?? null,
+				meta: gdpRank ? `${gdpRank.rank}º de ${gdpRank.total}` : 'US$ correntes'
+			},
+			{
+				key: 'area',
+				label: 'Área',
+				value: country.areaKm2 ? formatArea(country.areaKm2) : '—',
+				year: null,
+				meta: 'superfície terrestre'
+			},
+			{
+				key: 'capital',
+				label: 'Capital',
+				value: capital ?? '—',
+				year: null,
+				meta: country.unMember ? 'Estado-membro da ONU' : 'Estatuto não membro'
+			}
+		];
+	});
+
 	let compareCode = $state<string | null>(null);
 	let copied = $state(false);
+	let activeSection = $state('ficha');
+
+	onMount(() => {
+		const ids = ['ficha', 'demography', 'economy', 'environment', 'geopolitics', 'history', 'organizations', 'snippets'];
+		let frame = 0;
+
+		const update = () => {
+			frame = 0;
+			const anchor = window.innerHeight * 0.34;
+			let current = ids[0];
+			let best = Number.POSITIVE_INFINITY;
+			for (const id of ids) {
+				const element = document.getElementById(id);
+				if (!element) continue;
+				const top = element.getBoundingClientRect().top;
+				if (top <= anchor && anchor - top < best) {
+					best = anchor - top;
+					current = id;
+				}
+			}
+			activeSection = current;
+		};
+
+		const onScroll = () => {
+			if (!frame) frame = requestAnimationFrame(update);
+		};
+
+		update();
+		window.addEventListener('scroll', onScroll, { passive: true });
+		window.addEventListener('resize', onScroll, { passive: true });
+		return () => {
+			if (frame) cancelAnimationFrame(frame);
+			window.removeEventListener('scroll', onScroll);
+			window.removeEventListener('resize', onScroll);
+		};
+	});
 
 	const compareCountry = $derived(getCountry(compareCode));
 
@@ -191,6 +265,13 @@
 		return formatIndicatorValue(key, { v: value, y: 0 });
 	}
 
+	function deltaFor(key: IndicatorKey): 'points' | 'percent' {
+		const unit = indicatorMeta[key]?.unit ?? '';
+		return unit.includes('%') || unit.includes('escore') || unit.includes('índice')
+			? 'points'
+			: 'percent';
+	}
+
 	function wikipediaUrl(target: Country): string {
 		return `https://pt.wikipedia.org/wiki/${encodeURIComponent(target.name.replaceAll(' ', '_'))}`;
 	}
@@ -235,9 +316,11 @@
 					{#if dependency ?? country.type}<span class="type">{dependency ?? country.type}</span>{/if}
 				</div>
 				<h1>{country.name}</h1>
-				<p class="official">{country.official ?? country.nameEn}</p>
+				{#if country.official && country.official !== country.name}
+					<p class="official">{country.official}</p>
+				{/if}
 				<p class="lede">
-					{country.continent ?? 'Sem classificação continental'}{country.subregion ? ` · ${country.subregion}` : ''}.
+					{country.continent ?? 'Sem classificação continental'}{country.subregion && country.subregion !== country.continent ? ` · ${country.subregion}` : ''}.
 					{country.areaKm2 ? `Área de ${formatArea(country.areaKm2)}.` : ''}
 					{#if country.landlocked === true}País sem litoral.{:else if country.landlocked === false}Com saída para o mar.{/if}
 				</p>
@@ -259,44 +342,37 @@
 		</header>
 
 		<section class="glance" aria-label="Resumo">
-			<div>
-				<span class="glance-label">População</span>
-				<strong>{country.indicators.population ? formatCompact(country.indicators.population.v) : '—'}</strong>
-				<em>{country.indicators.population?.y ?? 'não disponível'}</em>
-				{#if rankOf(country.code, 'population')}
-					<span class="rank">{rankOf(country.code, 'population')!.rank}º de {rankOf(country.code, 'population')!.total}</span>
-				{/if}
-			</div>
-			<div>
-				<span class="glance-label">PIB per capita</span>
-				<strong>{country.indicators.gdpPerCapita ? fmt('gdpPerCapita', country.indicators.gdpPerCapita.v) : '—'}</strong>
-				<em>{country.indicators.gdpPerCapita?.y ?? 'não disponível'}</em>
-				{#if rankOf(country.code, 'gdpPerCapita')}
-					<span class="rank">{rankOf(country.code, 'gdpPerCapita')!.rank}º de {rankOf(country.code, 'gdpPerCapita')!.total}</span>
-				{/if}
-			</div>
-			<div>
-				<span class="glance-label">Área</span>
-				<strong>{country.areaKm2 ? formatArea(country.areaKm2) : '—'}</strong>
-				<em>superfície terrestre</em>
-			</div>
-			<div>
-				<span class="glance-label">Capital</span>
-				<strong class="capital">{capital ?? '—'}</strong>
-				<em>{country.unMember ? 'Estado-membro da ONU' : 'Estatuto não membro'}</em>
-			</div>
+			{#each glance as item (item.key)}
+				<div class:capital={item.key === 'capital'}>
+					<span class="glance-label">{item.label}</span>
+					<strong>{item.value}</strong>
+					<span class="glance-meta">
+						{#if item.meta}{item.meta}{/if}
+						{#if item.year}{#if item.meta} · {/if}{item.year}{/if}
+					</span>
+				</div>
+			{/each}
 		</section>
+
+		<nav class="section-nav" aria-label="Seções do dossiê">
+			<a href="#ficha" class:active={activeSection === 'ficha'}>Ficha</a>
+			<a href="#demography" class:active={activeSection === 'demography'}>Demografia</a>
+			<a href="#economy" class:active={activeSection === 'economy'}>Economia</a>
+			<a href="#environment" class:active={activeSection === 'environment'}>Meio físico</a>
+			<a href="#geopolitics" class:active={activeSection === 'geopolitics'}>Geopolítica</a>
+			<a href="#history" class:active={activeSection === 'history'}>História</a>
+			{#if currentOrgs.length || historicalOrgs.length}<a href="#organizations" class:active={activeSection === 'organizations'}>Organizações</a>{/if}
+			{#if snippets.length}<a href="#snippets" class:active={activeSection === 'snippets'}>Leituras</a>{/if}
+		</nav>
 
 		<div class="layout">
 			<article class="main-col">
-				<section class="block">
+				<section class="block" id="ficha">
 					<header class="block-head">
 						<span class="index">01</span>
 						<h2>Ficha técnica</h2>
 					</header>
-					<div class="facts">
-						<StatRow label="Nome oficial (EN)" value={country.official ?? 'Não disponível'} />
-						<StatRow label="Nome em inglês" value={country.nameEn} />
+					<div class="facts-grid">
 						<StatRow label="Continente" value={country.continent ?? 'Não disponível'} />
 						<StatRow label="Sub-região" value={country.subregion ?? 'Não disponível'} />
 						<StatRow label="Moeda" value={country.currency.length ? country.currency.map((c) => `${c.code} · ${c.symbol}`).join(', ') : 'Não disponível'} />
@@ -304,22 +380,24 @@
 						<StatRow label="Membro da ONU" value={country.unMember === null ? 'Não disponível' : country.unMember ? 'Sim' : 'Não'} />
 						{#if sovereign}
 							<StatRow label="Soberania" value={sovereign.name} note={dependency ?? undefined} />
-							<a class="sovereign-link" href={`/country/${sovereign.code}`}>
-								Dossiê de {sovereign.name} <Icon name="arrowRight" size={11} />
-							</a>
 						{/if}
 						<StatRow label="Sem litoral" value={country.landlocked === null ? 'Não disponível' : country.landlocked ? 'Sim' : 'Não'} />
 						{#if disputed}
 							<StatRow label="Estatuto" value={disputed.label} note={disputed.note} />
-						{:else if country.status}
-							<StatRow label="Estatuto no Natural Earth" value={country.status} />
-						{/if}
-						{#if disputed}
-							<a class="disputed-source" href={disputed.source.url} target="_blank" rel="noopener noreferrer">
-								Fonte do estatuto: {disputed.source.name} <Icon name="external" size={10} />
-							</a>
+						{:else if country.type}
+							<StatRow label="Estatuto no Natural Earth" value={country.type} />
 						{/if}
 					</div>
+					{#if sovereign}
+						<a class="sovereign-link" href={`/country/${sovereign.code}`}>
+							Dossiê de {sovereign.name} <Icon name="arrowRight" size={11} />
+						</a>
+					{/if}
+					{#if disputed}
+						<a class="disputed-source" href={disputed.source.url} target="_blank" rel="noopener noreferrer">
+							Fonte do estatuto: {disputed.source.name} <Icon name="external" size={10} />
+						</a>
+					{/if}
 				</section>
 
 				{#each groupRows as group (group.id)}
@@ -331,25 +409,19 @@
 								Ver no mapa <Icon name="arrowUpRight" size={12} />
 							</a>
 						</header>
-						<div class="stats">
+						<div class="metrics-grid">
 							{#each group.rows as row (row.key)}
-								<div class="stat-wrap">
-									<StatRow
-										label={row.label}
-										value={row.value}
-										year={row.year}
-										percentile={row.percentile}
-										comparison={row.comparison}
-									/>
-									{#if row.series && row.series.length > 2}
-										<Sparkline
-											series={row.series}
-											label={row.label}
-											format={(v) => fmt(row.key, v)}
-											delta={indicatorMeta[row.key]?.unit.includes('%') ? 'points' : 'percent'}
-										/>
-									{/if}
-								</div>
+								<StatRow
+									variant="metric"
+									label={row.label}
+									value={row.value}
+									year={row.year}
+									percentile={row.percentile}
+									comparison={row.comparison}
+									series={row.series}
+									format={(v) => fmt(row.key, v)}
+									delta={deltaFor(row.key)}
+								/>
 							{/each}
 						</div>
 						<footer class="source">
@@ -438,7 +510,7 @@
 			</article>
 
 			<aside class="side-col">
-				<section class="side-block">
+				<section class="side-block" id="mapa">
 					<header class="block-head">
 						<span class="index">A</span>
 						<h2>No mapa</h2>
@@ -528,16 +600,17 @@
 	main {
 		min-height: 100dvh;
 		padding: calc(var(--header-h) + 1.6rem) clamp(1rem, 4vw, 3rem) 3rem;
-		max-width: 82rem;
+		max-width: 84rem;
 		margin: 0 auto;
 		position: relative;
 		z-index: 1;
 	}
 	.crumbs {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 0.4rem;
 		font-family: var(--font-mono);
-		font-size: 0.715rem;
+		font-size: 0.62rem;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--text-4);
@@ -550,129 +623,178 @@
 		color: var(--accent-0);
 	}
 	.hero {
-		display: flex;
-		align-items: flex-end;
-		justify-content: space-between;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: end;
 		gap: 2rem;
-		padding: 1.4rem 0 1.3rem;
+		padding: 1.4rem 0 1.4rem;
 		border-bottom: 1px solid var(--line-strong);
 	}
 	.flag-row {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		gap: 0.55rem;
 	}
 	.hero-flag {
-		width: 1.8rem;
-		height: 1.2rem;
+		width: 3.1rem;
+		height: 2.05rem;
 		border: 1px solid var(--line-strong);
 		background-size: cover;
 	}
 	.type {
 		font-family: var(--font-mono);
-		font-size: 0.650rem;
+		font-size: 0.58rem;
 		color: var(--text-4);
 		border: 1px solid var(--line);
-		padding: 0.1rem 0.3rem;
+		padding: 0.12rem 0.34rem;
 	}
-	h1 {
-		margin: 0.5rem 0 0.1rem;
+	.hero h1 {
+		margin: 0.5rem 0 0.15rem;
 		font-family: var(--font-display);
-		font-size: clamp(2.6rem, 6vw, 4.8rem);
+		font-size: clamp(2.8rem, 6vw, 5rem);
 		font-weight: 600;
-		line-height: 0.98;
-		letter-spacing: -0.03em;
+		line-height: 0.96;
+		letter-spacing: -0.035em;
 	}
 	.official {
 		margin: 0.2rem 0 0;
 		font-family: var(--font-display);
 		font-style: italic;
-		font-size: 1.150rem;
+		font-size: 1.12rem;
 		color: var(--text-3);
 	}
 	.lede {
-		max-width: 40rem;
+		max-width: 42rem;
 		margin: 0.7rem 0 0;
-		font-size: 1.040rem;
+		font-size: 0.95rem;
 		line-height: 1.6;
 		color: var(--text-3);
 	}
 	.hero-actions {
-		display: flex;
-		flex-wrap: wrap;
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 0.35rem;
-		justify-content: flex-end;
+		width: 26rem;
+	}
+	.hero-actions :global(.btn) {
+		justify-content: center;
 	}
 	.glance {
 		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-		border-bottom: 1px solid var(--line-strong);
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 0.5rem;
+		margin-top: 1rem;
 	}
 	.glance > div {
 		display: flex;
 		flex-direction: column;
-		gap: 0.08rem;
-		padding: 0.75rem 0.9rem;
-		border-right: 1px solid var(--line);
-	}
-	.glance > div:last-child {
-		border-right: 0;
+		gap: 0.12rem;
+		min-width: 0;
+		padding: 0.8rem 0.9rem;
+		background: var(--surface-1);
+		border: 1px solid var(--line);
+		border-radius: 0.2rem;
 	}
 	.glance-label {
 		font-family: var(--font-mono);
-		font-size: 0.700rem;
-		letter-spacing: 0.12em;
+		font-size: 0.56rem;
+		letter-spacing: 0.1em;
 		text-transform: uppercase;
 		color: var(--text-4);
 	}
 	.glance strong {
+		margin-top: 0.12rem;
 		font-family: var(--font-display);
-		font-size: 1.600rem;
-		font-weight: 550;
-		line-height: 1.1;
+		font-size: 1.55rem;
+		font-weight: 600;
+		line-height: 1.05;
+		color: var(--text-1);
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
-	.glance strong.capital {
-		font-size: 1.150rem;
+	.glance .capital strong {
+		font-size: 1.12rem;
 	}
-	.glance em {
-		font-style: normal;
+	.glance-meta {
 		font-family: var(--font-mono);
-		font-size: 0.700rem;
+		font-size: 0.55rem;
 		color: var(--text-4);
 	}
-	.rank {
+	.section-nav {
+		position: sticky;
+		top: var(--header-h);
+		z-index: 20;
+		display: flex;
+		gap: 0.1rem;
+		margin: 0.9rem 0 1.4rem;
+		padding: 0.2rem 0;
+		border-top: 1px solid var(--line);
+		border-bottom: 1px solid var(--line);
+		background: var(--surface-0);
+		overflow-x: auto;
+		scrollbar-width: none;
+	}
+	.section-nav::-webkit-scrollbar {
+		display: none;
+	}
+	.section-nav a {
+		flex-shrink: 0;
+		padding: 0.5rem 0.6rem;
+		border-bottom: 2px solid transparent;
 		font-family: var(--font-mono);
-		font-size: 0.700rem;
-		color: var(--accent-0);
+		font-size: 0.63rem;
+		letter-spacing: 0.04em;
+		color: var(--text-2);
+		text-decoration: none;
+		white-space: nowrap;
+	}
+	.section-nav a:hover {
+		color: var(--text-1);
+		border-bottom-color: color-mix(in oklab, var(--accent-1) 45%, transparent);
+	}
+	.section-nav a.active {
+		color: var(--text-1);
+		border-bottom-color: var(--accent-1);
 	}
 	.layout {
 		display: grid;
-		grid-template-columns: minmax(0, 1.55fr) minmax(18.5rem, 0.85fr);
-		gap: 2.4rem;
-		padding-top: 1.5rem;
+		grid-template-columns: minmax(0, 1fr) 21rem;
+		align-items: start;
+		gap: 2rem;
+	}
+	.main-col {
+		min-width: 0;
 	}
 	.block {
-		margin-bottom: 2.2rem;
-		scroll-margin-top: calc(var(--header-h) + 1rem);
+		margin-bottom: 1rem;
+		padding: 1.1rem 1.2rem 1.15rem;
+		background: var(--surface-2);
+		border: 1px solid var(--line);
+		border-radius: 0.25rem;
+		scroll-margin-top: calc(var(--header-h) + 3.6rem);
 	}
 	.block-head {
 		display: flex;
-		align-items: baseline;
-		gap: 0.6rem;
-		padding-bottom: 0.45rem;
-		margin-bottom: 0.7rem;
-		border-bottom: 1px solid var(--line-strong);
+		align-items: center;
+		gap: 0.55rem;
+		padding-bottom: 0.6rem;
+		margin-bottom: 0.9rem;
+		border-bottom: 1px solid var(--line);
 	}
 	.index {
 		font-family: var(--font-mono);
-		font-size: 0.715rem;
+		font-size: 0.56rem;
 		color: var(--accent-1);
 	}
 	.block-head h2 {
 		margin: 0;
 		font-family: var(--font-display);
-		font-size: 1.450rem;
+		font-size: 1.32rem;
 		font-weight: 600;
+		letter-spacing: -0.015em;
 	}
 	.map-link {
 		margin-left: auto;
@@ -680,24 +802,23 @@
 		align-items: center;
 		gap: 0.25rem;
 		font-family: var(--font-mono);
-		font-size: 0.650rem;
-		letter-spacing: 0.04em;
+		font-size: 0.58rem;
+		letter-spacing: 0.03em;
 		color: var(--text-3);
 		text-decoration: none;
 	}
 	.map-link:hover {
 		color: var(--accent-0);
 	}
-	.stats {
+	.facts-grid {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: 0 1.6rem;
+		gap: 0.6rem 1.2rem;
 	}
-	.facts {
-		columns: 1;
-	}
-	.facts :global(.stat) {
-		break-inside: avoid;
+	.metrics-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.55rem;
 	}
 	.sovereign-link {
 		display: inline-flex;
@@ -705,7 +826,7 @@
 		gap: 0.2rem;
 		margin-top: 0.25rem;
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.6rem;
 		color: var(--accent-0);
 		text-decoration: none;
 	}
@@ -716,9 +837,9 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.2rem;
-		margin-top: 0.25rem;
+		margin-top: 0.3rem;
 		font-family: var(--font-mono);
-		font-size: 0.700rem;
+		font-size: 0.6rem;
 		color: var(--text-4);
 		text-decoration: none;
 	}
@@ -727,14 +848,16 @@
 	}
 	.source {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: baseline;
 		justify-content: space-between;
-		gap: 0.8rem;
-		margin-top: 0.6rem;
-		padding-top: 0.4rem;
+		gap: 0.4rem 0.8rem;
+		margin-top: 0.8rem;
+		padding-top: 0.55rem;
 		border-top: 1px solid var(--line);
 		font-family: var(--font-mono);
-		font-size: 0.700rem;
+		font-size: 0.58rem;
+		line-height: 1.4;
 		color: var(--text-4);
 	}
 	.source a {
@@ -754,9 +877,9 @@
 	}
 	.timeline li {
 		display: grid;
-		grid-template-columns: 3.6rem 1fr;
-		gap: 0.8rem;
-		padding: 0.55rem 0;
+		grid-template-columns: 3.8rem 1fr;
+		gap: 0.9rem;
+		padding: 0.6rem 0;
 		border-bottom: 1px solid var(--line);
 	}
 	.timeline li:last-child {
@@ -764,34 +887,32 @@
 	}
 	.year {
 		font-family: var(--font-mono);
-		font-size: 0.936rem;
+		font-size: 0.74rem;
 		color: var(--accent-0);
 	}
 	.timeline strong {
 		display: block;
-		font-size: 0.988rem;
+		font-size: 0.82rem;
 		font-weight: 600;
 	}
 	.timeline p {
 		margin: 0.18rem 0 0;
-		font-size: 0.832rem;
+		font-size: 0.72rem;
 		line-height: 1.5;
 		color: var(--text-3);
 	}
-	.side-block {
-		margin-bottom: 1.8rem;
-	}
 	.org-grid {
 		display: grid;
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
 		gap: 0.5rem;
 	}
 	.org {
 		display: flex;
 		flex-direction: column;
 		gap: 0.2rem;
-		padding: 0.55rem;
+		padding: 0.65rem 0.7rem;
 		border: 1px solid var(--line);
+		border-radius: 0.15rem;
 		background: var(--surface-1);
 	}
 	.org.historical {
@@ -805,50 +926,52 @@
 	}
 	.org-head span {
 		font-family: var(--font-mono);
-		font-size: 0.780rem;
+		font-size: 0.64rem;
 		color: var(--accent-0);
 	}
 	.org-head em {
 		font-style: normal;
 		font-family: var(--font-mono);
-		font-size: 0.700rem;
+		font-size: 0.56rem;
 		color: var(--text-4);
 	}
 	.org p {
 		margin: 0;
-		font-size: 0.858rem;
+		font-size: 0.72rem;
+		line-height: 1.35;
 	}
 	.org small {
-		font-size: 0.728rem;
+		font-size: 0.64rem;
 		line-height: 1.45;
 		color: var(--text-4);
 	}
 	.org a {
-		margin-top: 0.2rem;
+		margin-top: 0.15rem;
 		font-family: var(--font-mono);
-		font-size: 0.700rem;
+		font-size: 0.56rem;
 		color: var(--text-4);
 		text-decoration: none;
 	}
 	.snippets {
 		display: grid;
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
 		gap: 0.6rem;
 	}
 	.snippets article {
-		padding: 0.7rem;
-		border: 1px solid color-mix(in oklab, var(--water-0) 32%, transparent);
-		background: color-mix(in oklab, var(--water-0) 6%, transparent);
+		padding: 0.85rem 0.9rem;
+		border: 1px solid color-mix(in oklab, var(--clay) 34%, transparent);
+		border-radius: 0.15rem;
+		background: color-mix(in oklab, var(--clay) 6%, transparent);
 	}
 	.snippets h3 {
-		margin: 0.28rem 0 0.3rem;
+		margin: 0.3rem 0 0.35rem;
 		font-family: var(--font-display);
-		font-size: 1.196rem;
+		font-size: 1.1rem;
 		font-weight: 600;
 	}
 	.snippets p {
-		margin: 0 0 0.35rem;
-		font-size: 0.806rem;
+		margin: 0 0 0.4rem;
+		font-size: 0.76rem;
 		line-height: 1.55;
 		color: var(--text-2);
 	}
@@ -856,25 +979,61 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.2rem;
-		font-size: 0.650rem;
-		color: var(--water-1);
+		font-size: 0.6rem;
+		color: var(--accent-0);
 		text-decoration: none;
+	}
+	.side-col {
+		position: sticky;
+		top: calc(var(--header-h) + 4rem);
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		max-height: calc(100dvh - var(--header-h) - 5rem);
+		overflow-y: auto;
+		padding-right: 0.15rem;
+		scrollbar-width: thin;
+	}
+	.side-block {
+		padding: 0.9rem 0.95rem;
+		background: var(--surface-2);
+		border: 1px solid var(--line);
+		border-radius: 0.25rem;
+		scroll-margin-top: calc(var(--header-h) + 3.6rem);
+	}
+	.side-block .block-head {
+		margin-bottom: 0.7rem;
+		padding-bottom: 0.5rem;
+	}
+	.side-block .block-head h2 {
+		font-size: 1.06rem;
+	}
+	.side-block :global(.locator) {
+		border: 0;
+		background: transparent;
+	}
+	.side-block :global(.locator figcaption) {
+		padding: 0 0 0.4rem;
+		border-bottom: 1px solid var(--line);
+	}
+	.side-block :global(.locator .frame) {
+		border: 1px solid var(--line);
 	}
 	.neighbors {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.28rem;
-		margin-top: 0.5rem;
+		margin-top: 0.6rem;
 	}
 	.neighbors a {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.28rem;
+		gap: 0.3rem;
 		border: 1px solid var(--line);
 		background: var(--surface-1);
 		color: var(--text-2);
-		padding: 0.22rem 0.42rem 0.22rem 0.32rem;
-		font-size: 0.754rem;
+		padding: 0.26rem 0.46rem 0.26rem 0.36rem;
+		font-size: 0.68rem;
 		text-decoration: none;
 	}
 	.neighbors a:hover {
@@ -882,78 +1041,85 @@
 		color: var(--text-1);
 	}
 	.mini {
-		width: 0.85rem;
-		height: 0.6rem;
+		width: 1.1rem;
+		height: 0.75rem;
 		background-size: cover;
 	}
 	.select-label select {
 		width: 100%;
+		height: 2.2rem;
 		border: 1px solid var(--line-strong);
+		border-radius: 0.15rem;
 		background: var(--surface-1);
 		color: var(--text-1);
-		font-size: 0.910rem;
-		padding: 0.38rem 0.45rem;
+		font-size: 0.8rem;
+		padding: 0 0.5rem;
 	}
 	.compare {
-		margin-top: 0.6rem;
+		margin-top: 0.7rem;
 	}
 	.compare-head {
 		display: flex;
 		justify-content: space-between;
-		font-family: var(--font-mono);
-		font-size: 0.650rem;
-		color: var(--text-4);
-		padding-bottom: 0.3rem;
+		gap: 0.5rem;
+		padding-bottom: 0.35rem;
 		border-bottom: 1px solid var(--line);
+		font-family: var(--font-mono);
+		font-size: 0.56rem;
+		color: var(--text-4);
 	}
 	.compare-row {
-		padding: 0.4rem 0;
+		padding: 0.48rem 0;
 		border-bottom: 1px solid var(--line);
+	}
+	.compare-row:last-child {
+		border-bottom: 0;
 	}
 	.compare-label {
 		display: block;
-		font-size: 0.728rem;
+		margin-bottom: 0.24rem;
+		font-size: 0.64rem;
 		color: var(--text-3);
-		margin-bottom: 0.2rem;
 	}
 	.bars {
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
+		gap: 3px;
 	}
 	.bar-line {
 		display: flex;
 		align-items: center;
 		gap: 0.3rem;
-		height: 5px;
+		height: 6px;
 	}
 	.bar {
-		height: 5px;
+		height: 6px;
 		display: block;
 	}
 	.bar.a {
 		background: var(--accent-1);
 	}
 	.bar.b {
-		background: var(--water-0);
+		background: var(--clay);
 	}
 	.bar-line em {
 		font-style: normal;
 		font-family: var(--font-mono);
-		font-size: 0.700rem;
+		font-size: 0.56rem;
 		color: var(--text-4);
 	}
 	.compare-values {
 		display: flex;
 		justify-content: space-between;
+		gap: 0.5rem;
+		margin-top: 0.2rem;
 		font-family: var(--font-mono);
-		font-size: 0.676rem;
+		font-size: 0.6rem;
 		color: var(--text-2);
-		margin-top: 0.18rem;
 	}
 	.method {
-		margin: 0.45rem 0 0;
-		font-size: 0.650rem;
+		margin: 0.5rem 0 0;
+		font-size: 0.6rem;
 		line-height: 1.45;
 		color: var(--text-4);
 	}
@@ -966,9 +1132,12 @@
 		display: flex;
 		justify-content: space-between;
 		gap: 0.5rem;
-		padding: 0.32rem 0;
+		padding: 0.34rem 0;
 		border-bottom: 1px solid var(--line);
-		font-size: 0.728rem;
+		font-size: 0.64rem;
+	}
+	.metadata div:last-child {
+		border-bottom: 0;
 	}
 	.metadata dt {
 		color: var(--text-4);
@@ -976,7 +1145,7 @@
 	.metadata dd {
 		margin: 0;
 		font-family: var(--font-mono);
-		font-size: 0.650rem;
+		font-size: 0.58rem;
 		color: var(--text-2);
 		text-align: right;
 	}
@@ -984,8 +1153,8 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.25rem;
-		margin-top: 0.55rem;
-		font-size: 0.728rem;
+		margin-top: 0.6rem;
+		font-size: 0.64rem;
 		color: var(--text-3);
 		text-decoration: none;
 	}
@@ -994,10 +1163,11 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 1rem;
+		margin-top: 2rem;
 		padding-top: 1rem;
 		border-top: 1px solid var(--line-strong);
 		font-family: var(--font-mono);
-		font-size: 0.676rem;
+		font-size: 0.6rem;
 		color: var(--text-4);
 	}
 	.page-footer a {
@@ -1008,7 +1178,8 @@
 		color: var(--accent-0);
 	}
 	.empty {
-		font-size: 0.858rem;
+		margin: 0;
+		font-size: 0.76rem;
 		color: var(--text-4);
 	}
 	.sr-only {
@@ -1026,43 +1197,46 @@
 		padding-top: calc(var(--header-h) + 4rem);
 		text-align: center;
 	}
-	@media (max-width: 1000px) {
+	@media (max-width: 1100px) {
 		.layout {
-			grid-template-columns: 1fr;
-			gap: 1.4rem;
+			grid-template-columns: minmax(0, 1fr);
+			gap: 1.2rem;
 		}
 		.side-col {
+			position: static;
 			display: grid;
 			grid-template-columns: 1fr 1fr;
-			gap: 1.4rem;
 			align-items: start;
+			max-height: none;
+			overflow: visible;
+			padding-right: 0;
 		}
 	}
-	@media (max-width: 760px) {
+	@media (max-width: 820px) {
 		.hero {
-			flex-direction: column;
-			align-items: flex-start;
+			grid-template-columns: 1fr;
+			align-items: start;
 			gap: 1rem;
 		}
 		.hero-actions {
-			justify-content: flex-start;
+			width: 100%;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
 		.glance {
 			grid-template-columns: 1fr 1fr;
 		}
-		.glance > div:nth-child(2) {
-			border-right: 0;
-		}
-		.glance > div:nth-child(-n + 2) {
-			border-bottom: 1px solid var(--line);
-		}
-		.stats,
+		.facts-grid,
+		.metrics-grid,
 		.snippets,
 		.org-grid,
-		.side-col,
-		.facts {
+		.side-col {
 			grid-template-columns: 1fr;
-			columns: 1;
+		}
+		.block {
+			padding: 0.9rem 0.95rem 1rem;
+		}
+		.section-nav {
+			margin-bottom: 1rem;
 		}
 		.source {
 			flex-direction: column;
@@ -1071,6 +1245,14 @@
 		.page-footer {
 			flex-direction: column;
 			align-items: flex-start;
+		}
+	}
+	@media (max-width: 480px) {
+		.glance strong {
+			font-size: 1.28rem;
+		}
+		.glance .capital strong {
+			font-size: 1rem;
 		}
 	}
 </style>

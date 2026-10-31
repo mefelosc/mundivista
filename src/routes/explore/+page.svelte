@@ -12,13 +12,14 @@
 	import { getLayer } from '#lib/configurations/map-layers';
 	import { countries, getCountry, indicatorKeys } from '#lib/data/countries';
 	import { organizationById } from '#lib/data/organizations';
+	import { loadSubdivisions, type SubdivisionCollection } from '#lib/data/subdivisions';
 	import { formatLatLng } from '#lib/format';
 	import { membershipAt } from '#lib/data/timeline';
 	import { theme } from '#lib/theme.svelte';
 	import { layerById } from '#lib/configurations/map-layers';
 	import type { LayerId } from '#lib/types';
 
-	let layerId = $state<LayerId>('political');
+	let layerId = $state<LayerId>('standard');
 	let selected = $state<string | null>(null);
 	let bloc = $state<string | null>(null);
 	let hovered = $state<string | null>(null);
@@ -29,8 +30,12 @@
 	let hintDismissed = $state(false);
 	let historyYear = $state<number | null>(null);
 	let highlightNeighbors = $state(false);
-	let projection = $state<'globe' | 'flat'>('globe');
+	let projection = $state<'globe' | 'flat'>('flat');
+	let subdivisions = $state<SubdivisionCollection | null>(null);
+	let subdivisionsLoading = $state(false);
+	let activeSubdivision = $state<string | null>(null);
 	let urlsReady = false;
+	let syncedQuery = '';
 
 	const layer = $derived(getLayer(layerId, theme.resolved));
 	const country = $derived(getCountry(selected));
@@ -44,48 +49,93 @@
 					: []
 	);
 	const hoveredName = $derived(hovered ? getCountry(hovered)?.name : null);
+	const layerParam = (params: Pick<URLSearchParams, 'get'>): LayerId => {
+		const requested = params.get('layer') as LayerId | null;
+		return requested && layerById.has(requested) ? requested : 'standard';
+	};
+	const projectionParam = (params: Pick<URLSearchParams, 'get'>): 'globe' | 'flat' =>
+		params.get('projection') === 'globe' || params.get('view') === '3d' || params.get('globe') === '1'
+			? 'globe'
+			: 'flat';
 
 	onMount(() => {
 		const params = page.url.searchParams;
-		const requestedLayer = params.get('layer') as LayerId | null;
-		if (requestedLayer && layerById.has(requestedLayer)) layerId = requestedLayer;
+		layerId = layerParam(params);
 		const requestedCountry = params.get('country');
 		if (requestedCountry && getCountry(requestedCountry)) selected = requestedCountry;
-		if (params.get('terrain') === '1') terrain = true;
-		if (params.get('projection') === 'flat' || params.get('view') === '2d') projection = 'flat';
+		projection = projectionParam(params);
+		// Links antigos de relevo implicavam globo; mantém o comportamento.
+		if (params.get('terrain') === '1' && params.get('projection') !== 'flat' && params.get('view') !== '2d') {
+			projection = 'globe';
+		}
+		terrain = params.get('terrain') === '1' && projection === 'globe';
 		const requestedYear = Number(params.get('year'));
 		if (requestedYear >= 1945 && requestedYear <= 2026) historyYear = requestedYear;
+		hintDismissed = localStorage.getItem('mundivista:hint') === '1';
 		urlsReady = true;
 	});
+
+	function dismissHint() {
+		hintDismissed = true;
+		localStorage.setItem('mundivista:hint', '1');
+	}
 
 	$effect(() => {
 		if (!urlsReady) return;
 		const params = new URLSearchParams();
-		params.set('layer', layerId);
+		if (layerId !== 'standard') params.set('layer', layerId);
 		if (selected) params.set('country', selected);
 		if (terrain) params.set('terrain', '1');
-		if (projection === 'flat') params.set('projection', 'flat');
+		if (projection === 'globe') params.set('projection', 'globe');
 		if (layerId === 'history' && historyYear) params.set('year', String(historyYear));
 		const next = params.toString();
-		if (page.url.searchParams.toString() === next) return;
+		if (next === syncedQuery) return;
+		syncedQuery = next;
 		const url = new URL(window.location.href);
 		url.search = next;
 		replaceState(url, {});
 	});
 
+	$effect(() => {
+		const code = selected;
+		if (!code || layerId !== 'political') {
+			subdivisions = null;
+			subdivisionsLoading = false;
+			return;
+		}
+		subdivisionsLoading = true;
+		subdivisions = null;
+		let cancelled = false;
+		loadSubdivisions(code).then((data) => {
+			if (cancelled || selected !== code) return;
+			subdivisions = data;
+			subdivisionsLoading = false;
+		});
+		return () => {
+			cancelled = true;
+		};
+	});
+
 	function applyUrlState(params: URLSearchParams) {
-		const requestedLayer = params.get('layer') as LayerId | null;
-		if (requestedLayer && layerById.has(requestedLayer) && requestedLayer !== layerId) {
-			changeLayer(requestedLayer);
+		const requestedLayer = layerParam(params);
+		if (requestedLayer !== layerId) {
+			layerId = requestedLayer;
+			const layerConfig = getLayer(requestedLayer, theme.resolved);
+			if (!layerConfig.blocs?.includes(bloc ?? '')) bloc = null;
+			if (requestedLayer !== 'history') historyYear = null;
+			activeSubdivision = null;
 		}
 		const requestedCountry = params.get('country');
 		if (requestedCountry && getCountry(requestedCountry) && requestedCountry !== selected) {
 			select(requestedCountry);
 		}
-		if (params.get('terrain') === '1' && !terrain) toggleTerrain();
-		if (params.get('terrain') !== '1' && terrain) terrain = false;
-		const requestedProjection = params.get('projection') === 'flat' || params.get('view') === '2d' ? 'flat' : 'globe';
+		const requestedProjection =
+			params.get('terrain') === '1' && params.get('projection') !== 'flat' && params.get('view') !== '2d'
+				? 'globe'
+				: projectionParam(params);
 		if (requestedProjection !== projection) setProjection(requestedProjection);
+		const wantsTerrain = params.get('terrain') === '1' && requestedProjection === 'globe';
+		if (wantsTerrain !== terrain) terrain = wantsTerrain;
 		const requestedYear = Number(params.get('year'));
 		if (requestedYear >= 1945 && requestedYear <= 2026 && requestedYear !== historyYear) {
 			historyYear = requestedYear;
@@ -98,11 +148,12 @@
 	});
 
 	function changeLayer(id: LayerId) {
-		layerId = id;
-		const layerConfig = getLayer(id, theme.resolved);
+		const next = id === layerId && id !== 'standard' ? 'standard' : id;
+		layerId = next;
+		const layerConfig = getLayer(next, theme.resolved);
 		if (!layerConfig.blocs?.includes(bloc ?? '')) bloc = null;
-		if (id !== 'history') historyYear = null;
-		hintDismissed = false;
+		if (next !== 'history') historyYear = null;
+		activeSubdivision = null;
 	}
 
 	function toggleBloc(id: string | null) {
@@ -114,19 +165,22 @@
 	}
 
 	function select(code: string) {
-		if (code !== selected) highlightNeighbors = false;
+		if (code !== selected) {
+			highlightNeighbors = false;
+			activeSubdivision = null;
+		}
 		selected = code;
-		hintDismissed = true;
+		dismissHint();
 		const target = getCountry(code);
-		const currentZoom = mapRef?.getMap()?.getZoom() ?? view.zoom;
-		if (target?.latlng && currentZoom < 2.9) {
-			mapRef?.flyTo([target.latlng[1], target.latlng[0]], 3);
+		if (target?.latlng) {
+			mapRef?.focusCountry([target.latlng[1], target.latlng[0]], target.areaKm2);
 		}
 	}
 
 	function closeCard() {
 		selected = null;
 		highlightNeighbors = false;
+		activeSubdivision = null;
 	}
 
 	function setProjection(next: 'globe' | 'flat') {
@@ -143,7 +197,7 @@
 		const tag = (event.target as HTMLElement | null)?.tagName;
 		if (tag === 'INPUT' || tag === 'TEXTAREA' || event.metaKey || event.ctrlKey || event.altKey) return;
 		if (event.key === 'Escape') {
-			if (selected) selected = null;
+			if (selected) closeCard();
 			return;
 		}
 		if (event.key === 'g') {
@@ -152,9 +206,13 @@
 			toggleTerrain();
 		} else if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
 			const ids = ['political', 'physical', 'population', 'economy', 'geopolitics', 'history'] as LayerId[];
-			const index = ids.indexOf(layerId);
-			const delta = event.key === 'ArrowRight' ? 1 : -1;
-			changeLayer(ids[(index + delta + ids.length) % ids.length]);
+			if (layerId === 'standard') {
+				changeLayer(event.key === 'ArrowRight' ? ids[0] : ids[ids.length - 1]);
+			} else {
+				const index = ids.indexOf(layerId);
+				const delta = event.key === 'ArrowRight' ? 1 : -1;
+				changeLayer(ids[(index + delta + ids.length) % ids.length]);
+			}
 			event.preventDefault();
 		}
 	}
@@ -179,6 +237,8 @@
 			{selected}
 			{highlight}
 			{terrain}
+			{subdivisions}
+			{activeSubdivision}
 			onselect={select}
 			onhover={(code) => (hovered = code)}
 			onview={(v) => (view = v)}
@@ -202,12 +262,6 @@
 		/>
 	{/if}
 
-	<div class="layer-caption">
-		<span class="eyebrow">{layer.index} · Camada</span>
-		<strong>{layer.label}</strong>
-		<p>{layer.description}</p>
-	</div>
-
 	{#if country}
 		<CountryCard
 			{country}
@@ -222,79 +276,86 @@
 				}
 				highlightNeighbors = !highlightNeighbors;
 			}}
+			{subdivisions}
+			{subdivisionsLoading}
+			{activeSubdivision}
+			onunit={(id) => (activeSubdivision = id)}
+			onfly={(center, zoom) => mapRef?.flyTo(center, zoom ?? 5)}
 		/>
 	{/if}
 
 	{#if !country && !hintDismissed}
 		<div class="hint animate-fade-up">
-			<button type="button" class="hint-close" onclick={() => (hintDismissed = true)} aria-label="Fechar dica">
+			<button type="button" class="hint-close" onclick={dismissHint} aria-label="Fechar dica">
 				<Icon name="close" size={12} />
 			</button>
 			<span class="eyebrow">Exploração livre</span>
-			<p>Clique em um país para abrir o dossiê da camada <strong>{layer.label.toLowerCase()}</strong>.</p>
-			<p class="keys"><kbd>←</kbd><kbd>→</kbd> camadas · <kbd>g</kbd> globo · <kbd>t</kbd> relevo · <kbd>⌘K</kbd> busca</p>
+			<p>Clique em um país para abrir o dossiê. Escolha uma camada no filtro para sobrepor dados ao mapa.</p>
+			<p class="keys"><kbd>←</kbd><kbd>→</kbd> camadas · <kbd>g</kbd> 2D/globo · <kbd>t</kbd> relevo · <kbd>⌘K</kbd> busca</p>
 		</div>
 	{/if}
 
 	<div class="controls" class:shifted={!!country}>
-		<div class="coord">
-			{#if hoveredName}
-				<span class="hovered">{hoveredName}</span>
-			{:else}
-				<span>{formatLatLng(view.lat, view.lng)}</span>
-			{/if}
-			<span class="zoom">z{view.zoom.toFixed(1)}</span>
-		</div>
-		<div class="switch-row">
-			<div class="segmented" role="group" aria-label="Projeção do mapa">
+		<div class="hud">
+			<div class="readout">
+				{#if hoveredName}
+					<span class="readout-main hovered">{hoveredName}</span>
+				{:else}
+					<span class="readout-main">{formatLatLng(view.lat, view.lng)}</span>
+				{/if}
+				<span class="readout-meta">z{view.zoom.toFixed(1)}</span>
+			</div>
+			<div class="switch-row">
+				<div class="segmented" role="group" aria-label="Projeção do mapa">
+					<button
+						type="button"
+						class:active={projection === 'flat'}
+						onclick={() => setProjection('flat')}
+						title="Mapa 2D em Equal Earth, com áreas proporcionais (padrão)"
+					>
+						<Icon name="compass" size={14} /> 2D
+					</button>
+					<button
+						type="button"
+						class:active={projection === 'globe'}
+						onclick={() => setProjection('globe')}
+						title="Globo 3D, com relevo opcional"
+					>
+						<Icon name="globe3d" size={14} /> Globo
+					</button>
+				</div>
 				<button
 					type="button"
-					class:active={projection === 'globe'}
-					onclick={() => setProjection('globe')}
-					title="Globo 3D"
+					class="terrain-toggle"
+					class:active={terrain}
+					onclick={toggleTerrain}
+					disabled={projection === 'flat'}
+					title={projection === 'flat' ? 'Relevo disponível no globo 3D: o DEM é Mercator' : 'Relevo 3D com modelo digital de elevação'}
+					aria-pressed={terrain}
 				>
-					<Icon name="globe3d" size={13} /> Globo
+					<Icon name="peak" size={14} /> Relevo
 				</button>
 				<button
 					type="button"
-					class:active={projection === 'flat'}
-					onclick={() => setProjection('flat')}
-					title="Mapa 2D em Equal Earth, com áreas proporcionais"
+					class="terrain-toggle mobile-legend-toggle"
+					class:active={mobileLegend}
+					onclick={() => (mobileLegend = !mobileLegend)}
+					aria-pressed={mobileLegend}
 				>
-					<Icon name="compass" size={13} /> 2D
+					<Icon name="layers" size={14} /> Legenda
 				</button>
 			</div>
-			<button
-				type="button"
-				class="terrain-toggle"
-				class:active={terrain}
-				onclick={toggleTerrain}
-				disabled={projection === 'flat'}
-				title={projection === 'flat' ? 'Relevo disponível no globo: o DEM é Mercator' : 'Relevo 3D com modelo digital de elevação'}
-				aria-pressed={terrain}
-			>
-				<Icon name="peak" size={13} /> Relevo
-			</button>
-			<button
-				type="button"
-				class="terrain-toggle mobile-legend-toggle"
-				class:active={mobileLegend}
-				onclick={() => (mobileLegend = !mobileLegend)}
-				aria-pressed={mobileLegend}
-			>
-				<Icon name="layers" size={13} /> Legenda
-			</button>
-		</div>
-		<div class="buttons">
-			<button type="button" onclick={() => mapRef?.zoomBy(0.6)} aria-label="Aproximar">
-				<Icon name="plus" size={16} />
-			</button>
-			<button type="button" onclick={() => mapRef?.zoomBy(-0.6)} aria-label="Afastar">
-				<Icon name="minus" size={16} />
-			</button>
-			<button type="button" onclick={() => mapRef?.resetView()} aria-label="Voltar ao mundo">
-				<Icon name="reset" size={15} />
-			</button>
+			<div class="buttons">
+				<button type="button" onclick={() => mapRef?.zoomBy(0.6)} aria-label="Aproximar" title="Aproximar">
+					<Icon name="plus" size={17} />
+				</button>
+				<button type="button" onclick={() => mapRef?.zoomBy(-0.6)} aria-label="Afastar" title="Afastar">
+					<Icon name="minus" size={17} />
+				</button>
+				<button type="button" onclick={() => mapRef?.resetView()} aria-label="Voltar ao mundo" title="Voltar ao mundo">
+					<Icon name="reset" size={16} />
+				</button>
+			</div>
 		</div>
 		<a class="sources" href="/sobre">Fontes e métodos</a>
 	</div>
@@ -308,12 +369,12 @@
 		</div>
 	{/if}
 
-	<div class="statusbar" class:hidden={layerId === 'history'} aria-hidden="true">
+	<div class="statusbar" class:hidden={layerId === 'history' || !!country} aria-hidden="true">
 		<span>{countries.length} territórios</span>
 		<span>·</span>
 		<span>{indicatorKeys.length} indicadores</span>
 		<span>·</span>
-		<span>{projection === 'flat' ? '2D · Equal Earth' : 'Globo'}</span>
+		<span>{projection === 'flat' ? '2D · Equal Earth' : 'Globo 3D'}</span>
 		<span>·</span>
 		<span>Natural Earth 1:50m</span>
 		{#if terrain}
@@ -330,82 +391,63 @@
 		inset: 0;
 		background: var(--map-paper);
 	}
-	.layer-caption {
-		position: fixed;
-		top: calc(var(--header-h) + 0.85rem);
-		left: 0.75rem;
-		z-index: 26;
-		width: 15.5rem;
-		padding: 0.5rem 0.6rem;
-		background: color-mix(in oklab, var(--surface-2) 94%, transparent);
-		border: 1px solid var(--line);
-		pointer-events: none;
-	}
-	.layer-caption .eyebrow {
-		font-size: 0.46rem;
-	}
-	.layer-caption strong {
-		display: block;
-		margin-top: 0.22rem;
-		font-family: var(--font-display);
-		font-size: 1rem;
-		font-weight: 600;
-		color: var(--text-1);
-	}
-	.layer-caption p {
-		margin: 0.12rem 0 0;
-		font-size: 0.6rem;
-		line-height: 1.4;
-		color: var(--text-3);
-	}
 	.hint {
 		position: fixed;
-		top: calc(var(--header-h) + 0.85rem);
+		top: calc(var(--header-h) + 0.8rem);
 		left: 50%;
 		transform: translateX(-50%);
 		z-index: 27;
-		max-width: 24rem;
-		padding: 0.55rem 1.8rem 0.55rem 0.7rem;
-		background: var(--surface-2);
+		width: min(26rem, calc(100vw - 2rem));
+		padding: 0.7rem 2rem 0.75rem 0.85rem;
+		background: color-mix(in oklab, var(--surface-2) 96%, transparent);
 		border: 1px solid var(--line);
+		border-left: 2px solid var(--accent-1);
+		border-radius: 0.25rem;
+		box-shadow: 0 22px 44px -34px rgb(0 0 0 / 0.6);
 		text-align: left;
 	}
 	.hint-close {
 		position: absolute;
-		top: 0.3rem;
-		right: 0.3rem;
+		top: 0.35rem;
+		right: 0.35rem;
 		border: 0;
 		background: transparent;
 		color: var(--text-4);
-		padding: 0.2rem;
+		padding: 0.25rem;
 		display: grid;
 		place-items: center;
 	}
 	.hint-close:hover {
 		color: var(--text-1);
 	}
-	.hint p {
-		margin: 0.2rem 0 0;
-		font-size: 0.66rem;
-		color: var(--text-3);
-		line-height: 1.45;
+	.hint .eyebrow {
+		font-size: 0.54rem;
 	}
-	.hint strong {
-		color: var(--accent-0);
-		font-weight: 550;
+	.hint p {
+		margin: 0.28rem 0 0;
+		font-size: 0.8rem;
+		color: var(--text-3);
+		line-height: 1.5;
 	}
 	.hint .keys {
-		margin-top: 0.35rem;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.22rem;
+		margin-top: 0.5rem;
 		font-family: var(--font-mono);
-		font-size: 0.48rem;
+		font-size: 0.58rem;
 		color: var(--text-4);
 	}
 	kbd {
 		font-family: var(--font-mono);
 		border: 1px solid var(--line);
-		padding: 0 0.18rem;
-		margin-right: 0.1rem;
-		font-size: 0.46rem;
+		border-radius: 0.12rem;
+		background: var(--surface-1);
+		padding: 0.06rem 0.28rem;
+		margin-right: 0.08rem;
+		font-size: 0.5rem;
+		line-height: 1.3;
 	}
 	.controls {
 		position: fixed;
@@ -421,52 +463,84 @@
 	.controls.shifted {
 		right: calc(var(--sheet-w) + 1.35rem);
 	}
-	.coord {
+	.hud {
+		display: flex;
+		flex-direction: column;
+		width: 15rem;
+		max-width: calc(100vw - 1.5rem);
+		background: color-mix(in oklab, var(--surface-2) 96%, transparent);
+		border: 1px solid var(--line);
+		border-radius: 0.25rem;
+		box-shadow: 0 20px 40px -30px rgb(0 0 0 / 0.6);
+		overflow: hidden;
+	}
+	.readout {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		justify-content: space-between;
+		gap: 0.8rem;
+		min-height: 1.9rem;
+		padding: 0.32rem 0.55rem;
+		border-bottom: 1px solid var(--line);
 		font-family: var(--font-mono);
-		font-size: 0.52rem;
-		letter-spacing: 0.04em;
+		font-size: 0.68rem;
+		letter-spacing: 0.03em;
 		color: var(--text-3);
-		background: color-mix(in oklab, var(--surface-2) 90%, transparent);
-		border: 1px solid var(--line);
-		padding: 0.2rem 0.45rem;
+	}
+	.readout-main {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.readout-meta {
+		flex-shrink: 0;
+		color: var(--text-4);
 	}
 	.hovered {
 		color: var(--accent-0);
 	}
-	.zoom {
-		color: var(--text-4);
-	}
 	.switch-row {
 		display: flex;
 		align-items: stretch;
-		gap: 0.3rem;
+		gap: 0.28rem;
+		padding: 0.3rem;
 	}
 	.segmented {
 		display: inline-flex;
+		flex: 1;
+		min-width: 0;
 		border: 1px solid var(--line);
-		background: var(--surface-2);
+		border-radius: 0.16rem;
+		background: var(--surface-1);
+		overflow: hidden;
 	}
 	.segmented button,
 	.terrain-toggle {
 		display: inline-flex;
 		align-items: center;
+		justify-content: center;
 		gap: 0.28rem;
+		min-height: 2rem;
 		border: 0;
 		background: transparent;
 		color: var(--text-3);
-		padding: 0.35rem 0.5rem;
-		font-size: 0.6rem;
+		padding: 0 0.48rem;
+		font-size: 0.74rem;
+		font-weight: 500;
+		white-space: nowrap;
 		transition: background 0.15s ease, color 0.15s ease;
+	}
+	.segmented button {
+		flex: 1;
 	}
 	.segmented button + button {
 		border-left: 1px solid var(--line);
 	}
 	.terrain-toggle {
 		border: 1px solid var(--line);
-		background: var(--surface-2);
+		border-radius: 0.16rem;
+		background: var(--surface-1);
 	}
 	.segmented button:hover,
 	.terrain-toggle:hover:not(:disabled) {
@@ -474,11 +548,11 @@
 	}
 	.segmented button.active,
 	.terrain-toggle.active {
-		background: color-mix(in oklab, var(--accent-1) 16%, var(--surface-2));
+		background: color-mix(in oklab, var(--accent-1) 17%, var(--surface-2));
 		color: var(--accent-2);
 	}
 	.terrain-toggle:disabled {
-		opacity: 0.4;
+		opacity: 0.42;
 		cursor: not-allowed;
 	}
 	.mobile-legend-toggle {
@@ -486,15 +560,14 @@
 	}
 	.buttons {
 		display: flex;
-		gap: 1px;
-		border: 1px solid var(--line);
-		background: var(--surface-2);
+		border-top: 1px solid var(--line);
+		background: var(--surface-1);
 	}
 	.buttons button {
 		display: grid;
 		place-items: center;
-		width: 1.8rem;
-		height: 1.8rem;
+		flex: 1;
+		height: 2.35rem;
 		border: 0;
 		background: transparent;
 		color: var(--text-3);
@@ -509,8 +582,8 @@
 	}
 	.sources {
 		font-family: var(--font-mono);
-		font-size: 0.48rem;
-		letter-spacing: 0.06em;
+		font-size: 0.6rem;
+		letter-spacing: 0.05em;
 		color: var(--text-4);
 		text-decoration: none;
 	}
@@ -520,15 +593,21 @@
 	.statusbar {
 		position: fixed;
 		left: 50%;
-		bottom: 0.9rem;
+		bottom: 0.8rem;
 		transform: translateX(-50%);
 		z-index: 24;
 		display: none;
-		gap: 0.4rem;
+		align-items: center;
+		gap: 0.45rem;
+		padding: 0.3rem 0.55rem;
+		background: color-mix(in oklab, var(--surface-2) 84%, transparent);
+		border: 1px solid var(--line);
+		border-radius: 0.2rem;
 		font-family: var(--font-mono);
-		font-size: 0.46rem;
-		letter-spacing: 0.05em;
+		font-size: 0.6rem;
+		letter-spacing: 0.04em;
 		color: var(--text-4);
+		white-space: nowrap;
 	}
 	.mobile-legend {
 		display: none;
@@ -536,22 +615,32 @@
 	.statusbar.hidden {
 		display: none;
 	}
-	@media (min-width: 1200px) {
+	@media (min-width: 1400px) {
 		.statusbar {
 			display: flex;
 		}
 	}
 	@media (max-width: 900px) {
-		.layer-caption,
 		.hint {
 			display: none;
 		}
 		.controls {
-			bottom: calc(7.5rem + env(safe-area-inset-bottom));
+			top: calc(var(--header-h) + 0.55rem);
 			right: 0.5rem;
+			bottom: auto;
 		}
 		.controls.shifted {
 			right: 0.5rem;
+		}
+		.hud {
+			width: auto;
+			min-width: 12.5rem;
+		}
+		.readout {
+			display: none;
+		}
+		.sources {
+			display: none;
 		}
 		.mobile-legend-toggle {
 			display: inline-flex;
@@ -559,11 +648,14 @@
 		.mobile-legend {
 			display: block;
 			position: fixed;
+			top: calc(var(--header-h) + 5.2rem);
 			left: 0.4rem;
 			right: 0.4rem;
-			bottom: calc(7.5rem + env(safe-area-inset-bottom));
-			z-index: 33;
-			padding: 0.5rem;
+			bottom: auto;
+			z-index: 36;
+			padding: 0.55rem;
+			max-height: calc(100dvh - var(--header-h) - 5.6rem);
+			overflow-y: auto;
 		}
 		.mobile-legend :global(.legend) {
 			display: block;
@@ -574,24 +666,31 @@
 			background: transparent;
 			padding: 0;
 		}
+		.mobile-legend :global(.legend .legend-toggle) {
+			display: none;
+		}
 		.legend-close {
 			width: 100%;
 			border: 1px solid var(--line);
 			background: var(--surface-1);
 			color: var(--text-3);
-			font-size: 0.6rem;
-			padding: 0.35rem;
-			margin-top: 0.35rem;
+			font-size: 0.62rem;
+			padding: 0.4rem;
+			margin-top: 0.45rem;
 		}
-		.coord {
-			font-size: 0.48rem;
+		.readout {
+			font-size: 0.56rem;
 		}
 	}
 	@media (max-width: 620px) {
 		.terrain-toggle {
-			padding: 0.35rem 0.42rem;
+			padding: 0 0.38rem;
 		}
-		.terrain-toggle :global(svg) {
+		.segmented button {
+			padding: 0 0.38rem;
+		}
+		.terrain-toggle :global(svg),
+		.segmented button :global(svg) {
 			margin: 0;
 		}
 	}

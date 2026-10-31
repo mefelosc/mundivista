@@ -28,8 +28,10 @@ interface central e dados verificáveis.
 - Mapa 1:50m com 241 territórios, seleção, hover, rótulos com colisão, graticula,
   rios/lagos, litoral, cidades, capitais e relevo sombreado opcional.
 - 6 camadas: político, físico, demografia, economia, geopolítica, história.
-- Globo 3D e 2D em Equal Earth (via projeção customizada + proj4), relevo 3D no globo,
-  tema claro/escuro/sistema, crossfade de camada.
+- Mapa base 2D em Equal Earth (padrão) e globo 3D opcional (via projeção customizada +
+  proj4), relevo 3D no globo, tema claro/escuro/sistema, crossfade de camada.
+- Na camada política, unidades administrativas de primeiro nível por país (Natural Earth
+  1:10m), carregadas sob demanda e listadas no card.
 - Coropléticos por quantis, feature-state, destaque de blocos e de vizinhos sob demanda no card.
 - Card com “at a glance”, abas, mediana/percentil, sparkline interativa, mini-mapa e
   compartilhamento; soberania de territórios dependentes visível.
@@ -37,7 +39,7 @@ interface central e dados verificáveis.
 - 32 indicadores do Banco Mundial com ano, série, cobertura e fonte; página `/sobre`.
 - 9 jogos, motor desacoplado, progresso local, onboarding, modo lista e desafio diário.
 - Landing editorial, busca ⌘K, i18n do shell PT/EN.
-- 73 testes, `svelte-check` 0 erros, build estático, axe sem violações sérias, smoke test.
+- 77 testes, `svelte-check` 0 erros, build estático, axe sem violações sérias, smoke test.
 - Worker do MapLibre corrigido com `?worker&url` (não remover).
 
 ---
@@ -52,10 +54,10 @@ interface central e dados verificáveis.
 - [x] Comparar as três direções de `INSPIRATION.md` (Carta Náutica, Atlas Editorial,
       Sala de Mapas) e escolher **B** como base, com o escuro como “atlas à noite”.
       Decisão delegada pelo dono nesta sessão.
-- [x] Implementar tokens de tema (papel, tinta, vinho, ocre, água, verde) e modo escuro
+- [x] Implementar tokens de tema (papel frio, tinta, verde, ametista, água) e modo escuro
       com a mesma hierarquia.
 - [x] Criar conjunto próprio de ícones cartográficos 24 px / traço 1,5.
-- [x] Tipografia: Fraunces (display), Inter (UI), JetBrains Mono (dados).
+- [x] Tipografia: Newsreader (display), Instrument Sans (UI), IBM Plex Mono (dados).
 - [x] Remover gradientes/vidro genéricos; usar réguas, ticks, numeração, legenda e grão.
 - [x] Motion system 180–320 ms, `cubic-bezier(.22,1,.36,1)`, stagger e reduced-motion.
 
@@ -73,9 +75,13 @@ comparáveis em `docs/screenshots/` (desktop/mobile, claro/escuro).
 - [x] Crossfade de camada com duas camadas de fill e transição de 340 ms.
 - [x] Rótulos DOM com cache de medida, prioridade, colisão e teto de 82.
 - [x] Escala gráfica, rosa dos ventos, coordenadas e projeção.
-- [x] Globo como padrão e **2D em Equal Earth** por `addProjection` + proj4 (main e worker),
-      com área proporcional e sem a distorção do Mercator. Relevo fica restrito ao globo,
-      porque o DEM é servido em Mercator.
+- [x] Mapa base 2D em Equal Earth como padrão e globo 3D opcional via
+      `addProjection` + proj4 (main e worker), com área proporcional e sem a distorção do
+      Mercator. Relevo fica restrito ao globo, porque o DEM é servido em Mercator.
+- [x] Camada `standard` sem coroplético como estado inicial; camadas temáticas só quando
+      escolhidas no filtro.
+- [x] Unidades administrativas de primeiro nível (Natural Earth 1:10m) ao selecionar um
+      país na camada política, com contornos, rótulos e lista no card.
 
 **Aceite:** alternância claro/escuro/3D sem reload; seleção perceptivelmente imediata;
 sem flash de camada. Medição formal de 60 fps em hardware intermediário segue pendente.
@@ -90,7 +96,7 @@ sem flash de camada. Medição formal de 60 fps em hardware intermediário segue
 - [x] **Físico:** hillshade real, rios/lagos, litoral, rótulos de relevo; cores de país não
       fingem ser hipsometria.
 - [x] **Demografia:** coroplético de densidade + pontos de cidades principais.
-- [x] **Economia:** coroplético de PIB per capita em ocre; setores no card/dossiê.
+- [x] **Economia:** coroplético de PIB per capita em ametista; setores no card/dossiê.
 - [x] **Geopolítica:** destaque de bloco, membros, hachura para estatuto disputado e nota.
 - [x] **História:** linha do tempo 1945–2026, recorte de blocos e eventos com fonte.
 - [x] Cada camada tem legenda, nota de método e fonte.

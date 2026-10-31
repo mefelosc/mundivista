@@ -55,8 +55,8 @@ sem copiar layout, paleta ou marca.
 
 **B — Atlas Editorial**, com o modo escuro lido como o mesmo atlas à noite.
 
-- Papel quente, tinta, vinho, ocre e verde; sem vidro ou gradiente decorativo.
-- Fraunces para display, Inter para UI, JetBrains Mono para dados e metadados.
+- Papel frio, tinta, verde e ametista; sem vidro ou gradiente decorativo.
+- Newsreader para display, Instrument Sans para UI, IBM Plex Mono para dados e metadados.
 - Ícones próprios de 24 px / traço 1,5, derivados de símbolos cartográficos.
 - Réguas de 1 px, ticks, numeração de seção, legendas de instrumento e grão de papel.
 - Motion: 180–320 ms, `cubic-bezier(.22, 1, .36, 1)`, stagger de 30–50 ms; tudo respeita
@@ -76,7 +76,7 @@ arquivo/fichas para uma futura página de coleções.
 - **Paleta escura:** tinta #070b12, azul-profundo #0d1a26, latão #d8a84e,
   marfim #efe6d2, sinal #7fc4e8.
 - **Paleta clara:** papel #f2ecdf, areia #e4d7bf, tinta #1d2430, latão #a97a2b.
-- **Tipografia:** display sans condensada (ex.: Archivo Narrow) + Inter + JetBrains Mono.
+- **Tipografia:** display sans condensada (ex.: Archivo Narrow) + Inter + IBM Plex Mono.
 - **Ícones:** linha 1.5px, símbolos de carta (rosa dos ventos, sonda, marco, corrente).
 - **Motion:** fly-to de 800ms, crossfade de camada 350ms, painéis 240ms.
 - **Risco:** pode ficar parecido com o atual; precisa de mais textura e tipografia.

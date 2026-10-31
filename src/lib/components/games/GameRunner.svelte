@@ -19,7 +19,9 @@
 		summarize,
 		type RoundOutcome
 	} from '#lib/engines/scoring-engine';
+	import GameCover from '#lib/components/games/GameCover.svelte';
 	import { getLayer } from '#lib/configurations/map-layers';
+	import { gameAccent } from '#lib/engines/game-engine/theme';
 	import { theme } from '#lib/theme.svelte';
 	import { sound } from '#lib/sound.svelte';
 	import {
@@ -40,6 +42,7 @@
 
 	const rules = defaultScoreRules;
 	const mapLayer = $derived(getLayer('political', theme.resolved));
+	const accent = $derived(gameAccent(game.category));
 
 	let rounds = $state<GameRound[]>([]);
 	let index = $state(0);
@@ -49,7 +52,7 @@
 	let streak = $state(0);
 	let selectedCodes = $state<string[]>([]);
 	let textAnswer = $state('');
-	let orderItems = $state<string[]>([]);
+	let placed = $state<string[]>([]);
 	let status = $state<Record<string, 'correct' | 'wrong'>>({});
 	let feedback = $state<{
 		correct: boolean;
@@ -72,9 +75,20 @@
 	let shareStatus = $state<'copied' | 'shared' | null>(null);
 
 	const current = $derived(rounds[index] ?? null);
+	const orderPool = $derived((current?.items ?? []).filter((code) => !placed.includes(code)));
+	const orderReady = $derived(
+		placed.length > 0 && placed.length === (current?.items?.length ?? 0)
+	);
 	const summary = $derived(summarize(results, rules));
 	const elapsed = $derived(Math.max(0, now - roundStartedAt));
 	const progress = $derived(rounds.length ? (index + (feedback ? 1 : 0)) / rounds.length : 0);
+	const flagCountry = $derived(
+		feedback?.correct &&
+			current?.interaction === 'map-single' &&
+			current.rule.type === 'code'
+			? current.rule.code
+			: null
+	);
 	const isMapRound = $derived(
 		current?.interaction === 'map-single' || current?.interaction === 'map-multi'
 	);
@@ -132,10 +146,10 @@
 			status = saved.status;
 			feedback = saved.feedback ?? null;
 			finished = saved.finished;
-			orderItems = [...(saved.rounds[index]?.items ?? [])];
+			placed = [];
 		} else {
 			rounds = game.build(seed);
-			orderItems = [...(rounds[0]?.items ?? [])];
+			placed = [];
 		}
 
 		best = getBest(game.slug);
@@ -263,7 +277,8 @@
 	}
 
 	function submitOrder() {
-		submit({ kind: 'order', value: orderItems });
+		if (!orderReady) return;
+		submit({ kind: 'order', value: placed });
 	}
 
 	function choose(code: string) {
@@ -271,12 +286,14 @@
 		submit({ kind: 'code', value: code });
 	}
 
-	function moveItem(position: number, delta: number) {
-		const target = position + delta;
-		if (target < 0 || target >= orderItems.length) return;
-		const copy = [...orderItems];
-		[copy[position], copy[target]] = [copy[target], copy[position]];
-		orderItems = copy;
+	function placeItem(code: string) {
+		if (feedback || placed.includes(code)) return;
+		placed = [...placed, code];
+	}
+
+	function unplaceItem(code: string) {
+		if (feedback) return;
+		placed = placed.filter((item) => item !== code);
 	}
 
 	function next() {
@@ -295,7 +312,7 @@
 		status = {};
 		feedback = null;
 		listQuery = '';
-		orderItems = [...(rounds[index]?.items ?? [])];
+		placed = [];
 		roundStartedAt = Date.now();
 		now = Date.now();
 	}
@@ -404,12 +421,12 @@
 	<meta name="description" content={game.description} />
 </svelte:head>
 
-<div class="game" id="conteudo">
+<div class="game" id="conteudo" style:--cat={accent}>
 	<MapCanvas
 		bind:this={mapRef}
 		layer={mapLayer}
 		interactive={isMapRound && !feedback && !showIntro}
-		showLabels={!current?.focus}
+		showLabels={!game.hideMapLabels || Boolean(feedback)}
 		focus={focusCodes}
 		highlight={
 			current?.interaction === 'order'
@@ -419,6 +436,7 @@
 					: []
 		}
 		{status}
+		{flagCountry}
 		onselect={onMapSelect}
 	/>
 
@@ -427,6 +445,7 @@
 			<Icon name="arrowLeft" size={15} />
 			<span>Sair</span>
 		</a>
+		<span class="title-icon"><Icon name={game.icon} size={16} /></span>
 		<div class="title">
 			<span class="eyebrow">{game.category}{daily ? ' · desafio diário' : ''}</span>
 			<strong>{game.title}</strong>
@@ -497,7 +516,7 @@
 							onclick={() => choose(option.value)}
 						>
 							<span class="key">{i + 1}</span>
-							{#if flagOf(option.value)}<span class={flagOf(option.value)}></span>{/if}
+							{#if flagOf(option.value) && !current.flag}<span class={flagOf(option.value)}></span>{/if}
 							<span>{option.label}</span>
 							{#if status[option.value] === 'correct'}<Icon name="check" size={13} />{/if}
 							{#if status[option.value] === 'wrong'}<Icon name="x" size={13} />{/if}
@@ -517,37 +536,67 @@
 					</button>
 				</div>
 			{:else if current.interaction === 'order'}
-				<ul class="order">
-					{#each orderItems as code, position (code)}
-						<li>
-							<span class="pos">{position + 1}</span>
-							<span class={flagOf(code)}></span>
-							<span class="name">{nameOf(code)}</span>
-							<span class="moves">
+				<div class="order-builder">
+					<ol class="order-placed" aria-label="Ranking montado">
+						{#each placed as code, position (code)}
+							<li>
+								<span class="pos">{position + 1}</span>
+								<span class={flagOf(code)}></span>
+								<span class="name">{nameOf(code)}</span>
 								<button
 									type="button"
-									onclick={() => moveItem(position, -1)}
-									disabled={position === 0 || !!feedback}
-									aria-label={`Subir ${nameOf(code)}`}
+									class="remove"
+									onclick={() => unplaceItem(code)}
+									disabled={!!feedback}
+									aria-label={`Remover ${nameOf(code)} da posição ${position + 1}`}
+									title="Remover da ordem"
 								>
-									↑
+									<Icon name="close" size={12} />
 								</button>
-								<button
-									type="button"
-									onclick={() => moveItem(position, 1)}
-									disabled={position === orderItems.length - 1 || !!feedback}
-									aria-label={`Descer ${nameOf(code)}`}
-								>
-									↓
+							</li>
+						{/each}
+						{#if !orderReady}
+							<li class="placeholder">
+								<span class="pos">{placed.length + 1}</span>
+								<span>{placed.length ? 'Escolha o próximo…' : 'Clique nos países abaixo, do maior para o menor.'}</span>
+							</li>
+						{/if}
+					</ol>
+
+					{#if orderPool.length}
+						<div class="order-pool" aria-label="Países para ordenar">
+							{#each orderPool as code (code)}
+								<button type="button" onclick={() => placeItem(code)} disabled={!!feedback}>
+									<span class="plus">+</span>
+									<span class={flagOf(code)}></span>
+									<span>{nameOf(code)}</span>
 								</button>
-							</span>
-						</li>
-					{/each}
-				</ul>
-				<button class="submit-order" type="button" disabled={!!feedback} onclick={submitOrder}>
-					<Icon name="check" size={14} />
-					Confirmar ordem
-				</button>
+							{/each}
+						</div>
+					{/if}
+
+					<div class="order-actions">
+						{#if placed.length}
+							<button
+								type="button"
+								class="order-clear"
+								onclick={() => (placed = [])}
+								disabled={!!feedback}
+							>
+								Limpar
+							</button>
+						{/if}
+						<button
+							class="submit-order"
+							type="button"
+							disabled={!orderReady || !!feedback}
+							onclick={submitOrder}
+						>
+							<Icon name="check" size={14} />
+							Confirmar ordem
+						</button>
+					</div>
+				</div>
 			{:else}
 				<div class="map-tools">
 					<div class="map-instruction">
@@ -643,18 +692,19 @@
 	{#if showIntro && !finished}
 		<div class="intro-backdrop">
 			<div class="intro panel animate-fade-up">
+				<div class="intro-cover"><GameCover slug={game.slug} icon={game.icon} /></div>
 				<span class="eyebrow">{game.category} · {game.mechanic}</span>
 				<h2>{game.title}</h2>
 				<p>{game.description}</p>
 				<ul>
 					{#if current?.interaction === 'map-single'}
-						<li><Icon name="pin" size={14} /> Clique no país pedido no mapa — ou ative o modo lista e responda pelo teclado.</li>
+						<li><Icon name="pin" size={14} /> Clique no país pedido no mapa — ou ative o modo lista e responda pelo teclado. Ao acertar, a bandeira cobre o território.</li>
 					{:else if current?.interaction === 'map-multi'}
 						<li><Icon name="layers" size={14} /> Selecione todos os países do bloco e confirme. Cuidado com o intruso.</li>
 					{:else if current?.interaction === 'text'}
 						<li><Icon name="type" size={14} /> Digite a capital. Aceita português ou inglês, com ou sem acento.</li>
 					{:else if current?.interaction === 'order'}
-						<li><Icon name="sort" size={14} /> Reordene do maior para o menor com as setas. A ordem inicial é embaralhada.</li>
+						<li><Icon name="sort" size={14} /> Clique nos países na ordem correta, do maior para o menor. Use × para remover um item do ranking.</li>
 					{:else}
 						<li><Icon name="target" size={14} /> Escolha uma das quatro alternativas. Você também pode usar as teclas 1 a 4.</li>
 					{/if}
@@ -737,8 +787,19 @@
 		align-items: center;
 		gap: 1rem;
 		padding: 0 0.85rem;
-		border-bottom: 1px solid var(--line);
+		border-bottom: 1px solid color-mix(in oklab, var(--cat, var(--accent-1)) 26%, var(--line));
 		background: color-mix(in oklab, var(--surface-0) 94%, transparent);
+	}
+	.title-icon {
+		display: grid;
+		place-items: center;
+		width: 1.9rem;
+		height: 1.9rem;
+		flex-shrink: 0;
+		border: 1px solid color-mix(in oklab, var(--cat, var(--accent-1)) 45%, var(--line));
+		border-radius: 0.2rem;
+		background: color-mix(in oklab, var(--cat, var(--accent-1)) 11%, var(--surface-2));
+		color: var(--cat, var(--accent-1));
 	}
 	.exit {
 		display: inline-flex;
@@ -825,7 +886,7 @@
 	.progress span {
 		display: block;
 		height: 100%;
-		background: var(--accent-1);
+		background: var(--cat, var(--accent-1));
 		transition: width 0.35s var(--ease-out-soft);
 	}
 	.prompt {
@@ -838,6 +899,7 @@
 		max-height: calc(100dvh - var(--header-h) - 1.4rem);
 		overflow-y: auto;
 		padding: 0.8rem 0.9rem 0.9rem;
+		border-top: 2px solid color-mix(in oklab, var(--cat, var(--accent-1)) 62%, transparent);
 	}
 	.prompt-head {
 		display: flex;
@@ -851,7 +913,7 @@
 		font-size: 0.5rem;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
-		color: var(--accent-0);
+		color: color-mix(in oklab, var(--cat, var(--accent-1)) 74%, var(--text-1));
 	}
 	.mechanic {
 		font-family: var(--font-mono);
@@ -923,7 +985,7 @@
 		align-items: center;
 		gap: 0.4rem;
 		font-size: 0.6rem;
-		color: var(--water-1);
+		color: var(--cat, var(--accent-1));
 		font-family: var(--font-mono);
 		letter-spacing: 0.04em;
 	}
@@ -931,7 +993,7 @@
 		width: 5px;
 		height: 5px;
 		border-radius: 50%;
-		background: var(--water-0);
+		background: var(--cat, var(--accent-1));
 		animation: pulse-soft 1.4s ease-in-out infinite;
 	}
 	.mode-toggle {
@@ -1064,8 +1126,8 @@
 		height: 9.5rem;
 	}
 	.silhouette path {
-		fill: color-mix(in oklab, var(--accent-1) 22%, var(--surface-2));
-		stroke: var(--accent-0);
+		fill: color-mix(in oklab, var(--cat, var(--accent-1)) 20%, var(--surface-2));
+		stroke: color-mix(in oklab, var(--cat, var(--accent-1)) 78%, var(--text-1));
 		stroke-width: 1.1;
 		vector-effect: non-scaling-stroke;
 	}
@@ -1114,56 +1176,114 @@
 	.options button :global(svg) {
 		margin-left: auto;
 	}
-	.order {
+	.order-builder {
+		display: flex;
+		flex-direction: column;
+		gap: 0.55rem;
+		margin-top: 0.7rem;
+	}
+	.order-placed {
 		list-style: none;
-		margin: 0.65rem 0 0.45rem;
+		margin: 0;
 		padding: 0;
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
 	}
-	.order li {
+	.order-placed li {
 		display: flex;
 		align-items: center;
 		gap: 0.4rem;
+		min-height: 2rem;
 		padding: 0.3rem 0.4rem;
 		background: var(--surface-1);
 		border: 1px solid var(--line);
 	}
+	.order-placed li.placeholder {
+		border-style: dashed;
+		background: transparent;
+		color: var(--text-4);
+		font-size: 0.62rem;
+	}
 	.pos {
 		font-family: var(--font-mono);
-		font-size: 0.52rem;
+		font-size: 0.54rem;
 		color: var(--accent-0);
-		width: 0.8rem;
+		width: 1rem;
+		text-align: center;
+		flex-shrink: 0;
 	}
-	.order .name {
-		font-size: 0.66rem;
+	.order-placed .name {
+		font-size: 0.68rem;
 		flex: 1;
 		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.moves {
-		display: flex;
-		gap: 2px;
-	}
-	.moves button {
-		width: 1.25rem;
-		height: 1.25rem;
+	.remove {
 		display: grid;
 		place-items: center;
+		width: 1.4rem;
+		height: 1.4rem;
+		flex-shrink: 0;
+		border: 1px solid transparent;
+		background: transparent;
+		color: var(--text-4);
+	}
+	.remove:hover:not(:disabled) {
+		color: var(--text-1);
+		border-color: var(--line);
+		background: var(--surface-3);
+	}
+	.order-pool {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.3rem;
+	}
+	.order-pool button {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.32rem;
 		border: 1px solid var(--line);
-		background: var(--surface-2);
-		color: var(--text-3);
-		font-size: 0.62rem;
+		background: var(--surface-1);
+		color: var(--text-2);
+		padding: 0.32rem 0.45rem;
+		font-size: 0.64rem;
+		transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 	}
-	.moves button:disabled {
-		opacity: 0.25;
+	.order-pool button:hover:not(:disabled) {
+		color: var(--text-1);
+		border-color: color-mix(in oklab, var(--cat, var(--accent-1)) 48%, var(--line));
+		background: color-mix(in oklab, var(--cat, var(--accent-1)) 8%, var(--surface-2));
 	}
-	.submit-order {
-		width: 100%;
-		justify-content: center;
+	.order-pool .plus {
+		font-family: var(--font-mono);
+		font-size: 0.7rem;
+		color: var(--cat, var(--accent-1));
+	}
+	.order-pool .fi {
+		width: 1rem;
+		height: 0.72rem;
+		background-size: cover;
+		flex-shrink: 0;
+	}
+	.order-actions {
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		gap: 0.4rem;
+	}
+	.order-clear {
+		border: 1px solid var(--line);
+		background: transparent;
+		color: var(--text-4);
+		padding: 0.35rem 0.55rem;
+		font-size: 0.6rem;
+	}
+	.order-clear:hover:not(:disabled) {
+		color: var(--text-1);
+		border-color: var(--line-strong);
 	}
 	.feedback {
 		position: fixed;
@@ -1268,6 +1388,10 @@
 	.intro {
 		width: min(27rem, 100%);
 		padding: 1.2rem 1.25rem;
+		border-top: 2px solid color-mix(in oklab, var(--cat, var(--accent-1)) 62%, transparent);
+	}
+	.intro-cover {
+		margin: -1.2rem -1.25rem 0.95rem;
 	}
 	.intro h2 {
 		margin: 0.45rem 0 0.4rem;
@@ -1458,9 +1582,9 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.3rem;
-		border: 1px solid color-mix(in oklab, var(--accent-1) 45%, transparent);
-		background: color-mix(in oklab, var(--accent-1) 14%, var(--surface-2));
-		color: var(--accent-0);
+		border: 1px solid color-mix(in oklab, var(--cat, var(--accent-1)) 50%, transparent);
+		background: color-mix(in oklab, var(--cat, var(--accent-1)) 14%, var(--surface-2));
+		color: color-mix(in oklab, var(--cat, var(--accent-1)) 82%, var(--text-1));
 		padding: 0.42rem 0.7rem;
 		font-size: 0.68rem;
 	}
@@ -1469,6 +1593,10 @@
 		.exit span,
 		.score .label {
 			display: none;
+		}
+		.title-icon {
+			width: 1.65rem;
+			height: 1.65rem;
 		}
 		.prompt {
 			top: calc(var(--header-h) + 0.5rem);

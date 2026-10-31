@@ -1,20 +1,27 @@
 #!/usr/bin/env node
 /** Auditoria de acessibilidade com axe-core contra o preview. */
+import { existsSync } from 'node:fs';
 import { firefox } from 'playwright';
 import AxeBuilder from '@axe-core/playwright';
 
 const BASE = process.argv[2] ?? 'http://localhost:4173';
-const executablePath = `${process.env.HOME}/.cache/ms-playwright/firefox-1555/firefox/firefox`;
+const candidates = [
+	process.env.PLAYWRIGHT_FIREFOX_PATH,
+	`${process.env.HOME}/.cache/ms-playwright/firefox-1555/firefox/firefox`
+].filter(Boolean);
+const executablePath = candidates.find((candidate) => existsSync(candidate));
 const pages = [
 	['/', 'light'],
 	['/explore', 'light'],
 	['/explore?country=BRA&layer=economy', 'dark'],
-	['/explore?projection=flat', 'light'],
+	['/explore?layer=political&country=BRA', 'light'],
+	['/explore?projection=globe', 'dark'],
 	['/country/BRA', 'light'],
+	['/paises', 'light'],
 	['/play', 'dark'],
 	['/sobre', 'light']
 ];
-const browser = await firefox.launch({ executablePath });
+const browser = await firefox.launch(executablePath ? { executablePath } : {});
 let total = 0;
 
 for (const [url, theme] of pages) {

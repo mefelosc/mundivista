@@ -2,14 +2,52 @@
 	import TopBar from '#lib/components/navigation/TopBar.svelte';
 	import Icon from '#lib/components/ui/Icon.svelte';
 	import { brand } from '#lib/brand';
-	import { countries, indicatorKeys, retrievedAt } from '#lib/data/countries';
-	import { mapLayers } from '#lib/configurations/map-layers';
+	import { countries, indicatorKeys } from '#lib/data/countries';
 	import { games } from '#lib/engines/game-engine/registry';
+	import { mapLayers } from '#lib/configurations/map-layers';
 	import { worldOutline } from '#lib/data/world-silhouette';
-	import { snippets } from '#lib/data/snippets';
+	import { locale } from '#lib/locale.svelte';
+	import { t } from '#lib/i18n';
 
-	const featuredSnippets = snippets.filter((s) => s.countries.length).slice(0, 3);
-	const layerColors = ['var(--water-0)', 'var(--forest)', 'var(--water-1)', 'var(--accent-1)', 'var(--wine)', 'var(--text-3)'];
+	const text = $derived(locale.value);
+
+	const choices = $derived([
+		{
+			index: '01',
+			href: '/explore',
+			label: t('landing.explore', text),
+			desc: t('landing.exploreDesc', text),
+			icon: 'globe'
+		},
+		{
+			index: '02',
+			href: '/play',
+			label: t('landing.play', text),
+			desc: t('landing.playDesc', text),
+			icon: 'gamepad'
+		},
+		{
+			index: '03',
+			href: '/paises',
+			label: t('landing.countries', text),
+			desc: t('landing.countriesDesc', text),
+			icon: 'dossier'
+		},
+		{
+			index: '04',
+			href: '/sobre',
+			label: t('landing.about', text),
+			desc: t('landing.aboutDesc', text),
+			icon: 'info'
+		}
+	]);
+
+	const stats = $derived([
+		{ value: countries.length, label: t('landing.territories', text) },
+		{ value: indicatorKeys.length, label: t('landing.indicators', text) },
+		{ value: games.length, label: t('landing.games', text) },
+		{ value: mapLayers.length, label: t('landing.layers', text) }
+	]);
 </script>
 
 <svelte:head>
@@ -22,594 +60,313 @@
 
 <TopBar />
 
-<main id="conteudo">
-	<section class="hero">
-		<div class="hero-copy">
-			<span class="eyebrow">Atlas interativo · edição 2026</span>
-			<h1>O mundo inteiro,<br />em uma folha.</h1>
-			<p class="lede">
-				Um atlas que se lê com o dedo: fronteiras, relevo, população, economia e história
-				no mesmo mapa. Cada camada tem legenda, método e fonte.
-			</p>
-			<div class="hero-actions">
-				<a class="btn btn-accent" href="/explore">
-					<Icon name="globe" size={15} /> Abrir o atlas
-				</a>
-				<a class="btn" href="/play">
-					<Icon name="gamepad" size={15} /> Jogar com o mapa
-				</a>
-			</div>
-			<dl class="hero-stats">
-				<div><dt>territórios</dt><dd>{countries.length}</dd></div>
-				<div><dt>indicadores</dt><dd>{indicatorKeys.length}</dd></div>
-				<div><dt>jogos</dt><dd>{games.length}</dd></div>
-				<div><dt>camadas</dt><dd>{mapLayers.length}</dd></div>
-			</dl>
-		</div>
+<div class="portal" id="conteudo">
+	<div class="map-bg" aria-hidden="true">
+		<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">
+			<path d={worldOutline} />
+		</svg>
+	</div>
+	<div class="grain" aria-hidden="true"></div>
 
-		<figure class="globe">
-			<div class="globe-frame">
-				<span class="tick top"></span>
-				<span class="tick bottom"></span>
-				<span class="tick left"></span>
-				<span class="tick right"></span>
-				<svg viewBox="0 0 100 100" role="img" aria-label="Contorno do mapa-múndi">
-					<path class="land" d={worldOutline} />
-				</svg>
-				<span class="axis x"></span>
-				<span class="axis y"></span>
-				<span class="coord tl">180°O</span>
-				<span class="coord tr">180°L</span>
-				<span class="coord bl">60°S</span>
-				<span class="coord br">80°N</span>
+	<main>
+		<header class="hero">
+			<div class="kicker">
+				<span class="eyebrow">{t('landing.eyebrow', text)}</span>
+				<span class="line"></span>
+				<span class="edition">Natural Earth · World Bank</span>
 			</div>
-			<figcaption>
-				<span>Natural Earth 1:50m</span>
-				<span>Projeção equirretangular</span>
-				<span>Extração {retrievedAt}</span>
-			</figcaption>
-		</figure>
-	</section>
-
-	<section class="manifesto">
-		<div class="manifesto-lead">
-			<span class="eyebrow">Manifesto</span>
-			<h2>O mapa não é fundo.<br />É a interface.</h2>
-		</div>
-		<div class="principles">
-			<article>
-				<span>01</span>
-				<h3>Nada de dado inventado</h3>
-				<p>Lacuna aparece como “não disponível”. Todo número carrega ano, unidade e fonte verificável.</p>
-			</article>
-			<article>
-				<span>02</span>
-				<h3>Camadas com método</h3>
-				<p>Cada leitura visual tem legenda, nota de método e limites explícitos — inclusive fronteiras disputadas.</p>
-			</article>
-			<article>
-				<span>03</span>
-				<h3>Jogar é uma forma de ler</h3>
-				<p>{games.length} jogos usam a mesma base do atlas. A resposta certa sempre vem com explicação e link.</p>
-			</article>
-		</div>
-	</section>
-
-	<section class="features">
-		<a class="feature" href="/explore">
-			<span class="feature-icon"><Icon name="globe3d" size={22} /></span>
-			<div>
-				<span class="eyebrow">Atlas</span>
-				<h2>Seis camadas, um mundo</h2>
-				<p>Político, físico, demografia, economia, geopolítica e história. Globo 3D e relevo opcionais.</p>
-			</div>
-			<Icon name="arrowUpRight" size={16} />
-		</a>
-		<a class="feature" href="/country/BRA">
-			<span class="feature-icon"><Icon name="dossier" size={22} /></span>
-			<div>
-				<span class="eyebrow">Dossiês</span>
-				<h2>Um verbete por país</h2>
-				<p>{indicatorKeys.length} indicadores com série, comparação com a mediana mundial e fontes por seção.</p>
-			</div>
-			<Icon name="arrowUpRight" size={16} />
-		</a>
-		<a class="feature" href="/play">
-			<span class="feature-icon"><Icon name="gamepad" size={22} /></span>
-			<div>
-				<span class="eyebrow">Jogos</span>
-				<h2>{games.length} formas de errar</h2>
-				<p>Silhuetas, capitais, blocos, rankings e fronteiras. Desafio diário com seed determinístico.</p>
-			</div>
-			<Icon name="arrowUpRight" size={16} />
-		</a>
-	</section>
-
-	<section class="layers">
-		<header class="section-head">
-			<div>
-				<span class="eyebrow">Camadas</span>
-				<h2>Leituras do mesmo território</h2>
-			</div>
-			<a href="/explore">Abrir no mapa <Icon name="arrowRight" size={13} /></a>
+			<h1>
+				{t('landing.titleA', text)}<br />
+				<em>{t('landing.titleB', text)}</em>
+			</h1>
+			<p class="lede">{t('landing.lede', text)}</p>
 		</header>
-		<div class="layer-list">
-			{#each mapLayers as layer, i (layer.id)}
-				<a href={`/explore?layer=${layer.id}`} style:--cat={layerColors[i]}>
-					<span class="num">{layer.index}</span>
-					<span class="glyph"><Icon name={layer.icon} size={17} /></span>
-					<strong>{layer.label}</strong>
-					<span class="desc">{layer.description}</span>
-					<Icon name="arrowRight" size={14} />
+
+		<nav class="choices" aria-label={t('nav.home', text)}>
+			{#each choices as choice (choice.href)}
+				<a class="choice" href={choice.href}>
+					<span class="index">{choice.index}</span>
+					<span class="body">
+						<span class="label">{choice.label}</span>
+						<span class="desc">{choice.desc}</span>
+					</span>
+					<span class="arrow"><Icon name="arrowUpRight" size={20} /></span>
 				</a>
 			{/each}
-		</div>
-	</section>
-
-	<section class="snippets">
-		<header class="section-head">
-			<div>
-				<span class="eyebrow">Leituras</span>
-				<h2>Comece por uma curiosidade</h2>
-			</div>
-		</header>
-		<div class="snippet-grid">
-			{#each featuredSnippets as snippet (snippet.id)}
-				<article>
-					<span class="eyebrow">{snippet.category}</span>
-					<h3>{snippet.title}</h3>
-					<p>{snippet.body}</p>
-					<a href={snippet.sourceUrl} target="_blank" rel="noopener noreferrer">
-						{snippet.source} <Icon name="external" size={10} />
-					</a>
-				</article>
-			{/each}
-		</div>
-	</section>
-
-	<section class="closing">
-		<span class="eyebrow">Próxima leitura</span>
-		<h2>Escolha um país.<br />O mapa faz o resto.</h2>
-		<div class="closing-actions">
-			<a class="btn btn-accent" href="/explore">Explorar o mundo <Icon name="arrowRight" size={14} /></a>
-			<a class="link" href="/sobre">Fontes, licenças e limitações</a>
-		</div>
-	</section>
-
-	<footer>
-		<span>{brand.name} · {brand.tagline}</span>
-		<nav aria-label="Rodapé">
-			<a href="/explore">Atlas</a>
-			<a href="/play">Jogos</a>
-			<a href="/sobre">Fontes</a>
 		</nav>
-	</footer>
-</main>
+
+		<footer class="portal-foot">
+			<dl class="stats">
+				{#each stats as stat (stat.label)}
+					<div>
+						<dt>{stat.label}</dt>
+						<dd>{stat.value}</dd>
+					</div>
+				{/each}
+			</dl>
+			<div class="foot-links">
+				<span>{t('landing.footer', text)}</span>
+				<a href="/sobre">{t('landing.sources', text)}</a>
+			</div>
+		</footer>
+	</main>
+</div>
 
 <style>
-	main {
+	.portal {
 		position: relative;
-		z-index: 1;
-		padding: calc(var(--header-h) + 2.6rem) clamp(1rem, 5vw, 4rem) 2rem;
-		max-width: 80rem;
-		margin: 0 auto;
+		min-height: 100dvh;
+		overflow: hidden;
+		background:
+			radial-gradient(120% 100% at 50% 0%, color-mix(in oklab, var(--accent-1) 8%, transparent), transparent 55%),
+			var(--surface-0);
 	}
-	.hero {
-		display: grid;
-		grid-template-columns: minmax(0, 1.05fr) minmax(22rem, 0.95fr);
-		gap: clamp(2rem, 6vw, 5rem);
-		align-items: center;
-		padding-bottom: 3rem;
-		border-bottom: 1px solid var(--line-strong);
+	.map-bg {
+		position: fixed;
+		inset: -6% -4%;
+		z-index: 0;
+		pointer-events: none;
+		opacity: 0.62;
+		animation: map-drift 26s ease-in-out infinite alternate;
 	}
-	h1 {
-		margin: 0.6rem 0 0.9rem;
-		font-family: var(--font-display);
-		font-size: clamp(3.1rem, 7vw, 5.8rem);
-		font-weight: 600;
-		line-height: 0.94;
-		letter-spacing: -0.045em;
+	.map-bg svg {
+		width: 100%;
+		height: 100%;
 	}
-	.lede {
-		max-width: 33rem;
-		margin: 0 0 1.3rem;
-		font-size: 0.92rem;
-		line-height: 1.65;
-		color: var(--text-3);
+	.map-bg path {
+		fill: color-mix(in oklab, var(--accent-1) 5%, transparent);
+		stroke: color-mix(in oklab, var(--accent-1) 30%, var(--line-strong));
+		stroke-width: 0.14;
+		vector-effect: non-scaling-stroke;
 	}
-	.hero-actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem;
-	}
-	.hero-stats {
-		display: flex;
-		gap: 2rem;
-		margin: 2rem 0 0;
-		padding-top: 1rem;
-		border-top: 1px solid var(--line);
-	}
-	.hero-stats div {
-		display: flex;
-		flex-direction: column-reverse;
-		gap: 0.15rem;
-	}
-	.hero-stats dt {
-		font-family: var(--font-mono);
-		font-size: 0.44rem;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		color: var(--text-4);
-	}
-	.hero-stats dd {
-		margin: 0;
-		font-family: var(--font-display);
-		font-size: 1.5rem;
-		font-weight: 550;
-		line-height: 1;
-	}
-	.globe {
-		margin: 0;
-	}
-	.globe-frame {
-		position: relative;
-		aspect-ratio: 1;
-		border: 1px solid var(--line-strong);
+	.grain {
+		position: fixed;
+		inset: 0;
+		z-index: 0;
+		pointer-events: none;
 		background-image:
 			linear-gradient(var(--line) 1px, transparent 1px),
 			linear-gradient(90deg, var(--line) 1px, transparent 1px);
-		background-size: 12.5% 12.5%;
-		background-color: var(--surface-1);
-		overflow: hidden;
+		background-size: 80px 80px;
+		mask-image: radial-gradient(80% 70% at 50% 45%, transparent 35%, #000 100%);
+		opacity: 0.35;
 	}
-	.globe-frame::before {
-		content: '';
-		position: absolute;
-		inset: 0;
-		background: radial-gradient(circle at 50% 50%, transparent 48%, color-mix(in oklab, var(--surface-0) 45%, transparent) 100%);
-		pointer-events: none;
-	}
-	.globe-frame svg {
-		position: absolute;
-		inset: 13% 10%;
-		width: 80%;
-		height: 74%;
-	}
-	.land {
-		fill: color-mix(in oklab, var(--accent-1) 38%, var(--surface-2));
-		stroke: var(--accent-0);
-		stroke-width: 0.35;
-		vector-effect: non-scaling-stroke;
-	}
-	.axis {
-		position: absolute;
-		background: var(--line);
-	}
-	.axis.x {
-		left: 7%;
-		right: 7%;
-		top: 50%;
-		height: 1px;
-	}
-	.axis.y {
-		top: 7%;
-		bottom: 7%;
-		left: 50%;
-		width: 1px;
-	}
-	.tick {
-		position: absolute;
-		background: var(--line-strong);
-	}
-	.tick.top,
-	.tick.bottom {
-		left: 50%;
-		width: 1px;
-		height: 8px;
-	}
-	.tick.top {
-		top: 0;
-	}
-	.tick.bottom {
-		bottom: 0;
-	}
-	.tick.left,
-	.tick.right {
-		top: 50%;
-		height: 1px;
-		width: 8px;
-	}
-	.tick.left {
-		left: 0;
-	}
-	.tick.right {
-		right: 0;
-	}
-	.coord {
-		position: absolute;
-		font-family: var(--font-mono);
-		font-size: 0.4rem;
-		letter-spacing: 0.06em;
-		color: var(--text-4);
-	}
-	.coord.tl {
-		top: 0.4rem;
-		left: 0.5rem;
-	}
-	.coord.tr {
-		top: 0.4rem;
-		right: 0.5rem;
-	}
-	.coord.bl {
-		bottom: 0.4rem;
-		left: 0.5rem;
-	}
-	.coord.br {
-		bottom: 0.4rem;
-		right: 0.5rem;
-	}
-	.globe figcaption {
-		display: flex;
-		justify-content: space-between;
-		gap: 0.5rem;
-		padding-top: 0.35rem;
-		font-family: var(--font-mono);
-		font-size: 0.42rem;
-		color: var(--text-4);
-	}
-	.manifesto {
-		display: grid;
-		grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
-		gap: clamp(2rem, 6vw, 5rem);
-		padding: 3rem 0;
-		border-bottom: 1px solid var(--line-strong);
-	}
-	.manifesto h2,
-	.section-head h2,
-	.closing h2 {
-		margin: 0.5rem 0 0;
-		font-family: var(--font-display);
-		font-size: clamp(1.7rem, 3.2vw, 2.6rem);
-		font-weight: 600;
-		line-height: 1.05;
-	}
-	.principles {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 1.2rem;
-	}
-	.principles article {
-		padding-top: 0.4rem;
-		border-top: 1px solid var(--line-strong);
-	}
-	.principles span {
-		font-family: var(--font-mono);
-		font-size: 0.5rem;
-		color: var(--accent-1);
-	}
-	.principles h3 {
-		margin: 0.4rem 0 0.35rem;
-		font-family: var(--font-display);
-		font-size: 1rem;
-		font-weight: 600;
-	}
-	.principles p {
-		margin: 0;
-		font-size: 0.64rem;
-		line-height: 1.55;
-		color: var(--text-3);
-	}
-	.features {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 0.8rem;
-		padding: 2.4rem 0;
-		border-bottom: 1px solid var(--line-strong);
-	}
-	.feature {
+	main {
+		position: relative;
+		z-index: 1;
+		width: min(78rem, calc(100% - 2rem));
+		margin: 0 auto;
+		padding: calc(var(--header-h) + clamp(2rem, 7vh, 5rem)) 0 1.4rem;
+		min-height: 100dvh;
 		display: flex;
 		flex-direction: column;
-		gap: 0.9rem;
-		padding: 1rem;
-		border: 1px solid var(--line);
-		background: var(--surface-1);
-		text-decoration: none;
-		color: inherit;
-		transition: border-color 0.18s ease, background 0.18s ease;
 	}
-	.feature:hover {
-		border-color: var(--line-strong);
-		background: var(--surface-2);
+	.hero {
+		max-width: 62rem;
 	}
-	.feature-icon {
-		display: grid;
-		place-items: center;
-		width: 2.2rem;
-		height: 2.2rem;
-		border: 1px solid var(--line);
-		color: var(--accent-0);
+	.kicker {
+		display: flex;
+		align-items: center;
+		gap: 0.7rem;
 	}
-	.feature h2 {
-		margin: 0.35rem 0 0.3rem;
+	.kicker .eyebrow {
+		font-size: 0.68rem;
+	}
+	.kicker .line {
+		width: 3rem;
+		height: 1px;
+		background: var(--line-strong);
+	}
+	.edition {
+		font-family: var(--font-mono);
+		font-size: 0.58rem;
+		letter-spacing: 0.04em;
+		color: var(--text-4);
+	}
+	h1 {
+		margin: 0.7rem 0 0;
 		font-family: var(--font-display);
-		font-size: 1.2rem;
+		font-size: clamp(3.6rem, 9vw, 8.4rem);
 		font-weight: 600;
+		line-height: 0.82;
+		letter-spacing: -0.055em;
+		text-transform: uppercase;
+		color: var(--text-1);
 	}
-	.feature p {
-		margin: 0;
-		font-size: 0.64rem;
+	h1 em {
+		font-style: italic;
+		font-weight: 500;
+		color: color-mix(in oklab, var(--accent-1) 82%, var(--text-1));
+	}
+	.lede {
+		max-width: 34rem;
+		margin: 1rem 0 0;
+		font-size: 1rem;
 		line-height: 1.55;
 		color: var(--text-3);
 	}
-	.feature > :global(svg) {
+	.choices {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		margin-top: clamp(1.8rem, 5vh, 3.2rem);
+		border-top: 1px solid var(--line-strong);
+	}
+	.choice {
+		display: grid;
+		grid-template-columns: 2.4rem 1fr 2.8rem;
+		align-items: center;
+		gap: 0.8rem;
+		padding: clamp(0.9rem, 2.2vh, 1.35rem) 1rem;
+		border-bottom: 1px solid var(--line);
+		text-decoration: none;
+		color: var(--text-1);
+		transition: background 0.18s ease, padding 0.18s ease;
+	}
+	.choice:nth-child(odd) {
+		border-right: 1px solid var(--line);
+	}
+	.choice:hover,
+	.choice:focus-visible {
+		background: color-mix(in oklab, var(--accent-1) 7%, transparent);
+		padding-left: 1.4rem;
+	}
+	.choice .index {
+		font-family: var(--font-mono);
+		font-size: 0.66rem;
+		color: var(--accent-1);
+	}
+	.body {
+		display: flex;
+		flex-direction: column;
+		gap: 0.18rem;
+		min-width: 0;
+	}
+	.label {
+		font-family: var(--font-display);
+		font-size: clamp(1.7rem, 3.2vw, 2.7rem);
+		font-weight: 600;
+		line-height: 0.95;
+		letter-spacing: -0.03em;
+		text-transform: uppercase;
+	}
+	.desc {
+		font-size: 0.8rem;
+		line-height: 1.4;
+		color: var(--text-3);
+	}
+	.arrow {
+		display: grid;
+		place-items: center;
+		width: 2.6rem;
+		height: 2.6rem;
+		border: 1px solid var(--line-strong);
+		border-radius: 50%;
+		color: var(--text-3);
+		transition: transform 0.2s var(--ease-out-soft), color 0.2s ease, border-color 0.2s ease;
+	}
+	.choice:hover .arrow {
+		transform: translate(2px, -2px);
+		color: var(--accent-0);
+		border-color: var(--accent-1);
+	}
+	.portal-foot {
 		margin-top: auto;
-		color: var(--text-4);
-	}
-	.layers,
-	.snippets {
-		padding: 2.4rem 0;
-		border-bottom: 1px solid var(--line-strong);
-	}
-	.section-head {
+		padding-top: 1.4rem;
 		display: flex;
 		align-items: flex-end;
 		justify-content: space-between;
-		gap: 1rem;
-		margin-bottom: 1.1rem;
+		gap: 1.5rem;
 	}
-	.section-head a {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.25rem;
-		font-family: var(--font-mono);
-		font-size: 0.5rem;
-		color: var(--text-3);
-		text-decoration: none;
-	}
-	.section-head a:hover {
-		color: var(--accent-0);
-	}
-	.layer-list {
+	.stats {
 		display: flex;
-		flex-direction: column;
+		gap: 1.8rem;
+		margin: 0;
 	}
-	.layer-list a {
+	.stats div {
 		display: flex;
-		align-items: center;
-		gap: 0.7rem;
-		padding: 0.6rem 0.2rem;
-		border-bottom: 1px solid var(--line);
-		text-decoration: none;
-		color: var(--text-2);
-		transition: background 0.15s ease, padding 0.15s ease;
+		flex-direction: column-reverse;
+		gap: 0.1rem;
 	}
-	.layer-list a:hover {
-		background: var(--surface-1);
-		padding-left: 0.5rem;
-	}
-	.layer-list .num {
+	.stats dt {
 		font-family: var(--font-mono);
-		font-size: 0.5rem;
+		font-size: 0.58rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
 		color: var(--text-4);
-		width: 1.4rem;
 	}
-	.layer-list .glyph {
-		color: var(--cat);
-		display: grid;
-		place-items: center;
-	}
-	.layer-list strong {
-		min-width: 7rem;
+	.stats dd {
+		margin: 0;
 		font-family: var(--font-display);
-		font-size: 0.95rem;
+		font-size: 1.5rem;
 		font-weight: 600;
-	}
-	.layer-list .desc {
-		flex: 1;
-		font-size: 0.62rem;
-		color: var(--text-3);
-	}
-	.layer-list a > :global(svg) {
-		color: var(--text-4);
-	}
-	.snippet-grid {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 0.7rem;
-	}
-	.snippet-grid article {
-		padding: 0.85rem;
-		border: 1px solid color-mix(in oklab, var(--water-0) 30%, transparent);
-		background: color-mix(in oklab, var(--water-0) 6%, transparent);
-	}
-	.snippet-grid h3 {
-		margin: 0.32rem 0 0.35rem;
-		font-family: var(--font-display);
-		font-size: 1.02rem;
-		font-weight: 600;
-	}
-	.snippet-grid p {
-		margin: 0 0 0.4rem;
-		font-size: 0.62rem;
-		line-height: 1.55;
-		color: var(--text-2);
-	}
-	.snippet-grid a {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.2rem;
-		font-size: 0.5rem;
-		color: var(--water-1);
-		text-decoration: none;
-	}
-	.closing {
-		padding: 3.2rem 0 2.4rem;
-	}
-	.closing-actions {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 1rem;
-		margin-top: 1.2rem;
-	}
-	.link {
-		font-size: 0.66rem;
-		color: var(--text-3);
-	}
-	footer {
-		display: flex;
-		justify-content: space-between;
-		gap: 1rem;
-		padding-top: 1rem;
-		border-top: 1px solid var(--line);
-		font-family: var(--font-mono);
-		font-size: 0.48rem;
-		color: var(--text-4);
-	}
-	footer nav {
-		display: flex;
-		gap: 1rem;
-	}
-	footer a {
-		color: var(--text-3);
-		text-decoration: none;
-	}
-	footer a:hover {
+		line-height: 1;
 		color: var(--text-1);
 	}
-	@media (max-width: 980px) {
-		.hero {
-			grid-template-columns: 1fr;
+	.foot-links {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: 0.3rem;
+		font-family: var(--font-mono);
+		font-size: 0.58rem;
+		color: var(--text-4);
+		text-align: right;
+	}
+	.foot-links a {
+		color: var(--text-3);
+		text-decoration: none;
+	}
+	.foot-links a:hover {
+		color: var(--accent-0);
+	}
+	@keyframes map-drift {
+		from {
+			transform: scale(1) translate3d(0, 0, 0);
 		}
-		.globe {
-			max-width: 24rem;
-		}
-		.manifesto {
-			grid-template-columns: 1fr;
-			gap: 1.5rem;
+		to {
+			transform: scale(1.035) translate3d(-1.2%, -0.8%, 0);
 		}
 	}
 	@media (max-width: 760px) {
 		main {
-			padding: calc(var(--header-h) + 1.6rem) 1rem 1.5rem;
+			width: calc(100% - 1.2rem);
+			padding-top: calc(var(--header-h) + 1.6rem);
 		}
-		.features,
-		.principles,
-		.snippet-grid {
+		h1 {
+			font-size: clamp(3.2rem, 16vw, 4.8rem);
+		}
+		.choices {
 			grid-template-columns: 1fr;
 		}
-		.hero-stats {
-			gap: 1.4rem;
+		.choice:nth-child(odd) {
+			border-right: 0;
 		}
-		.layer-list .desc {
-			display: none;
+		.choice {
+			grid-template-columns: 2rem 1fr 2.4rem;
+			padding: 0.95rem 0.4rem;
 		}
-		.layer-list strong {
-			flex: 1;
-			min-width: 0;
+		.choice:hover {
+			padding-left: 0.6rem;
 		}
-		footer {
+		.label {
+			font-size: clamp(1.6rem, 8vw, 2.1rem);
+		}
+		.desc {
+			font-size: 0.74rem;
+		}
+		.portal-foot {
 			flex-direction: column;
+			align-items: flex-start;
+			gap: 1rem;
+		}
+		.foot-links {
+			align-items: flex-start;
+			text-align: left;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.map-bg {
+			animation: none;
 		}
 	}
 </style>

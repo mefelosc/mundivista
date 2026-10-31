@@ -21,7 +21,7 @@ function apply() {
 	root.dataset.theme = resolved;
 	root.style.colorScheme = resolved;
 	const meta = document.querySelector('meta[name="theme-color"]');
-	if (meta) meta.setAttribute('content', resolved === 'dark' ? '#12100d' : '#f4efe4');
+	if (meta) meta.setAttribute('content', resolved === 'dark' ? '#0f1411' : '#f3f6f2');
 }
 
 function start() {

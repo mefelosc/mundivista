@@ -18,6 +18,7 @@ import { worldOutline } from './world-silhouette';
 import { timelineEvents, TIMELINE_END, TIMELINE_START } from './timeline';
 import { disputedCodes, disputedTerritories } from './disputed';
 import { marineLabels } from './marine-labels';
+import { hasSubdivisions, subdivisionCountries } from './subdivisions';
 
 describe('integridade dos dados', () => {
 	it('carrega países com identificadores e rótulos', () => {
@@ -134,6 +135,26 @@ describe('integridade dos dados', () => {
 		expect(getCountry('SSD')?.code).toBe('SDS');
 	});
 
+	it('códigos históricos do Banco Mundial são resolvidos', () => {
+		for (const code of ['COD', 'NOR', 'ROU', 'TLS', 'PSX', 'NRU']) {
+			expect(getCountry(code)?.indicators.population, code).toBeTruthy();
+		}
+	});
+
+	it('Somalilândia não herda os dados da Somália', () => {
+		const somaliland = getCountry('SOL');
+		const somalia = getCountry('SOM');
+		expect(somaliland?.capital).toBe('Hargeisa');
+		expect(somaliland?.areaKm2).not.toBe(somalia?.areaKm2);
+		expect(somaliland?.indicators.population).toBeUndefined();
+		expect(somaliland?.unMember).toBe(false);
+	});
+
+	it('membros da ONU têm população, exceto o Vaticano', () => {
+		const missing = countries.filter((country) => country.unMember && !country.indicators.population);
+		expect(missing.map((country) => country.code)).toEqual(['VAT']);
+	});
+
 	it('rótulos marinhos têm nome, coordenadas e zoom', () => {
 		expect(marineLabels.length).toBeGreaterThan(40);
 		for (const label of marineLabels) {
@@ -144,6 +165,14 @@ describe('integridade dos dados', () => {
 			expect(label.lng).toBeLessThanOrEqual(180);
 			expect(label.minZoom).toBeGreaterThanOrEqual(0);
 		}
+	});
+
+	it('tem unidades administrativas geradas por país', () => {
+		expect(subdivisionCountries.length).toBeGreaterThan(150);
+		expect(hasSubdivisions('BRA')).toBe(true);
+		expect(hasSubdivisions('USA')).toBe(true);
+		expect(hasSubdivisions('FRA')).toBe(true);
+		expect(hasSubdivisions('ATA')).toBe(false);
 	});
 
 	it('territórios dependentes apontam para o soberano', () => {

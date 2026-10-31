@@ -35,6 +35,18 @@
 			note: 'Hierarquia costeira do mapa político e físico.'
 		},
 		{
+			name: 'Natural Earth — unidades administrativas (1:10m)',
+			url: 'https://www.naturalearthdata.com/downloads/10m-cultural-vectors/',
+			license: 'Domínio público',
+			note: 'Estados, províncias e distritos de primeiro nível exibidos ao selecionar um país na camada política. Geometria simplificada; o nível disponível varia por país.'
+		},
+		{
+			name: 'Curadoria Mundivista — fatos complementares',
+			url: 'https://www.britannica.com/place/Somaliland',
+			license: 'Fontes citadas no dossiê',
+			note: 'Capital, área, moeda e línguas da Somalilândia e moeda da Micronésia. Usado apenas quando mledoze/World Bank não cobrem o território; a origem aparece no metadado do dossiê.'
+		},
+		{
 			name: 'AWS Terrain Tiles (Mapzen/Tilezen)',
 			url: 'https://registry.opendata.aws/terrain-tiles/',
 			license: 'Dados públicos; ver termos do projeto',
@@ -458,7 +470,7 @@
 		align-items: center;
 		gap: 0.2rem;
 		font-size: 0.54rem;
-		color: var(--water-1);
+		color: var(--accent-0);
 		text-decoration: none;
 	}
 	.footnote {

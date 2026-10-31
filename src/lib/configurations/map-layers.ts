@@ -33,6 +33,8 @@ export interface LayerConfig {
 	showCoastline?: boolean;
 	/** Hachura em territórios com estatuto disputado. */
 	showDisputed?: boolean;
+	/** Unidades administrativas de primeiro nível ao selecionar um país. */
+	showSubdivisions?: boolean;
 	legend:
 		| {
 				type: 'gradient';
@@ -84,22 +86,50 @@ const CONTINENTS_PT = [
 ] as const;
 
 const POLITICAL_LIGHT: LegendSwatch[] = [
-	{ label: 'América do Sul', color: '#d5c095' },
-	{ label: 'América do Norte', color: '#e8dcc2' },
-	{ label: 'Europa', color: '#cbb692' },
-	{ label: 'África', color: '#e4cc92' },
-	{ label: 'Ásia', color: '#dcc8a2' },
-	{ label: 'Oceania', color: '#d8d3b4' }
+	{ label: 'América do Sul', color: '#c3dccb' },
+	{ label: 'América do Norte', color: '#cfdeea' },
+	{ label: 'Europa', color: '#ddd2e8' },
+	{ label: 'África', color: '#e6cdd7' },
+	{ label: 'Ásia', color: '#dce6c4' },
+	{ label: 'Oceania', color: '#c7e3dd' }
 ];
 
 const POLITICAL_DARK: LegendSwatch[] = [
-	{ label: 'América do Sul', color: '#2a2b22' },
-	{ label: 'América do Norte', color: '#2e2c22' },
-	{ label: 'Europa', color: '#332c28' },
-	{ label: 'África', color: '#332a1e' },
-	{ label: 'Ásia', color: '#2b2e25' },
-	{ label: 'Oceania', color: '#2d2e26' }
+	{ label: 'América do Sul', color: '#203a2d' },
+	{ label: 'América do Norte', color: '#1f2c3a' },
+	{ label: 'Europa', color: '#302a3a' },
+	{ label: 'África', color: '#3a2832' },
+	{ label: 'Ásia', color: '#303a24' },
+	{ label: 'Oceania', color: '#1f3a38' }
 ];
+
+/** Mapa base: sem camada temática, sem coroplético. É o estado inicial do atlas. */
+export const standardLayer: LayerConfig = {
+	id: 'standard',
+	index: '00',
+	label: 'Padrão',
+	short: 'Padrão',
+	description: 'Mapa base com fronteiras, litoral e nomes. Escolha uma camada para ler dados.',
+	icon: 'globe',
+	sections: ['identity', 'neighbors'],
+	showCoastline: true,
+	legend: {
+		type: 'none',
+		note: 'Nenhuma camada temática ativa. Escolha uma camada no filtro para sobrepor dados ao mapa.'
+	},
+	colors: {
+		light: {
+			palette: ['#e4e9dd'],
+			noData: '#e4e9dd',
+			land: { fill: '#e4e9dd', stroke: '#7b8c80', hover: '#d9e2d8' }
+		},
+		dark: {
+			palette: ['#1a221c'],
+			noData: '#1a221c',
+			land: { fill: '#1a221c', stroke: '#66786c', hover: '#26332a' }
+		}
+	}
+};
 
 export const mapLayers: LayerConfig[] = [
 	{
@@ -107,10 +137,11 @@ export const mapLayers: LayerConfig[] = [
 		index: '01',
 		label: 'Político',
 		short: 'Político',
-		description: 'Fronteiras, capitais, vizinhos e continentes.',
+		description: 'Fronteiras, capitais, vizinhos, continentes, unidades e estados.',
 		icon: 'border',
 		sections: ['identity', 'neighbors'],
 		showCoastline: true,
+		showSubdivisions: true,
 		legend: {
 			type: 'categorical',
 			items: POLITICAL_LIGHT,
@@ -118,15 +149,15 @@ export const mapLayers: LayerConfig[] = [
 		},
 		colors: {
 			light: {
-				palette: ['#d5c095', '#e8dcc2', '#cbb692', '#e4cc92', '#dcc8a2', '#d8d3b4'],
-				noData: '#e2d6bf',
-				land: { fill: '#e2d6bf', stroke: '#8a7756', hover: '#d3c2a2' },
+				palette: ['#c3dccb', '#cfdeea', '#ddd2e8', '#e6cdd7', '#dce6c4', '#c7e3dd'],
+				noData: '#e4e9dd',
+				land: { fill: '#e4e9dd', stroke: '#7b8c80', hover: '#d9e2d8' },
 				tints: POLITICAL_LIGHT
 			},
 			dark: {
-				palette: ['#2a2b22', '#2e2c22', '#332c28', '#332a1e', '#2b2e25', '#2d2e26'],
-				noData: '#26231c',
-				land: { fill: '#26231c', stroke: '#6d6250', hover: '#352f24' },
+				palette: ['#203a2d', '#1f2c3a', '#302a3a', '#3a2832', '#303a24', '#1f3a38'],
+				noData: '#1a221c',
+				land: { fill: '#1a221c', stroke: '#66786c', hover: '#26332a' },
 				tints: POLITICAL_DARK
 			}
 		}
@@ -144,23 +175,23 @@ export const mapLayers: LayerConfig[] = [
 		legend: {
 			type: 'categorical',
 			items: [
-				{ label: 'Relevo sombreado', color: '#8f7355' },
-				{ label: 'Água', color: '#4f8ea1' },
-				{ label: 'Litoral', color: '#6b5940' },
-				{ label: 'Fronteira', color: '#a1906f' }
+				{ label: 'Relevo sombreado', color: '#86a37a' },
+				{ label: 'Água', color: '#4f8894' },
+				{ label: 'Litoral', color: '#5c6f62' },
+				{ label: 'Fronteira', color: '#a7b6a9' }
 			],
 			note: 'O relevo sombreado vem de um modelo digital público (AWS Terrain Tiles) e depende da rede. As cores dos países não representam elevação.'
 		},
 		colors: {
 			light: {
-				palette: ['#c8d2b4', '#b6c29c', '#c8b98c', '#c2a172', '#a9855f', '#8b6a4c'],
-				noData: '#d8d1bc',
-				land: { fill: '#d8d1bc', stroke: '#8d7d61', hover: '#cabf9f' }
+				palette: ['#dbe6cf', '#c6d8b6', '#c2d4a8', '#a8c095', '#87a87b', '#678c66'],
+				noData: '#e0e7d8',
+				land: { fill: '#e4e9dd', stroke: '#7b8c80', hover: '#d5e0d2' }
 			},
 			dark: {
-				palette: ['#232b22', '#2b3527', '#3b3b26', '#4a3d26', '#5c4730', '#6f5136'],
-				noData: '#20241d',
-				land: { fill: '#20241d', stroke: '#6e6550', hover: '#2f3527' }
+				palette: ['#1b2b20', '#243a28', '#2e4a31', '#3e5c3b', '#537046', '#6d8a56'],
+				noData: '#1a221c',
+				land: { fill: '#1a221c', stroke: '#66786c', hover: '#24322a' }
 			}
 		}
 	},
@@ -184,14 +215,14 @@ export const mapLayers: LayerConfig[] = [
 		},
 		colors: {
 			light: {
-				palette: ['#e6e0d0', '#c6d6cb', '#9bbfb4', '#6b9f96', '#3c7b77', '#1c5759'],
-				noData: '#e0d9c8',
-				land: { fill: '#e0d9c8', stroke: '#8d7d61', hover: '#cfc6ae' }
+				palette: ['#e5efe9', '#c5ded5', '#9ac8ba', '#68a798', '#3d8478', '#1e625a'],
+				noData: '#e0e7df',
+				land: { fill: '#e4e9dd', stroke: '#7b8c80', hover: '#d5e0d2' }
 			},
 			dark: {
-				palette: ['#1c211d', '#23403b', '#2e625c', '#44867c', '#68a99a', '#9ed3c2'],
-				noData: '#211f19',
-				land: { fill: '#211f19', stroke: '#6d6250', hover: '#302d24' }
+				palette: ['#18231d', '#1e352d', '#294a40', '#35695c', '#4f9080', '#7cc0ad'],
+				noData: '#1a221c',
+				land: { fill: '#1a221c', stroke: '#66786c', hover: '#24322a' }
 			}
 		}
 	},
@@ -214,14 +245,14 @@ export const mapLayers: LayerConfig[] = [
 		},
 		colors: {
 			light: {
-				palette: ['#e9e1ce', '#d8c49c', '#c4a268', '#a97c42', '#855a25', '#5f3f13'],
-				noData: '#e2dac8',
-				land: { fill: '#e2dac8', stroke: '#8d7d61', hover: '#d1c5a9' }
+				palette: ['#f0e8ec', '#e1cbd4', '#cda4b3', '#b67c92', '#93566f', '#6b344b'],
+				noData: '#e6e2e0',
+				land: { fill: '#e4e9dd', stroke: '#7b8c80', hover: '#d5e0d2' }
 			},
 			dark: {
-				palette: ['#211d16', '#3c301c', '#5d4726', '#826134', '#ac8946', '#d6b268'],
-				noData: '#201d16',
-				land: { fill: '#201d16', stroke: '#6d6250', hover: '#2e281c' }
+				palette: ['#22181d', '#33222a', '#4a2f3a', '#653e4f', '#87566b', '#b07f95'],
+				noData: '#1a221c',
+				land: { fill: '#1a221c', stroke: '#66786c', hover: '#24322a' }
 			}
 		}
 	},
@@ -242,14 +273,14 @@ export const mapLayers: LayerConfig[] = [
 		},
 		colors: {
 			light: {
-				palette: ['#e2d9c6'],
-				noData: '#e2d9c6',
-				land: { fill: '#e2d9c6', stroke: '#8d7d61', hover: '#d2c6ad' }
+				palette: ['#e4e9dd'],
+				noData: '#e4e9dd',
+				land: { fill: '#e4e9dd', stroke: '#7b8c80', hover: '#d9e2d8' }
 			},
 			dark: {
-				palette: ['#24211a'],
-				noData: '#24211a',
-				land: { fill: '#24211a', stroke: '#6d6250', hover: '#332e23' }
+				palette: ['#1a221c'],
+				noData: '#1a221c',
+				land: { fill: '#1a221c', stroke: '#66786c', hover: '#26332a' }
 			}
 		}
 	},
@@ -269,21 +300,21 @@ export const mapLayers: LayerConfig[] = [
 		},
 		colors: {
 			light: {
-				palette: ['#e5d9c2'],
-				noData: '#e5d9c2',
-				land: { fill: '#e5d9c2', stroke: '#8d7d61', hover: '#d6c6a8' }
+				palette: ['#e4e9dd'],
+				noData: '#e4e9dd',
+				land: { fill: '#e4e9dd', stroke: '#7b8c80', hover: '#d9e2d8' }
 			},
 			dark: {
-				palette: ['#251f18'],
-				noData: '#251f18',
-				land: { fill: '#251f18', stroke: '#6d6250', hover: '#352c20' }
+				palette: ['#1a221c'],
+				noData: '#1a221c',
+				land: { fill: '#1a221c', stroke: '#66786c', hover: '#26332a' }
 			}
 		}
 	}
 ];
 
-export const layerById = new Map(mapLayers.map((l) => [l.id, l]));
-export const defaultLayer = mapLayers[0];
+export const layerById = new Map([standardLayer, ...mapLayers].map((l) => [l.id, l]));
+export const defaultLayer = standardLayer;
 
 export function getLayer(id: LayerId, theme: ResolvedTheme = 'light'): ResolvedLayer {
 	const base = layerById.get(id) ?? defaultLayer;

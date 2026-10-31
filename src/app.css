@@ -1,7 +1,10 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/inter';
-@import '@fontsource-variable/fraunces';
-@import '@fontsource-variable/jetbrains-mono';
+@import '@fontsource-variable/instrument-sans';
+@import '@fontsource-variable/newsreader/opsz.css';
+@import '@fontsource-variable/newsreader/opsz-italic.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/ibm-plex-mono/600.css';
 @import 'flag-icons/css/flag-icons.min.css';
 @import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -12,9 +15,9 @@
  */
 
 @theme {
-	--font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-	--font-display: 'Fraunces Variable', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
-	--font-mono: 'JetBrains Mono Variable', ui-monospace, 'SFMono-Regular', monospace;
+	--font-sans: 'Instrument Sans Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--font-display: 'Newsreader Variable', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+	--font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
 
 	--color-ink-950: var(--surface-0);
 	--color-ink-900: var(--surface-1);
@@ -52,39 +55,40 @@
 	:root {
 		color-scheme: light;
 		--header-h: 3.5rem;
-		--rail-w: 8.6rem;
-		--sheet-w: 27.5rem;
+		--rail-w: 11rem;
+		--sheet-w: 30rem;
 
 		/* Papel e tinta — modo claro (padrão) */
-		--surface-0: #f4efe4;
-		--surface-1: #f0e9db;
-		--surface-2: #f7f2e8;
-		--surface-3: #eee5d3;
-		--surface-4: #e6dbc7;
-		--surface-5: #ddd0b8;
-		--text-1: #1c1914;
-		--text-2: #403a2e;
-		--text-3: #5c5344;
-		--text-4: #6a5f4e;
-		--line: rgba(28, 25, 20, 0.13);
-		--line-strong: rgba(28, 25, 20, 0.24);
-		--line-emphasis: rgba(28, 25, 20, 0.4);
-		--accent-0: #6d4a17;
-		--accent-1: #8a6224;
-		--accent-2: #7a2f2f;
-		--water-0: #4f7c88;
-		--water-1: #35616d;
-		--wine: #7a2f2f;
-		--wine-soft: #a34a45;
-		--forest: #4f6650;
-		--positive: #3f7355;
-		--negative: #a4413a;
-		--map-paper: #e9e0ce;
-		--map-ocean: #dfe9ee;
-		--map-land: #e2d6bf;
-		--map-stroke: #8d7d61;
-		--map-text: #2a241b;
-		--grain-opacity: 0.035;
+		--surface-0: #f3f6f2;
+		--surface-1: #edf2ed;
+		--surface-2: #fbfcf9;
+		--surface-3: #e3eae4;
+		--surface-4: #d7e1d8;
+		--surface-5: #c9d6cc;
+		--text-1: #17241d;
+		--text-2: #32443a;
+		--text-3: #46584e;
+		--text-4: #5f7166;
+		--line: rgba(23, 36, 29, 0.13);
+		--line-strong: rgba(23, 36, 29, 0.24);
+		--line-emphasis: rgba(23, 36, 29, 0.42);
+		--accent-0: #2b5f49;
+		--accent-1: #3a7458;
+		--accent-2: #7a4963;
+		--water-0: #4f8490;
+		--water-1: #32646f;
+		--wine: #7a4963;
+		--wine-soft: #a26f87;
+		--clay: #7d6a86;
+		--forest: #4d7359;
+		--positive: #3a7458;
+		--negative: #ab4e46;
+		--map-paper: #eef3ee;
+		--map-ocean: #dfeaef;
+		--map-land: #e4e9dd;
+		--map-stroke: #7b8c80;
+		--map-text: #22322a;
+		--grain-opacity: 0.022;
 
 		--motion-panel: 240ms;
 		--motion-sheet: 300ms;
@@ -94,35 +98,36 @@
 
 	[data-theme='dark'] {
 		color-scheme: dark;
-		--surface-0: #12100d;
-		--surface-1: #17140f;
-		--surface-2: #1b1712;
-		--surface-3: #211c16;
-		--surface-4: #29231b;
-		--surface-5: #332c22;
-		--text-1: #f1e8d7;
-		--text-2: #d6cab5;
-		--text-3: #b3a58d;
-		--text-4: #938673;
-		--line: rgba(241, 232, 215, 0.13);
-		--line-strong: rgba(241, 232, 215, 0.24);
-		--line-emphasis: rgba(241, 232, 215, 0.42);
-		--accent-0: #b98a3f;
-		--accent-1: #d8a84e;
-		--accent-2: #e0b968;
-		--water-0: #79a9b4;
-		--water-1: #a3c8d0;
-		--wine: #c46a5f;
-		--wine-soft: #d98a80;
-		--forest: #8aa385;
-		--positive: #74b992;
+		--surface-0: #0f1411;
+		--surface-1: #141a16;
+		--surface-2: #19211c;
+		--surface-3: #202a23;
+		--surface-4: #29352c;
+		--surface-5: #344238;
+		--text-1: #edf3ee;
+		--text-2: #cfdad2;
+		--text-3: #a8b8ad;
+		--text-4: #83958a;
+		--line: rgba(237, 243, 238, 0.13);
+		--line-strong: rgba(237, 243, 238, 0.24);
+		--line-emphasis: rgba(237, 243, 238, 0.42);
+		--accent-0: #7fbb9d;
+		--accent-1: #95cfae;
+		--accent-2: #d0a2b5;
+		--water-0: #79aab5;
+		--water-1: #a4cbd3;
+		--wine: #c98fa5;
+		--wine-soft: #dba7b9;
+		--clay: #b19bc0;
+		--forest: #8bb99a;
+		--positive: #78b894;
 		--negative: #d97a70;
-		--map-paper: #12100d;
-		--map-ocean: #12100d;
-		--map-land: #1d1a15;
-		--map-stroke: #6d6250;
-		--map-text: #e8ddc9;
-		--grain-opacity: 0.05;
+		--map-paper: #0f1411;
+		--map-ocean: #101820;
+		--map-land: #1a221c;
+		--map-stroke: #66786c;
+		--map-text: #e6eee8;
+		--grain-opacity: 0.032;
 	}
 
 	html,
@@ -131,6 +136,7 @@
 	}
 
 	html {
+		font-size: 16px;
 		background: var(--surface-0);
 	}
 
@@ -244,7 +250,6 @@
 @utility display {
 	font-family: var(--font-display);
 	font-optical-sizing: auto;
-	font-variation-settings: 'SOFT' 20, 'WONK' 0;
 	letter-spacing: -0.02em;
 }
 

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Sparkline from './Sparkline.svelte';
+
 	interface Props {
 		label: string;
 		value: string;
@@ -7,6 +9,13 @@
 		percentile?: number | null;
 		comparison?: string | null;
 		accent?: string;
+		/** 'fact' = rótulo/valor; 'metric' = cartão de indicador. */
+		variant?: 'fact' | 'metric';
+		/** Versão enxuta usada no card do mapa. */
+		compact?: boolean;
+		series?: [number, number][] | null;
+		format?: (value: number) => string;
+		delta?: 'percent' | 'points';
 	}
 	let {
 		label,
@@ -15,95 +24,159 @@
 		note,
 		percentile = null,
 		comparison = null,
-		accent = 'var(--accent-1)'
+		accent = 'var(--accent-1)',
+		variant = 'fact',
+		compact = false,
+		series = null,
+		format,
+		delta = 'percent'
 	}: Props = $props();
 </script>
 
-<div class="stat">
-	<div class="line">
-		<span class="label">{label}</span>
-		<span class="value">
+{#if variant === 'fact'}
+	<div class="fact" class:compact>
+		<span class="fact-label">{label}</span>
+		<span class="fact-value">
 			{value}
 			{#if year}<em>{year}</em>{/if}
 		</span>
+		{#if note}<p class="note">{note}</p>{/if}
 	</div>
-	{#if percentile !== null}
-		<div class="bar" aria-hidden="true">
-			<span style:width={`${Math.max(2, Math.min(100, percentile * 100))}%`} style:background={accent}></span>
+{:else}
+	<div class="metric" class:compact title={comparison ?? undefined}>
+		<div class="metric-head">
+			<span class="metric-label">{label}</span>
+			{#if year}<span class="metric-year">{year}</span>{/if}
 		</div>
-		<div class="meta">
-			{#if comparison}<span>{comparison}</span>{/if}
-			<span class="pct">percentil {Math.round(percentile * 100)}</span>
-		</div>
-	{:else if comparison}
-		<div class="meta"><span>{comparison}</span></div>
-	{/if}
-	{#if note}<p class="note">{note}</p>{/if}
-</div>
+		<strong class="metric-value">{value}</strong>
+
+		{#if percentile !== null}
+			<div class="meter" aria-hidden="true">
+				<span style:width={`${Math.max(2, Math.min(100, percentile * 100))}%`} style:background={accent}></span>
+			</div>
+			<div class="metric-meta">
+				<span class="pct">percentil {Math.round(percentile * 100)}</span>
+				{#if !compact && comparison}<span class="comparison">{comparison}</span>{/if}
+			</div>
+		{:else if !compact && comparison}
+			<p class="comparison">{comparison}</p>
+		{/if}
+
+		{#if note}<p class="note">{note}</p>{/if}
+
+		{#if series && series.length > 2 && format}
+			<Sparkline
+				{series}
+				label={label}
+				{format}
+				{delta}
+				height={compact ? 28 : 46}
+				{compact}
+			/>
+		{/if}
+	</div>
+{/if}
 
 <style>
-	.stat {
-		padding: 0.45rem 0.3rem;
-		margin: 0 -0.3rem;
-		border-bottom: 1px solid var(--line);
-		transition: background 0.16s ease;
-	}
-	.stat:hover {
-		background: color-mix(in oklab, var(--accent-1) 5%, transparent);
-	}
-	.stat:last-child {
-		border-bottom: 0;
-	}
-	.line {
+	.fact {
 		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 0.75rem;
+		flex-direction: column;
+		gap: 0.14rem;
+		min-width: 0;
+		padding-top: 0.45rem;
+		border-top: 1px solid var(--line);
 	}
-	.label {
-		font-size: 0.69rem;
-		color: var(--text-3);
-		line-height: 1.3;
-	}
-	.value {
+	.fact-label {
 		font-family: var(--font-mono);
-		font-size: 0.72rem;
-		color: var(--text-1);
-		text-align: right;
-		font-variant-numeric: tabular-nums;
-		white-space: nowrap;
-	}
-	.value em {
-		font-style: normal;
-		font-size: 0.52rem;
+		font-size: 0.64rem;
+		letter-spacing: 0.09em;
+		text-transform: uppercase;
 		color: var(--text-4);
-		margin-left: 0.25rem;
 	}
-	.bar {
-		margin-top: 0.26rem;
-		height: 2px;
-		background: var(--line);
-		overflow: hidden;
+	.fact-value {
+		font-size: 0.86rem;
+		font-weight: 500;
+		line-height: 1.35;
+		color: var(--text-1);
+		overflow-wrap: anywhere;
 	}
-	.bar span {
-		display: block;
-		height: 100%;
-		opacity: 0.75;
-		transition: width 0.7s var(--ease-out-soft);
-		animation: bar-in 0.7s var(--ease-out-soft) both;
+	.fact-value em {
+		margin-left: 0.3rem;
+		font-style: normal;
+		font-family: var(--font-mono);
+		font-size: 0.56rem;
+		color: var(--text-4);
 	}
-	@keyframes bar-in {
-		from {
-			opacity: 0;
-		}
+	.metric {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		padding: 0.7rem 0.75rem 0.65rem;
+		background: var(--surface-1);
+		border: 1px solid var(--line);
+		border-radius: 0.2rem;
 	}
-	.meta {
+	.metric.compact {
+		padding: 0.52rem 0.58rem 0.5rem;
+	}
+	.metric-head {
 		display: flex;
 		align-items: baseline;
 		justify-content: space-between;
 		gap: 0.5rem;
+	}
+	.metric-label {
+		min-width: 0;
+		font-family: var(--font-mono);
+		font-size: 0.66rem;
+		line-height: 1.3;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--text-4);
+	}
+	.metric.compact .metric-label {
+		font-size: 0.62rem;
+		letter-spacing: 0.04em;
+	}
+	.metric-year {
+		flex-shrink: 0;
+		font-family: var(--font-mono);
+		font-size: 0.56rem;
+		color: var(--text-4);
+	}
+	.metric-value {
 		margin-top: 0.2rem;
-		font-size: 0.5rem;
+		font-family: var(--font-display);
+		font-size: 1.3rem;
+		font-weight: 600;
+		line-height: 1.05;
+		color: var(--text-1);
+		font-variant-numeric: tabular-nums;
+	}
+	.metric.compact .metric-value {
+		font-size: 1.08rem;
+		margin-top: 0.14rem;
+	}
+	.meter {
+		height: 3px;
+		margin-top: 0.42rem;
+		background: var(--line);
+		overflow: hidden;
+	}
+	.meter span {
+		display: block;
+		height: 100%;
+		opacity: 0.8;
+		transition: width 0.7s var(--ease-out-soft);
+	}
+	.metric-meta {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.2rem 0.5rem;
+		margin-top: 0.24rem;
+		font-size: 0.6rem;
 		color: var(--text-4);
 	}
 	.pct {
@@ -111,10 +184,27 @@
 		letter-spacing: 0.03em;
 		white-space: nowrap;
 	}
-	.note {
-		margin: 0.28rem 0 0;
-		font-size: 0.58rem;
+	.comparison {
+		margin: 0.26rem 0 0;
+		font-size: 0.66rem;
 		line-height: 1.4;
 		color: var(--text-4);
+	}
+	.metric-meta .comparison {
+		margin: 0;
+		flex: 1;
+		text-align: right;
+	}
+	.note {
+		margin: 0.3rem 0 0;
+		font-size: 0.66rem;
+		line-height: 1.4;
+		color: var(--text-4);
+	}
+	.fact.compact {
+		padding-top: 0.35rem;
+	}
+	.fact.compact .fact-value {
+		font-size: 0.8rem;
 	}
 </style>

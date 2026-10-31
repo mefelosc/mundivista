@@ -41,6 +41,11 @@ export const disputedTerritories: Record<string, DisputedInfo> = {
 		label: 'Soberania disputada',
 		note: 'Território Britânico do Oceano Índico (Chagos): administração britânica; Maurício reivindica soberania e a Assembleia Geral da ONU apoia a descolonização.',
 		source: { name: 'CIJ — Chagos', url: 'https://www.icj-cij.org/case/169' }
+	},
+	SOL: {
+		label: 'Estatuto autodeclarado',
+		note: 'Somalilândia declarou independência da Somália em 1991. Não é membro da ONU e o reconhecimento internacional é limitado; o app não atribui soberania.',
+		source: { name: 'Britannica — Somaliland', url: 'https://www.britannica.com/place/Somaliland' }
 	}
 };
 

@@ -3,11 +3,16 @@
  * Smoke test de interação (Playwright/Firefox) contra o build de preview.
  * Uso: node tools/smoke.mjs [baseUrl]
  */
+import { existsSync } from 'node:fs';
 import { firefox } from 'playwright';
 
 const BASE = process.argv[2] ?? 'http://localhost:4173';
-const executablePath = `${process.env.HOME}/.cache/ms-playwright/firefox-1555/firefox/firefox`;
-const browser = await firefox.launch({ executablePath });
+const candidates = [
+	process.env.PLAYWRIGHT_FIREFOX_PATH,
+	`${process.env.HOME}/.cache/ms-playwright/firefox-1555/firefox/firefox`
+].filter(Boolean);
+const executablePath = candidates.find((candidate) => existsSync(candidate));
+const browser = await firefox.launch(executablePath ? { executablePath } : {});
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const page = await context.newPage();
 const errors = [];
@@ -45,7 +50,7 @@ await check('clique no mapa abre card e contorna o país', async () => {
 	const title = await page.locator('.card h2').first().textContent();
 	if (title !== 'Brasil') throw new Error(`card=${title}`);
 	if (!page.url().includes('country=BRA')) throw new Error(`url=${page.url()}`);
-	const toggle = page.locator('.highlight-toggle');
+	const toggle = page.locator('.block-action').first();
 	if ((await toggle.getAttribute('aria-pressed')) !== 'false') throw new Error('vizinhos já destacados');
 	await toggle.click();
 	await page.waitForTimeout(250);
@@ -67,7 +72,7 @@ await check('Groenlândia mostra soberania da Dinamarca', async () => {
 	const subtitle = await page.locator('.card .titles p').innerText();
 	if (!/Dinamarca/.test(subtitle)) throw new Error(`subtítulo=${subtitle}`);
 	const body = await page.locator('.card .body').innerText();
-	if (!/Soberania/.test(body) || !/Dinamarca/.test(body)) throw new Error('sem linha de soberania');
+	if (!/soberania/i.test(body) || !/Dinamarca/.test(body)) throw new Error('sem linha de soberania');
 });
 
 await check('command palette troca de país na mesma rota', async () => {
@@ -82,46 +87,109 @@ await check('command palette troca de país na mesma rota', async () => {
 	if (!page.url().includes('country=JPN')) throw new Error(`url=${page.url()}`);
 });
 
-await check('som pode ser desligado e religado', async () => {
-	const button = page.locator('.sound-toggle');
+await check('configurações abre e alterna som', async () => {
+	await page.locator('.settings-toggle').click();
+	await page.waitForTimeout(250);
+	const button = page.locator('.settings-panel .sound-toggle');
 	await button.click();
 	await page.waitForTimeout(200);
 	if ((await button.getAttribute('aria-pressed')) !== 'false') throw new Error('som não desligou');
 	await button.click();
 	await page.waitForTimeout(200);
 	if ((await button.getAttribute('aria-pressed')) !== 'true') throw new Error('som não religou');
+	await page.locator('.settings-panel .close').click();
 });
 
 await check('tema muda e persiste no documento', async () => {
-	await page.locator('.theme-full button[aria-label="Tema escuro"]').click();
+	await page.locator('.settings-toggle').click();
+	await page.locator('.settings-panel button[aria-label="Tema escuro"]').click();
 	await page.waitForTimeout(250);
 	const theme = await page.evaluate(() => document.documentElement.dataset.theme);
 	if (theme !== 'dark') throw new Error(`tema=${theme}`);
+	await page.locator('.settings-panel .close').click();
 });
 
-await check('globo é padrão e relevo ativa sem reload', async () => {
-	const badge = await page.locator('.instruments .projection').innerText();
-	if (!/globo/i.test(badge)) throw new Error(`badge=${badge}`);
+await check('idioma alterna para inglês e volta ao português', async () => {
+	await page.locator('.settings-toggle').click();
+	await page.locator('.settings-panel .segmented button', { hasText: 'English' }).click();
+	await page.waitForTimeout(300);
+	if (!/Explore/.test(await page.locator('nav a').first().innerText())) throw new Error('nav não traduziu');
+	await page.locator('.settings-panel .segmented button', { hasText: 'Português' }).click();
+	await page.waitForTimeout(300);
+	if (!/Explorar/.test(await page.locator('nav a').first().innerText())) throw new Error('nav não voltou ao PT');
+	await page.locator('.settings-panel .close').click();
+});
+
+await check('mapa 2D é o padrão, sem camada temática', async () => {
+	await page.goto(`${BASE}/explore`, { waitUntil: 'networkidle' });
+	await page.waitForTimeout(3000);
+	const projectionActive = await page.locator('.segmented button.active').innerText();
+	if (projectionActive.trim() !== '2D') throw new Error(`projeção=${projectionActive}`);
+	const active = await page.locator('.layers button.active .label').innerText();
+	if (active !== 'Padrão') throw new Error(`camada=${active}`);
+	if (page.url().includes('layer=')) throw new Error(`url=${page.url()}`);
+	if (!(await page.locator('button[title^="Relevo disponível"]').isDisabled())) {
+		throw new Error('relevo deveria estar desativado no 2D');
+	}
+	if (await page.locator('.map-failed').count()) throw new Error('mapa falhou no 2D');
+});
+
+await check('camada política mostra unidades e estados ao clicar no país', async () => {
+	await page.goto(`${BASE}/explore?layer=political&country=BRA`, { waitUntil: 'networkidle' });
+	await page.waitForTimeout(3200);
+	const active = await page.locator('.layers button.active .label').innerText();
+	if (active !== 'Político') throw new Error(`camada=${active}`);
+	const units = await page.locator('.units button').count();
+	if (units !== 18) throw new Error(`unidades visíveis=${units}`);
+	const more = await page.locator('.units-block .more').innerText();
+	if (!/27/.test(more)) throw new Error(`contagem=${more}`);
+	const names = await page.locator('.units button span').allTextContents();
+	if (!names.includes('Acre') || !names.includes('Amazonas')) {
+		throw new Error(`nomes=${names.slice(0, 4).join(', ')}`);
+	}
+	await page.locator('.units button').first().click();
+	await page.waitForTimeout(1800);
+	const current = await page.locator('.units button.active span').innerText();
+	if (current !== 'Acre') throw new Error(`unidade ativa=${current}`);
+	if (!(await page.locator('.map-unit').count())) throw new Error('rótulos das unidades ausentes');
+});
+
+await check('clicar de novo na camada volta ao mapa padrão', async () => {
+	await page.locator('.layers button', { hasText: 'Político' }).click();
+	await page.waitForTimeout(900);
+	const active = await page.locator('.layers button.active .label').innerText();
+	if (active !== 'Padrão') throw new Error(`camada=${active}`);
+	if (page.url().includes('layer=')) throw new Error(`url=${page.url()}`);
+	if (await page.locator('.units').count()) throw new Error('unidades continuam visíveis');
+});
+
+await check('globo 3D alterna sem reload e ativa relevo', async () => {
+	await page.locator('.segmented button', { hasText: 'Globo' }).click();
+	await page.waitForTimeout(2800);
+	const projectionActive = await page.locator('.segmented button.active').innerText();
+	if (!/globo/i.test(projectionActive)) throw new Error(`projeção=${projectionActive}`);
+	if (!page.url().includes('projection=globe')) throw new Error(`projeção: url=${page.url()}`);
+	if (await page.locator('button[title^="Relevo disponível"]').count()) {
+		throw new Error('relevo continuou desativado no globo');
+	}
 	await page.locator('button[title="Relevo 3D com modelo digital de elevação"]').click();
-	await page.waitForTimeout(1400);
+	await page.waitForTimeout(1600);
 	if (!page.url().includes('terrain=1')) throw new Error(`relevo: url=${page.url()}`);
 	const pitch = await page.locator('.map-canvas').getAttribute('data-pitch');
 	if (Number(pitch) < 30) throw new Error(`pitch=${pitch}`);
 });
 
-await check('2D Equal Earth alterna sem reload e desativa relevo', async () => {
+await check('2D Equal Earth volta e desativa relevo', async () => {
 	await page.locator('.segmented button[title^="Mapa 2D"]').click();
 	await page.waitForTimeout(2800);
-	const label = await page.locator('.instruments .projection').innerText();
-	if (!/EQUAL EARTH/i.test(label)) throw new Error(`projeção=${label}`);
-	if (!page.url().includes('projection=flat')) throw new Error(`url=${page.url()}`);
-	if (!(await page.locator('button[title^="Relevo disponível"]').isDisabled())) {
-		throw new Error('relevo deveria estar desativado no 2D');
+	const projectionActive = await page.locator('.segmented button.active').innerText();
+	if (projectionActive.trim() !== '2D') throw new Error(`projeção=${projectionActive}`);
+	if (page.url().includes('projection=flat') || page.url().includes('terrain=1')) {
+		throw new Error(`url=${page.url()}`);
 	}
-	if (await page.locator('.map-failed').count()) throw new Error('mapa falhou no 2D');
-	await page.locator('.segmented button[title="Globo 3D"]').click();
-	await page.waitForTimeout(2500);
-	if (page.url().includes('projection=flat')) throw new Error(`voltou: url=${page.url()}`);
+	if (!(await page.locator('button[title^="Relevo disponível"]').isDisabled())) {
+		throw new Error('relevo deveria voltar a ficar desativado');
+	}
 });
 
 await check('jogo de silhuetas inicia e aceita tecla 1', async () => {
@@ -150,6 +218,34 @@ await check('modo lista funciona no jogo de mapa', async () => {
 	await page.waitForTimeout(500);
 	const feedback = await page.locator('.feedback').count();
 	if (feedback !== 1) throw new Error('sem feedback');
+});
+
+await check('bandeira cobre o território ao acertar o país', async () => {
+	await page.goto(`${BASE}/game/country-finder`, { waitUntil: 'networkidle' });
+	await page.waitForTimeout(1000);
+	const start = page.locator('.intro-actions .primary');
+	if (await start.count()) await start.click();
+	await page.waitForTimeout(700);
+	const prompt = await page.locator('.prompt h1').innerText();
+	const target = prompt.split(':').pop().trim();
+	await page.getByRole('button', { name: /Modo lista/ }).click();
+	await page.locator('.list-search input').fill(target);
+	await page.waitForTimeout(350);
+	await page.locator('.list-mode li button').first().click();
+	await page.waitForTimeout(1200);
+	const flag = page.locator('.territory-flag');
+	if (!(await flag.count())) throw new Error('bandeira ausente');
+	const box = await flag.boundingBox();
+	if (!box || box.width < 20 || box.height < 20) throw new Error(`bandeira pequena: ${JSON.stringify(box)}`);
+});
+
+await check('índice de países carrega e busca', async () => {
+	await page.goto(`${BASE}/paises`, { waitUntil: 'networkidle' });
+	await page.waitForTimeout(600);
+	await page.locator('.search input').fill('Brasil');
+	await page.waitForTimeout(200);
+	const rows = await page.locator('.countries .country').count();
+	if (rows !== 1) throw new Error(`linhas=${rows}`);
 });
 
 await check('dossiê estático carrega com comparação', async () => {

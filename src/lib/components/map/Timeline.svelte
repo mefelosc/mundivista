@@ -109,11 +109,11 @@
 		display: block;
 		margin-top: 0.18rem;
 		font-family: var(--font-display);
-		font-size: 0.86rem;
+		font-size: 0.96rem;
 		font-weight: 600;
 	}
 	header .eyebrow {
-		font-size: 0.44rem;
+		font-size: 0.5rem;
 	}
 	.clear {
 		display: inline-flex;
@@ -122,8 +122,8 @@
 		border: 1px solid var(--line);
 		background: transparent;
 		color: var(--text-4);
-		font-size: 0.46rem;
-		padding: 0.15rem 0.3rem;
+		font-size: 0.54rem;
+		padding: 0.2rem 0.36rem;
 	}
 	.clear:hover {
 		color: var(--text-1);
@@ -162,7 +162,7 @@
 		height: 0.85rem;
 		margin-top: 0.15rem;
 		font-family: var(--font-mono);
-		font-size: 0.42rem;
+		font-size: 0.5rem;
 		color: var(--text-4);
 	}
 	.marks span {
@@ -212,17 +212,17 @@
 	}
 	.year {
 		font-family: var(--font-mono);
-		font-size: 0.62rem;
+		font-size: 0.68rem;
 		color: var(--accent-0);
 	}
 	.event-head strong {
 		font-family: var(--font-display);
-		font-size: 0.86rem;
+		font-size: 0.94rem;
 		font-weight: 600;
 	}
 	.event p {
 		margin: 0.2rem 0 0.3rem;
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		line-height: 1.5;
 		color: var(--text-3);
 	}
@@ -238,7 +238,7 @@
 		align-items: center;
 		gap: 0.2rem;
 		font-family: var(--font-mono);
-		font-size: 0.44rem;
+		font-size: 0.5rem;
 		color: var(--text-4);
 		text-decoration: none;
 		border: 0;
@@ -251,7 +251,7 @@
 	}
 	.empty {
 		margin: 0.35rem 0 0;
-		font-size: 0.52rem;
+		font-size: 0.58rem;
 		line-height: 1.5;
 		color: var(--text-4);
 	}

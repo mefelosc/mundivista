@@ -2,7 +2,7 @@
 
 > Atlas interativo de geografia, geopolítica e dados. O mapa é a interface — não o fundo.
 
-**Status:** P0 e P1 do roadmap executados. 73 testes, `svelte-check` sem erros, build estático,
+**Status:** P0 e P1 do roadmap executados. 77 testes, `svelte-check` sem erros, build estático,
 auditoria axe sem violações sérias e smoke test de interação em Firefox.
 
 ![Atlas](docs/screenshots/explore.png)
@@ -19,7 +19,7 @@ npm run preview
 Verificações:
 
 ```bash
-npm test           # 73 testes (motores, dados, timeline, i18n)
+npm test           # 77 testes (motores, dados, timeline, i18n)
 npm run check      # svelte-check, 0 erros
 npm run build      # prerender + adapter-static
 npm run smoke      # interação real no preview (Playwright/Firefox)
@@ -33,8 +33,9 @@ O `smoke`, `a11y` e `shots` esperam um preview em `http://localhost:4173`.
 
 ### Identidade — Atlas Editorial
 
-- Papel quente, tinta, vinho, ocre e verde; modo escuro como o mesmo atlas à noite.
-- Display serifada (Fraunces), UI em Inter e dados em JetBrains Mono.
+- Papel frio, tinta verde, ametista e verde-floresta; modo escuro como o mesmo atlas à noite. O azul
+  fica reservado à água dentro dos mapas; fora deles a interface usa a paleta editorial.
+- Display serifada (Newsreader), UI em Instrument Sans e dados em IBM Plex Mono.
 - Conjunto próprio de ícones cartográficos (24 px, traço 1,5): rosa dos ventos, curva de
   nível, marco de fronteira, rio, densidade, aliança, linha do tempo.
 - Réguas, ticks, numeração de seção e textura sutil de papel no lugar de glassmorphism.
@@ -44,25 +45,36 @@ O `smoke`, `a11y` e `shots` esperam um preview em `http://localhost:4173`.
 
 - Mapa MapLibre com 241 territórios, Natural Earth 1:50m, rios, lagos, litoral, cidades e
   nomes de oceanos, mares, baías e golfos.
-- Seis camadas com identidade própria: político, físico, demografia, economia, geopolítica
-  e história.
+- Abre no **mapa base 2D em Equal Earth** (área preservada), sem camada temática ativa. As
+  seis camadas — político, físico, demografia, economia, geopolítica e história — são
+  escolhidas no filtro de camadas; clicar de novo na camada ativa volta ao mapa padrão.
+- Globo 3D e relevo opcionais, alternáveis no canto inferior direito.
+- HUD com filtro de camadas recolhível (com memória), legenda contextual recolhível e um
+  único grupo de controles com coordenadas, zoom, projeção e relevo. Alvos de toque maiores
+  e tipografia mais legível no mapa e nos painéis.
+- Na camada política, clicar em um país carrega sob demanda suas **unidades administrativas
+  de primeiro nível** (estados, províncias, distritos): contornos e nomes sobre o mapa e
+  lista navegável no card, com foco no mapa ao escolher uma unidade.
 - Coropléticos por quantis, crossfade de camada, seleção por diferença de `feature-state`,
   hover em `requestAnimationFrame` com bbox de 4–6 px.
-- Globo 3D e **2D em Equal Earth** (área preservada, sem Mercator), alternáveis no canto
-  inferior direito; relevo 3D opcional no globo, com DEM público (AWS Terrain Tiles),
-  hillshade e atribuição visível.
 - Rótulos DOM com cache de medida, colisão, prioridade e teto de 82; microestados ganham
   pontos de capital e todos os países pequenos têm área de acerto ampliada.
 - Escala gráfica, rosa dos ventos, leitura de coordenadas e projeção no canto do mapa.
 - Linha do tempo 1945–2026 na camada de história, com recorte de blocos e fontes por evento.
 - Territórios com estatuto disputado recebem hachura e nota curada, sem atribuição de soberania.
 - Busca global (⌘K) por país, camada ou jogo.
+- Portal inicial com opções grandes em caixa alta (Explorar, Jogar, Países, Sobre) sobre o
+  mapa-múndi, e painel de configurações com idioma PT/EN, tema, som e tamanho do texto.
+- Índice navegável de países em `/paises`, com busca, continente, bandeira e população.
 
 ### Dossiês
 
 - Territórios dependentes mostram o soberano (ex.: Groenlândia → Dinamarca) no card e no dossiê.
-- Card de país com “at a glance”, abas por camada, comparação com a mediana mundial,
-  percentil, sparkline da série 2016–2025, mini-mapa de localização e vizinhos.
+- Card de país reorganizado em camadas de leitura: cabeçalho com identidade, quatro
+  métricas-chave, abas curtas em uma linha e, dentro de cada aba, cartões de indicador
+  (valor, ano, percentil) em grade. Vizinhos, unidades e leituras ficam em blocos próprios.
+- Dossiê com hero, faixa de resumo, navegação de seções com estado ativo, cards de seção e
+  métricas com série embutida; barra lateral fixa com mapa, comparação e metadados.
 - Bottom sheet no mobile com snap points (peek/half/full) e arraste.
 - Link direto para `/country/[code]` com ficha técnica, indicadores por seção, séries,
   comparação entre países, linha do tempo, organizações, leituras e fontes.
@@ -74,7 +86,7 @@ O `smoke`, `a11y` e `shots` esperam um preview em `http://localhost:4173`.
 | --- | --- |
 | Países do Mundo | clicar no país no mapa |
 | Capitais | resposta digitada (PT/EN) |
-| Rankings do Mundo | ordenar o top 5 por indicador |
+| Rankings do Mundo | montar o top 5 por indicador clicando na ordem |
 | Blocos e Alianças | seleção múltipla + intruso |
 | Sem Litoral | escolher entre países destacados |
 | Silhuetas | reconhecer o país pelo contorno |
@@ -83,7 +95,10 @@ O `smoke`, `a11y` e `shots` esperam um preview em `http://localhost:4173`.
 | Economia em Números | maior/menor PIB, inflação, desemprego e outros |
 
 - Motor de jogo independente do mapa: rodadas, regras, validação e pontuação.
-- Página Play editorial com categorias, dificuldade, progresso, “continuar jogando” e recordes.
+- Biblioteca com capa visual própria por jogo (bandeiras, silhueta, gráficos, mapa) e tema
+  de cor por categoria; a introdução e o cabeçalho de cada jogo repetem o ícone e a capa.
+- Sala de jogos com capas grandes, tipografia de arcade, categorias, dificuldade,
+  progresso, “continuar jogando” e recordes.
 - Onboarding de uma tela por mecânica, modo lista acessível, atalhos 1–4, feedback com fonte.
 - Bandeiras e Economia em Números entre os clássicos; 9 jogos no total.
 - Sons sintetizados (WebAudio) para clique, acerto, erro e fim de jogo, com botão de mudo.
@@ -95,17 +110,26 @@ O `smoke`, `a11y` e `shots` esperam um preview em `http://localhost:4173`.
 
 - **Natural Earth 1:50m / 1:110m** (domínio público): fronteiras, nomes em pt-BR, rios,
   lagos, litoral, capitais e cidades.
+- **Natural Earth Admin 1 (1:10m)** (domínio público): unidades administrativas de primeiro
+  nível por país, simplificadas em arquivos carregados sob demanda.
 - **mledoze/countries** (ODbL): capital, moeda, área, idiomas e vizinhos.
 - **World Bank Open Data** (CC BY 4.0): 32 indicadores, série 2016–2025, observação mais
   recente por país com ano preservado. Inclui WGI (governança) e séries para sparklines.
+  Códigos históricos do recorte Natural Earth são normalizados (ZAR→COD, ROM→ROU,
+  TMP→TLS, WBG→PSE) para não perder países como República Democrática do Congo, Noruega,
+  Romênia, Timor-Leste, Palestina e Nauru.
+- **Curadoria Mundivista** (fatos pontuais com fonte): Somalilândia não herda dados da
+  Somália; capital, área, moeda e línguas vêm de fonte própria. A moeda da Micronésia
+  (dólar americano) também é complementada.
 - **AWS Terrain Tiles** (dados públicos): modelo digital de elevação carregado sob demanda.
 
 Nenhum valor é estimado pelo app: lacuna aparece como “não disponível”. O pipeline é
 reproduzível:
 
 ```bash
-npm run data:build     # usa cache
-npm run data:refresh   # baixa tudo de novo
+npm run data:build        # usa cache
+npm run data:refresh      # baixa tudo de novo
+npm run data:subdivisions # estados/províncias (Natural Earth 1:10m)
 ```
 
 ## Estrutura
@@ -123,6 +147,7 @@ src/
 └── routes/{explore,country/[code],play,game/[slug],sobre}
 tools/
 ├── build-data.mjs           # pipeline de dados
+├── build-subdivisions.mjs   # unidades administrativas por país
 ├── screenshots.mjs          # screenshots comparáveis
 ├── smoke.mjs                # interação real
 └── a11y.mjs                 # axe-core
@@ -133,14 +158,20 @@ O motor de jogos não importa o mapa. O mapa é um renderizador entre outros pos
 ## Limitações conhecidas
 
 - Natural Earth 1:50m: fronteiras generalizadas; microestados usam pontos de capital.
+- Unidades administrativas vêm do Natural Earth 1:10m e são simplificadas: o nível
+  disponível varia por país (estado, província, distrito ou município) e os contornos não
+  substituem uma base oficial.
 - O relevo sombreado e o modo 3D dependem de tiles públicos carregados pela rede e ficam
   disponíveis no globo; o modo 2D Equal Earth é plano e não usa DEM.
 - Blocos históricos e a linha do tempo usam os polígonos atuais; não são fronteiras do período.
 - Bathymetria, fluxos comerciais e biomas/clima ainda não estão implementados.
 - Indicadores em dólares correntes não são comparáveis entre anos sem ajuste; o ano é sempre exibido.
+- Taiwan, Vaticano e pequenos territórios sem série no Banco Mundial aparecem sem indicadores;
+  a lacuna é explícita, não estimada. O Vaticano é o único membro da ONU sem população na base.
 - HDI, corrupção (TI) e liberdade (Freedom House/RSF) não foram adicionados: exigem revisão
   de licença e metodologia fora do Banco Mundial.
-- i18n tem estrutura e chaves PT/EN do shell; o conteúdo editorial ainda está em português.
+- A interface do shell, portal, Play e configurações está em PT/EN; o conteúdo editorial
+  dos dossiês e dos jogos segue em português nesta versão.
 - Sem autenticação, ranking global, backend ou PWA.
 
 ## Documentação

@@ -197,7 +197,7 @@ function buildRankings(seed?: number): GameRound[] {
 		return {
 			id: `ranking-${i}-${indicator.key}`,
 			prompt: `Ordene do maior para o menor: ${indicator.label}.`,
-			hint: 'Arraste as linhas ou use as setas para reordenar.',
+			hint: 'Clique nos países na ordem correta; use × para remover um item.',
 			interaction: 'order',
 			answerKind: 'order',
 			rule: { type: 'order', codes },
@@ -521,6 +521,7 @@ export const games: GameDefinition[] = [
 		minutes: 4,
 		mechanic: 'Clique no mapa',
 		icon: 'pin',
+		hideMapLabels: true,
 		build: buildCountryFinder
 	},
 	{

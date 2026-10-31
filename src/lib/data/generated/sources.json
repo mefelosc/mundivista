@@ -32,7 +32,7 @@
       "name": "World Bank Open Data",
       "url": "https://data.worldbank.org",
       "license": "CC BY 4.0",
-      "note": "Série mais recente disponível por país dentro da janela consultada."
+      "note": "Série mais recente disponível por país dentro da janela consultada. Códigos históricos do Natural Earth são normalizados; territórios sem série aparecem como não disponíveis."
     }
   }
 }

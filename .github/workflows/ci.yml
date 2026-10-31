@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Checks, testes e build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+
+  e2e:
+    name: Smoke, acessibilidade e screenshots
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps firefox
+      - run: npm run build
+      - name: Preview
+        run: |
+          npm run preview -- --port 4173 --strictPort & echo $! > /tmp/preview.pid
+          sleep 5
+          curl --fail --silent http://localhost:4173/ > /dev/null
+      - run: node tools/smoke.mjs http://localhost:4173
+      - run: node tools/a11y.mjs http://localhost:4173
+      - run: node tools/screenshots.mjs http://localhost:4173
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: docs/screenshots
+          retention-days: 7
+      - name: Stop preview
+        if: always()
+        run: kill "$(cat /tmp/preview.pid)" || true
