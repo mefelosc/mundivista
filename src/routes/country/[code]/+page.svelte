@@ -19,6 +19,7 @@
 	import { disputedInfo } from '#lib/data/disputed';
 	import { organizationsForCountry } from '#lib/data/organizations';
 	import { snippetsByCountry } from '#lib/data/snippets';
+	import { silhouetteFor } from '#lib/data/silhouettes';
 	import { formatArea, formatCompact, formatIndicatorValue } from '#lib/format';
 	import type { Country, IndicatorKey } from '#lib/types';
 	import type { PageData } from './$types';
@@ -38,6 +39,7 @@
 	const disputed = $derived(country ? disputedInfo(country.code) : null);
 	const sovereign = $derived(country ? sovereignCountry(country) : null);
 	const dependency = $derived(country ? dependencyLabel(country) : null);
+	const silhouette = $derived(country ? silhouetteFor(country.code) : null);
 
 	const glance = $derived.by(() => {
 		if (!country) return [];
@@ -309,6 +311,11 @@
 		</nav>
 
 		<header class="hero">
+			{#if silhouette}
+				<svg class="hero-silhouette" viewBox="0 0 100 100" aria-hidden="true">
+					<path d={silhouette} />
+				</svg>
+			{/if}
 			<div class="title-block">
 				<div class="flag-row">
 					{#if country.iso2}<span class={`fi fi-${country.iso2} hero-flag`}></span>{/if}
@@ -324,21 +331,39 @@
 					{country.areaKm2 ? `Área de ${formatArea(country.areaKm2)}.` : ''}
 					{#if country.landlocked === true}País sem litoral.{:else if country.landlocked === false}Com saída para o mar.{/if}
 				</p>
+				<div class="hero-actions">
+					<a class="btn btn-accent" href={`/explore?country=${country.code}`}>
+						<Icon name="globe" size={14} /> Ver no mapa
+					</a>
+					<a class="btn" href={wikipediaUrl(country)} target="_blank" rel="noopener noreferrer">
+						<Icon name="book" size={14} /> Wikipédia
+					</a>
+					<a class="btn" href={britannicaUrl(country)} target="_blank" rel="noopener noreferrer">
+						<Icon name="external" size={14} /> Britannica
+					</a>
+					<button class="btn" type="button" onclick={share}>
+						<Icon name={copied ? 'check' : 'link'} size={14} /> {copied ? 'Link copiado' : 'Compartilhar'}
+					</button>
+				</div>
 			</div>
-			<div class="hero-actions">
-				<a class="btn" href={`/explore?country=${country.code}`}>
-					<Icon name="globe" size={14} /> Ver no mapa
-				</a>
-				<a class="btn" href={wikipediaUrl(country)} target="_blank" rel="noopener noreferrer">
-					<Icon name="book" size={14} /> Wikipédia
-				</a>
-				<a class="btn" href={britannicaUrl(country)} target="_blank" rel="noopener noreferrer">
-					<Icon name="external" size={14} /> Britannica
-				</a>
-				<button class="btn" type="button" onclick={share}>
-					<Icon name={copied ? 'check' : 'link'} size={14} /> {copied ? 'Link copiado' : 'Compartilhar'}
-				</button>
-			</div>
+
+			<aside class="hero-map" aria-label="Localização no mapa">
+				<div class="hero-map-head">
+					<span class="eyebrow">No mapa</span>
+					<span class="coords">{country.latlng ? `${Math.abs(country.latlng[0]).toFixed(1)}°${country.latlng[0] >= 0 ? 'N' : 'S'} · ${Math.abs(country.latlng[1]).toFixed(1)}°${country.latlng[1] >= 0 ? 'L' : 'O'}` : '—'}</span>
+				</div>
+				<LocatorMap {country} {neighbors} />
+				<div class="hero-neighbors">
+					{#each neighbors as neighbor (neighbor.code)}
+						<a href={`/country/${neighbor.code}`}>
+							{#if neighbor.iso2}<span class={`fi fi-${neighbor.iso2} mini`}></span>{/if}
+							{neighbor.name}
+						</a>
+					{:else}
+						<p class="empty">Sem fronteiras terrestres.</p>
+					{/each}
+				</div>
+			</aside>
 		</header>
 
 		<section class="glance" aria-label="Resumo">
@@ -510,24 +535,6 @@
 			</article>
 
 			<aside class="side-col">
-				<section class="side-block" id="mapa">
-					<header class="block-head">
-						<span class="index">A</span>
-						<h2>No mapa</h2>
-					</header>
-					<LocatorMap {country} {neighbors} />
-					<div class="neighbors">
-						{#each neighbors as neighbor (neighbor.code)}
-							<a href={`/country/${neighbor.code}`}>
-								{#if neighbor.iso2}<span class={`fi fi-${neighbor.iso2} mini`}></span>{/if}
-								{neighbor.name}
-							</a>
-						{:else}
-							<p class="empty">Sem fronteiras terrestres.</p>
-						{/each}
-					</div>
-				</section>
-
 				<section class="side-block">
 					<header class="block-head">
 						<span class="index">B</span>
@@ -610,7 +617,7 @@
 		flex-wrap: wrap;
 		gap: 0.4rem;
 		font-family: var(--font-mono);
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--text-4);
@@ -623,12 +630,72 @@
 		color: var(--accent-0);
 	}
 	.hero {
+		position: relative;
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto;
-		align-items: end;
-		gap: 2rem;
-		padding: 1.4rem 0 1.4rem;
+		grid-template-columns: minmax(0, 1fr) 24rem;
+		align-items: stretch;
+		gap: 1.6rem;
+		padding: 1.4rem 0 1.5rem;
 		border-bottom: 1px solid var(--line-strong);
+		overflow: hidden;
+	}
+	.hero-silhouette {
+		position: absolute;
+		right: 25rem;
+		top: -8%;
+		width: 28rem;
+		height: 116%;
+		fill: color-mix(in oklab, var(--accent-1) 12%, transparent);
+		pointer-events: none;
+		opacity: 0.7;
+	}
+	.title-block {
+		position: relative;
+		z-index: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+	}
+	.hero-map {
+		position: relative;
+		z-index: 1;
+		display: flex;
+		flex-direction: column;
+		padding: 0.7rem;
+		border: 1px solid var(--line);
+		border-radius: 0.25rem;
+		background: var(--surface-1);
+		box-shadow: 0 18px 44px -36px rgb(0 0 0 / 0.55);
+	}
+	.hero-map-head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.5rem;
+		padding: 0.1rem 0.1rem 0.5rem;
+		border-bottom: 1px solid var(--line);
+	}
+	.hero-map-head .eyebrow {
+		font-size: 0.72rem;
+	}
+	.coords {
+		font-family: var(--font-mono);
+		font-size: 0.7rem;
+		letter-spacing: 0.03em;
+		color: var(--text-4);
+		white-space: nowrap;
+	}
+	.hero-map :global(.locator) {
+		border: 0;
+		background: transparent;
+		margin-top: 0.45rem;
+	}
+	.hero-map :global(figcaption) {
+		display: none;
+	}
+	.hero-map :global(.locator .frame) {
+		border: 1px solid var(--line);
 	}
 	.flag-row {
 		display: flex;
@@ -644,7 +711,7 @@
 	}
 	.type {
 		font-family: var(--font-mono);
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 		color: var(--text-4);
 		border: 1px solid var(--line);
 		padding: 0.12rem 0.34rem;
@@ -672,10 +739,10 @@
 		color: var(--text-3);
 	}
 	.hero-actions {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		display: flex;
+		flex-wrap: wrap;
 		gap: 0.35rem;
-		width: 26rem;
+		margin-top: 1rem;
 	}
 	.hero-actions :global(.btn) {
 		justify-content: center;
@@ -698,15 +765,15 @@
 	}
 	.glance-label {
 		font-family: var(--font-mono);
-		font-size: 0.64rem;
-		letter-spacing: 0.1em;
+		font-size: 0.7rem;
+		letter-spacing: 0.09em;
 		text-transform: uppercase;
 		color: var(--text-4);
 	}
 	.glance strong {
 		margin-top: 0.12rem;
 		font-family: var(--font-display);
-		font-size: 1.55rem;
+		font-size: 1.75rem;
 		font-weight: 600;
 		line-height: 1.05;
 		color: var(--text-1);
@@ -716,11 +783,11 @@
 		text-overflow: ellipsis;
 	}
 	.glance .capital strong {
-		font-size: 1.12rem;
+		font-size: 1.3rem;
 	}
 	.glance-meta {
 		font-family: var(--font-mono);
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 		color: var(--text-4);
 	}
 	.section-nav {
@@ -742,10 +809,10 @@
 	}
 	.section-nav a {
 		flex-shrink: 0;
-		padding: 0.5rem 0.6rem;
+		padding: 0.55rem 0.68rem;
 		border-bottom: 2px solid transparent;
 		font-family: var(--font-mono);
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 		letter-spacing: 0.04em;
 		color: var(--text-2);
 		text-decoration: none;
@@ -770,11 +837,27 @@
 	}
 	.block {
 		margin-bottom: 1rem;
-		padding: 1.1rem 1.2rem 1.15rem;
+		padding: 1.2rem 1.35rem 1.3rem;
 		background: var(--surface-2);
 		border: 1px solid var(--line);
 		border-radius: 0.25rem;
 		scroll-margin-top: calc(var(--header-h) + 3.6rem);
+		transition: border-color 0.2s ease, box-shadow 0.2s ease;
+		animation: dossier-in 0.5s var(--ease-out-soft) both;
+	}
+	.block:hover {
+		border-color: var(--line-strong);
+		box-shadow: 0 16px 34px -32px rgb(0 0 0 / 0.45);
+	}
+	@keyframes dossier-in {
+		from {
+			opacity: 0;
+			transform: translateY(10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 	.block-head {
 		display: flex;
@@ -786,13 +869,13 @@
 	}
 	.index {
 		font-family: var(--font-mono);
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 		color: var(--accent-1);
 	}
 	.block-head h2 {
 		margin: 0;
 		font-family: var(--font-display);
-		font-size: 1.32rem;
+		font-size: 1.5rem;
 		font-weight: 600;
 		letter-spacing: -0.015em;
 	}
@@ -802,7 +885,7 @@
 		align-items: center;
 		gap: 0.25rem;
 		font-family: var(--font-mono);
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 		letter-spacing: 0.03em;
 		color: var(--text-3);
 		text-decoration: none;
@@ -826,7 +909,7 @@
 		gap: 0.2rem;
 		margin-top: 0.25rem;
 		font-family: var(--font-mono);
-		font-size: 0.6rem;
+		font-size: 0.66rem;
 		color: var(--accent-0);
 		text-decoration: none;
 	}
@@ -839,7 +922,7 @@
 		gap: 0.2rem;
 		margin-top: 0.3rem;
 		font-family: var(--font-mono);
-		font-size: 0.6rem;
+		font-size: 0.66rem;
 		color: var(--text-4);
 		text-decoration: none;
 	}
@@ -856,7 +939,7 @@
 		padding-top: 0.55rem;
 		border-top: 1px solid var(--line);
 		font-family: var(--font-mono);
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 		line-height: 1.4;
 		color: var(--text-4);
 	}
@@ -926,13 +1009,13 @@
 	}
 	.org-head span {
 		font-family: var(--font-mono);
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 		color: var(--accent-0);
 	}
 	.org-head em {
 		font-style: normal;
 		font-family: var(--font-mono);
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 		color: var(--text-4);
 	}
 	.org p {
@@ -941,14 +1024,14 @@
 		line-height: 1.35;
 	}
 	.org small {
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 		line-height: 1.45;
 		color: var(--text-4);
 	}
 	.org a {
 		margin-top: 0.15rem;
 		font-family: var(--font-mono);
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 		color: var(--text-4);
 		text-decoration: none;
 	}
@@ -979,7 +1062,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.2rem;
-		font-size: 0.6rem;
+		font-size: 0.66rem;
 		color: var(--accent-0);
 		text-decoration: none;
 	}
@@ -1019,13 +1102,13 @@
 	.side-block :global(.locator .frame) {
 		border: 1px solid var(--line);
 	}
-	.neighbors {
+	.hero-neighbors {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.28rem;
-		margin-top: 0.6rem;
+		margin-top: 0.55rem;
 	}
-	.neighbors a {
+	.hero-neighbors a {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.3rem;
@@ -1033,12 +1116,13 @@
 		background: var(--surface-1);
 		color: var(--text-2);
 		padding: 0.26rem 0.46rem 0.26rem 0.36rem;
-		font-size: 0.68rem;
+		font-size: 0.72rem;
 		text-decoration: none;
 	}
-	.neighbors a:hover {
+	.hero-neighbors a:hover {
 		border-color: var(--line-strong);
 		color: var(--text-1);
+		transform: translateY(-1px);
 	}
 	.mini {
 		width: 1.1rem;
@@ -1065,7 +1149,7 @@
 		padding-bottom: 0.35rem;
 		border-bottom: 1px solid var(--line);
 		font-family: var(--font-mono);
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 		color: var(--text-4);
 	}
 	.compare-row {
@@ -1078,7 +1162,7 @@
 	.compare-label {
 		display: block;
 		margin-bottom: 0.24rem;
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 		color: var(--text-3);
 	}
 	.bars {
@@ -1095,6 +1179,16 @@
 	.bar {
 		height: 6px;
 		display: block;
+		transform-origin: left;
+		animation: bar-grow 0.8s var(--ease-out-soft) both;
+	}
+	@keyframes bar-grow {
+		from {
+			transform: scaleX(0);
+		}
+		to {
+			transform: scaleX(1);
+		}
 	}
 	.bar.a {
 		background: var(--accent-1);
@@ -1105,7 +1199,7 @@
 	.bar-line em {
 		font-style: normal;
 		font-family: var(--font-mono);
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 		color: var(--text-4);
 	}
 	.compare-values {
@@ -1114,12 +1208,12 @@
 		gap: 0.5rem;
 		margin-top: 0.2rem;
 		font-family: var(--font-mono);
-		font-size: 0.6rem;
+		font-size: 0.66rem;
 		color: var(--text-2);
 	}
 	.method {
 		margin: 0.5rem 0 0;
-		font-size: 0.6rem;
+		font-size: 0.66rem;
 		line-height: 1.45;
 		color: var(--text-4);
 	}
@@ -1134,7 +1228,7 @@
 		gap: 0.5rem;
 		padding: 0.34rem 0;
 		border-bottom: 1px solid var(--line);
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 	}
 	.metadata div:last-child {
 		border-bottom: 0;
@@ -1145,7 +1239,7 @@
 	.metadata dd {
 		margin: 0;
 		font-family: var(--font-mono);
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 		color: var(--text-2);
 		text-align: right;
 	}
@@ -1154,7 +1248,7 @@
 		align-items: center;
 		gap: 0.25rem;
 		margin-top: 0.6rem;
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 		color: var(--text-3);
 		text-decoration: none;
 	}
@@ -1167,7 +1261,7 @@
 		padding-top: 1rem;
 		border-top: 1px solid var(--line-strong);
 		font-family: var(--font-mono);
-		font-size: 0.6rem;
+		font-size: 0.66rem;
 		color: var(--text-4);
 	}
 	.page-footer a {
@@ -1198,6 +1292,12 @@
 		text-align: center;
 	}
 	@media (max-width: 1100px) {
+		.hero {
+			grid-template-columns: minmax(0, 1fr) 21rem;
+		}
+		.hero-silhouette {
+			right: 22rem;
+		}
 		.layout {
 			grid-template-columns: minmax(0, 1fr);
 			gap: 1.2rem;
@@ -1213,6 +1313,20 @@
 		}
 	}
 	@media (max-width: 820px) {
+		.hero {
+			grid-template-columns: 1fr;
+		}
+		.hero-map {
+			order: 2;
+		}
+		.hero-silhouette {
+			right: -6rem;
+			top: -4%;
+			width: 22rem;
+		}
+		.hero-actions {
+			width: 100%;
+		}
 		.hero {
 			grid-template-columns: 1fr;
 			align-items: start;

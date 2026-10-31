@@ -89,7 +89,7 @@ await check('Groenlândia mostra soberania da Dinamarca', async () => {
 	await page.waitForTimeout(2600);
 	const subtitle = await page.locator('.card .titles p').innerText();
 	if (!/Dinamarca/.test(subtitle)) throw new Error(`subtítulo=${subtitle}`);
-	const body = await page.locator('.card .body').innerText();
+	const body = await page.locator('.card .scroll').innerText();
 	if (!/soberania/i.test(body) || !/Dinamarca/.test(body)) throw new Error('sem linha de soberania');
 });
 

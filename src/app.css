@@ -56,7 +56,7 @@
 		color-scheme: light;
 		--header-h: 3.5rem;
 		--rail-w: 11rem;
-		--sheet-w: 30rem;
+		--sheet-w: clamp(30rem, 36vw, 34rem);
 
 		/* Papel e tinta — modo claro (padrão) */
 		--surface-0: #f3f6f2;

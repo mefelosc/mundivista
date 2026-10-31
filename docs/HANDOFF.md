@@ -100,13 +100,16 @@ docs/{ROADMAP,INSPIRATION,HANDOFF}.md
   transparente. No 2D o CSS por trás do canvas usa a mesma cor do mar, então a borda do mundo
   não aparece e o pan parece uma câmera contínua; no globo 3D o CSS é um campo de estrelas.
   A praça da projeção planar cobre **três mundos**; as fontes são duplicadas em -360°/0°/+360°
-  e a câmera salta 360° no `moveend`, então o pan leste–oeste é infinito e invisível. O zoom
-  exibido é o zoom da API menos `FLAT_ZOOM_OFFSET` (log₂ 3).
+  e a câmera salta 360° no `move` (durante o gesto/inércia) e no `moveend`, então o pan
+  leste–oeste é infinito, invisível e nunca alcança a borda da praça. O zoom exibido é o zoom
+  da API menos `FLAT_ZOOM_OFFSET` (log₂ 3).
 - **Camadas:** a camada `standard` (Padrão) é o estado inicial e não entra na lista de seis
   camadas temáticas; clicar de novo na camada ativa volta a ela.
-- **Cards/dossiê:** o card virou ficha em blocos (identidade, métricas, abas curtas,
-  cartões de indicador) sem mini-mapa redundante; o dossiê ganhou nav de seções com scroll
-  spy, cards de seção, métricas com série e barra lateral fixa.
+- **Cards/dossiê:** o card virou uma **ficha contínua sem abas**: hero com bandeira/brilho,
+  ledger de métricas, índice fixo de seções e todas as seções na mesma rolagem (identidade,
+  vizinhos, demografia, economia, físico, geopolítica, história) + CTA fixo para o dossiê.
+  O dossiê ganhou capa editorial com silhueta, mapa de localização no hero, ledger, nav fixa,
+  cards animados e comparação na lateral.
 - **Portal/Play/HUD:** portal em tela cheia com mapa-múndi de fundo e quatro entradas
   grandes; Play como sala de jogos em cards; configurações com idioma, tema, som e texto;
   `focusCountry` centraliza o país ao lado do card e a bandeira cobre o território no acerto.
@@ -151,8 +154,8 @@ docs/{ROADMAP,INSPIRATION,HANDOFF}.md
   Globo ↔ 2D remonta o `MapCanvas` via `{#key projection}`; não use `setProjection`
   depois do load.
 - A projeção planar **não repete o mundo**: `renderWorldCopies` é ignorado pelo MapLibre.
-  Não remova as cópias ±360° (`wrapCollection`) nem o salto de 360° no `moveend`; sem elas o
-  pan para no antimeridiano.
+  Não remova as cópias ±360° (`wrapCollection`) nem o salto de 360° no `move`/`moveend`; sem
+  elas o pan para no antimeridiano ou expõe a borda da praça.
 - O `+over` no `definitions` do proj4 é obrigatório. Sem ele, proj4 normaliza longitudes e as
   cópias em ±360° colapsam sobre o mundo original (borda e faixas duplicadas).
 - A praça de três mundos muda a escala do zoom: `FLAT_ZOOM_OFFSET` precisa entrar em rótulos,

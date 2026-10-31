@@ -80,6 +80,7 @@
 	let map: MlMap | null = null;
 	let ready = $state(false);
 	let failed = $state(false);
+	let failureReason = $state<'webgl' | 'generic'>('generic');
 	let hovered = $state<string | null>(null);
 	let activeFill: string = MAP_LAYER.fillA;
 	let scaleLabel = $state('');
@@ -852,6 +853,13 @@
 	async function setupMap() {
 		if (!container) return;
 		try {
+			const probe = document.createElement('canvas');
+			const gl = probe.getContext('webgl2') ?? probe.getContext('webgl');
+			if (!gl) {
+				failureReason = 'webgl';
+				failed = true;
+				return;
+			}
 			const maplibregl = await import('maplibre-gl');
 			maplibregl.setWorkerUrl(workerUrl);
 			const isMobile = window.innerWidth < 720;
@@ -977,6 +985,17 @@
 
 			map.on('move', () => {
 				if (!map) return;
+				if (projection === 'flat' && !wrapping) {
+					const center = map.getCenter();
+					let next: number | null = null;
+					if (center.lng > 180) next = center.lng - 360;
+					else if (center.lng < -180) next = center.lng + 360;
+					if (next !== null) {
+						wrapping = true;
+						map.jumpTo({ center: [next, center.lat] });
+						requestAnimationFrame(() => (wrapping = false));
+					}
+				}
 				scheduleLabels();
 				updateFlagOverlay();
 				updateScale();
@@ -1046,6 +1065,7 @@
 			resizeObserver.observe(container);
 		} catch (err) {
 			console.error(err);
+			failureReason = 'generic';
 			failed = true;
 		}
 	}
@@ -1193,7 +1213,7 @@
 			(projection === 'flat' ? FLAT_ZOOM_OFFSET : 0);
 		const padding = mobile
 			? { bottom: Math.min(430, Math.round(window.innerHeight * 0.55)) }
-			: { right: Math.min(560, Math.round(window.innerWidth * 0.4)) };
+			: { right: Math.min(620, Math.max(500, Math.round(window.innerWidth * 0.44))) };
 		map.flyTo({
 			center,
 			zoom,
@@ -1263,8 +1283,16 @@
 	{/if}
 	{#if failed}
 		<div class="map-failed">
-			<p>Não foi possível iniciar o mapa neste navegador.</p>
-			<p class="hint">Tente atualizar a página ou usar um navegador com WebGL habilitado.</p>
+			{#if failureReason === 'webgl'}
+				<p>O mapa precisa de WebGL, que está desativado neste navegador.</p>
+				<p class="hint">
+					No Zen, ative a aceleração de hardware em Configurações → Geral → Desempenho e
+					recarregue. O restante do atlas continua funcionando.
+				</p>
+			{:else}
+				<p>Não foi possível iniciar o mapa neste navegador.</p>
+				<p class="hint">Tente atualizar a página ou usar um navegador com WebGL habilitado.</p>
+			{/if}
 		</div>
 	{/if}
 	<div class="instruments" aria-hidden={!ready}>

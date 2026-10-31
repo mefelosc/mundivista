@@ -58,6 +58,10 @@ O `smoke`, `a11y` e `shots` esperam um preview em `http://localhost:4173`.
 - Na camada política, clicar em um país carrega sob demanda suas **unidades administrativas
   de primeiro nível** (estados, províncias, distritos): contornos e nomes sobre o mapa e
   lista navegável no card, com foco no mapa ao escolher uma unidade.
+- O card do país é uma **ficha contínua, sem abas**: índice fixo de seções, todas as
+  informações na mesma rolagem, números maiores e CTA fixo para o dossiê.
+- O **dossiê** abre com capa editorial: silhueta do país, mapa de localização no hero,
+  ledger de métricas, navegação fixa e cards com animações de entrada.
 - Coropléticos por quantis, crossfade de camada, seleção por diferença de `feature-state`,
   hover em `requestAnimationFrame` com bbox de 4–6 px.
 - Rótulos DOM com cache de medida, colisão, prioridade e teto de 82; microestados ganham
