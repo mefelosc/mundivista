@@ -103,18 +103,6 @@ export function createMapStyle(theme: ResolvedTheme = 'light'): StyleSpecificati
 			}
 		},
 		{
-			id: MAP_LAYER.hillshade,
-			type: 'hillshade',
-			source: 'terrain-dem',
-			layout: { visibility: 'none' },
-			paint: {
-				'hillshade-exaggeration': dark ? 0.42 : 0.34,
-				'hillshade-shadow-color': dark ? '#050403' : '#5f523c',
-				'hillshade-highlight-color': dark ? '#c9bda4' : '#fffaf0',
-				'hillshade-accent-color': dark ? '#3a3226' : '#c4b391'
-			}
-		},
-		{
 			id: MAP_LAYER.fillB,
 			type: 'fill',
 			source: 'countries',
@@ -134,6 +122,18 @@ export function createMapStyle(theme: ResolvedTheme = 'light'): StyleSpecificati
 				'fill-opacity': 1,
 				'fill-opacity-transition': { duration: 340, delay: 0 },
 				'fill-antialias': true
+			}
+		},
+		{
+			id: MAP_LAYER.hillshade,
+			type: 'hillshade',
+			source: 'terrain-dem',
+			layout: { visibility: 'none' },
+			paint: {
+				'hillshade-exaggeration': dark ? 0.72 : 0.62,
+				'hillshade-shadow-color': dark ? '#050403' : '#4d412e',
+				'hillshade-highlight-color': dark ? '#d8ccb2' : '#fffaf0',
+				'hillshade-accent-color': dark ? '#4a3f2e' : '#b9a780'
 			}
 		},
 		{

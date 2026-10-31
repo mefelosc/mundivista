@@ -291,7 +291,7 @@
 						<h2>Ficha técnica</h2>
 					</header>
 					<div class="facts">
-						<StatRow label="Nome oficial" value={country.official ?? 'Não disponível'} />
+						<StatRow label="Nome oficial (EN)" value={country.official ?? 'Não disponível'} />
 						<StatRow label="Nome em inglês" value={country.nameEn} />
 						<StatRow label="Continente" value={country.continent ?? 'Não disponível'} />
 						<StatRow label="Sub-região" value={country.subregion ?? 'Não disponível'} />
@@ -518,7 +518,7 @@
 	main {
 		min-height: 100dvh;
 		padding: calc(var(--header-h) + 1.6rem) clamp(1rem, 4vw, 3rem) 3rem;
-		max-width: 78rem;
+		max-width: 82rem;
 		margin: 0 auto;
 		position: relative;
 		z-index: 1;
@@ -527,7 +527,7 @@
 		display: flex;
 		gap: 0.4rem;
 		font-family: var(--font-mono);
-		font-size: 0.55rem;
+		font-size: 0.715rem;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--text-4);
@@ -560,7 +560,7 @@
 	}
 	.type {
 		font-family: var(--font-mono);
-		font-size: 0.5rem;
+		font-size: 0.650rem;
 		color: var(--text-4);
 		border: 1px solid var(--line);
 		padding: 0.1rem 0.3rem;
@@ -577,13 +577,13 @@
 		margin: 0.2rem 0 0;
 		font-family: var(--font-display);
 		font-style: italic;
-		font-size: 1rem;
+		font-size: 1.150rem;
 		color: var(--text-3);
 	}
 	.lede {
 		max-width: 40rem;
 		margin: 0.7rem 0 0;
-		font-size: 0.8rem;
+		font-size: 1.040rem;
 		line-height: 1.6;
 		color: var(--text-3);
 	}
@@ -610,34 +610,34 @@
 	}
 	.glance-label {
 		font-family: var(--font-mono);
-		font-size: 0.48rem;
+		font-size: 0.700rem;
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
 		color: var(--text-4);
 	}
 	.glance strong {
 		font-family: var(--font-display);
-		font-size: 1.45rem;
+		font-size: 1.600rem;
 		font-weight: 550;
 		line-height: 1.1;
 	}
 	.glance strong.capital {
-		font-size: 1.15rem;
+		font-size: 1.150rem;
 	}
 	.glance em {
 		font-style: normal;
 		font-family: var(--font-mono);
-		font-size: 0.48rem;
+		font-size: 0.700rem;
 		color: var(--text-4);
 	}
 	.rank {
 		font-family: var(--font-mono);
-		font-size: 0.48rem;
+		font-size: 0.700rem;
 		color: var(--accent-0);
 	}
 	.layout {
 		display: grid;
-		grid-template-columns: minmax(0, 1.55fr) minmax(17rem, 0.85fr);
+		grid-template-columns: minmax(0, 1.55fr) minmax(18.5rem, 0.85fr);
 		gap: 2.4rem;
 		padding-top: 1.5rem;
 	}
@@ -655,13 +655,13 @@
 	}
 	.index {
 		font-family: var(--font-mono);
-		font-size: 0.55rem;
+		font-size: 0.715rem;
 		color: var(--accent-1);
 	}
 	.block-head h2 {
 		margin: 0;
 		font-family: var(--font-display);
-		font-size: 1.25rem;
+		font-size: 1.450rem;
 		font-weight: 600;
 	}
 	.map-link {
@@ -670,7 +670,7 @@
 		align-items: center;
 		gap: 0.25rem;
 		font-family: var(--font-mono);
-		font-size: 0.5rem;
+		font-size: 0.650rem;
 		letter-spacing: 0.04em;
 		color: var(--text-3);
 		text-decoration: none;
@@ -684,8 +684,7 @@
 		gap: 0 1.6rem;
 	}
 	.facts {
-		columns: 2;
-		column-gap: 1.8rem;
+		columns: 1;
 	}
 	.facts :global(.stat) {
 		break-inside: avoid;
@@ -696,7 +695,7 @@
 		gap: 0.2rem;
 		margin-top: 0.25rem;
 		font-family: var(--font-mono);
-		font-size: 0.46rem;
+		font-size: 0.700rem;
 		color: var(--text-4);
 		text-decoration: none;
 	}
@@ -712,7 +711,7 @@
 		padding-top: 0.4rem;
 		border-top: 1px solid var(--line);
 		font-family: var(--font-mono);
-		font-size: 0.48rem;
+		font-size: 0.700rem;
 		color: var(--text-4);
 	}
 	.source a {
@@ -742,17 +741,17 @@
 	}
 	.year {
 		font-family: var(--font-mono);
-		font-size: 0.72rem;
+		font-size: 0.936rem;
 		color: var(--accent-0);
 	}
 	.timeline strong {
 		display: block;
-		font-size: 0.76rem;
+		font-size: 0.988rem;
 		font-weight: 600;
 	}
 	.timeline p {
 		margin: 0.18rem 0 0;
-		font-size: 0.64rem;
+		font-size: 0.832rem;
 		line-height: 1.5;
 		color: var(--text-3);
 	}
@@ -783,28 +782,28 @@
 	}
 	.org-head span {
 		font-family: var(--font-mono);
-		font-size: 0.6rem;
+		font-size: 0.780rem;
 		color: var(--accent-0);
 	}
 	.org-head em {
 		font-style: normal;
 		font-family: var(--font-mono);
-		font-size: 0.48rem;
+		font-size: 0.700rem;
 		color: var(--text-4);
 	}
 	.org p {
 		margin: 0;
-		font-size: 0.66rem;
+		font-size: 0.858rem;
 	}
 	.org small {
-		font-size: 0.56rem;
+		font-size: 0.728rem;
 		line-height: 1.45;
 		color: var(--text-4);
 	}
 	.org a {
 		margin-top: 0.2rem;
 		font-family: var(--font-mono);
-		font-size: 0.44rem;
+		font-size: 0.700rem;
 		color: var(--text-4);
 		text-decoration: none;
 	}
@@ -821,12 +820,12 @@
 	.snippets h3 {
 		margin: 0.28rem 0 0.3rem;
 		font-family: var(--font-display);
-		font-size: 0.92rem;
+		font-size: 1.196rem;
 		font-weight: 600;
 	}
 	.snippets p {
 		margin: 0 0 0.35rem;
-		font-size: 0.62rem;
+		font-size: 0.806rem;
 		line-height: 1.55;
 		color: var(--text-2);
 	}
@@ -834,7 +833,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.2rem;
-		font-size: 0.5rem;
+		font-size: 0.650rem;
 		color: var(--water-1);
 		text-decoration: none;
 	}
@@ -852,7 +851,7 @@
 		background: var(--surface-1);
 		color: var(--text-2);
 		padding: 0.22rem 0.42rem 0.22rem 0.32rem;
-		font-size: 0.58rem;
+		font-size: 0.754rem;
 		text-decoration: none;
 	}
 	.neighbors a:hover {
@@ -869,7 +868,7 @@
 		border: 1px solid var(--line-strong);
 		background: var(--surface-1);
 		color: var(--text-1);
-		font-size: 0.7rem;
+		font-size: 0.910rem;
 		padding: 0.38rem 0.45rem;
 	}
 	.compare {
@@ -879,7 +878,7 @@
 		display: flex;
 		justify-content: space-between;
 		font-family: var(--font-mono);
-		font-size: 0.5rem;
+		font-size: 0.650rem;
 		color: var(--text-4);
 		padding-bottom: 0.3rem;
 		border-bottom: 1px solid var(--line);
@@ -890,7 +889,7 @@
 	}
 	.compare-label {
 		display: block;
-		font-size: 0.56rem;
+		font-size: 0.728rem;
 		color: var(--text-3);
 		margin-bottom: 0.2rem;
 	}
@@ -918,20 +917,20 @@
 	.bar-line em {
 		font-style: normal;
 		font-family: var(--font-mono);
-		font-size: 0.42rem;
+		font-size: 0.700rem;
 		color: var(--text-4);
 	}
 	.compare-values {
 		display: flex;
 		justify-content: space-between;
 		font-family: var(--font-mono);
-		font-size: 0.52rem;
+		font-size: 0.676rem;
 		color: var(--text-2);
 		margin-top: 0.18rem;
 	}
 	.method {
 		margin: 0.45rem 0 0;
-		font-size: 0.5rem;
+		font-size: 0.650rem;
 		line-height: 1.45;
 		color: var(--text-4);
 	}
@@ -946,7 +945,7 @@
 		gap: 0.5rem;
 		padding: 0.32rem 0;
 		border-bottom: 1px solid var(--line);
-		font-size: 0.56rem;
+		font-size: 0.728rem;
 	}
 	.metadata dt {
 		color: var(--text-4);
@@ -954,7 +953,7 @@
 	.metadata dd {
 		margin: 0;
 		font-family: var(--font-mono);
-		font-size: 0.5rem;
+		font-size: 0.650rem;
 		color: var(--text-2);
 		text-align: right;
 	}
@@ -963,7 +962,7 @@
 		align-items: center;
 		gap: 0.25rem;
 		margin-top: 0.55rem;
-		font-size: 0.56rem;
+		font-size: 0.728rem;
 		color: var(--text-3);
 		text-decoration: none;
 	}
@@ -975,7 +974,7 @@
 		padding-top: 1rem;
 		border-top: 1px solid var(--line-strong);
 		font-family: var(--font-mono);
-		font-size: 0.52rem;
+		font-size: 0.676rem;
 		color: var(--text-4);
 	}
 	.page-footer a {
@@ -986,7 +985,7 @@
 		color: var(--accent-0);
 	}
 	.empty {
-		font-size: 0.66rem;
+		font-size: 0.858rem;
 		color: var(--text-4);
 	}
 	.sr-only {

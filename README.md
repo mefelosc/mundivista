@@ -47,7 +47,7 @@ O `smoke`, `a11y` e `shots` esperam um preview em `http://localhost:4173`.
   e história.
 - Coropléticos por quantis, crossfade de camada, seleção por diferença de `feature-state`,
   hover em `requestAnimationFrame` com bbox de 4–6 px.
-- Globo 3D e projeção Mercator; relevo 3D opcional com DEM público (AWS Terrain Tiles),
+- Globo 3D como projeção padrão (sem o mapa plano Mercator); relevo 3D opcional com DEM público (AWS Terrain Tiles),
   hillshade e atribuição visível.
 - Rótulos DOM com cache de medida, colisão, prioridade e teto de 82; microestados ganham
   pontos de capital clicáveis.

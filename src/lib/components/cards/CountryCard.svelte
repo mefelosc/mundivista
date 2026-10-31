@@ -15,7 +15,7 @@
 	import { disputedInfo } from '#lib/data/disputed';
 	import { organizationsForCountry } from '#lib/data/organizations';
 	import { snippetsByCountry } from '#lib/data/snippets';
-	import { formatArea, formatCompact, formatIndicatorValue } from '#lib/format';
+	import { formatArea, formatIndicatorValue } from '#lib/format';
 	import type { Country, IndicatorKey } from '#lib/types';
 	import type { ResolvedLayer } from '#lib/configurations/map-layers';
 
@@ -164,10 +164,6 @@
 			}
 		);
 	});
-
-	const totalPopulation = $derived(
-		worldStats('population') ? formatCompact(worldStats('population')!.median) : '—'
-	);
 
 	$effect(() => {
 		const code = country.code;
@@ -476,7 +472,6 @@
 
 	<footer>
 		<span>Dados: {retrievedAt}</span>
-		<span class="median">Mediana mundial de população: {totalPopulation}</span>
 		<a href="/sobre">Fontes e métodos</a>
 	</footer>
 </aside>
@@ -527,7 +522,7 @@
 		height: 1.45rem;
 		border: 1px solid var(--line-strong);
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.754rem;
 		color: var(--text-3);
 	}
 	.titles {
@@ -537,14 +532,14 @@
 	h2 {
 		margin: 0;
 		font-family: var(--font-display);
-		font-size: 1.22rem;
+		font-size: 1.380rem;
 		font-weight: 600;
 		line-height: 1.1;
 		letter-spacing: -0.01em;
 	}
 	.titles p {
 		margin: 0.18rem 0 0;
-		font-size: 0.6rem;
+		font-size: 0.780rem;
 		color: var(--text-4);
 	}
 	.head-actions {
@@ -570,7 +565,7 @@
 		align-items: center;
 		gap: 0.5rem;
 		padding: 0 0.8rem 0.55rem;
-		font-size: 0.58rem;
+		font-size: 0.754rem;
 		color: var(--text-3);
 		border-bottom: 1px solid var(--line);
 	}
@@ -584,14 +579,14 @@
 		border-radius: 0.1rem;
 		padding: 0.1rem 0.35rem;
 		font-family: var(--font-mono);
-		font-size: 0.48rem;
+		font-size: 0.700rem;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 	}
 	.mono {
 		margin-left: auto;
 		font-family: var(--font-mono);
-		font-size: 0.52rem;
+		font-size: 0.676rem;
 		letter-spacing: 0.08em;
 	}
 	.links {
@@ -608,7 +603,7 @@
 		border: 1px solid var(--line);
 		color: var(--text-3);
 		padding: 0.2rem 0.4rem;
-		font-size: 0.55rem;
+		font-size: 0.715rem;
 		text-decoration: none;
 		transition: all 0.15s ease;
 	}
@@ -642,14 +637,14 @@
 	}
 	.glance-label {
 		font-family: var(--font-mono);
-		font-size: 0.44rem;
+		font-size: 0.700rem;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
 		color: var(--text-4);
 	}
 	.glance strong {
 		font-family: var(--font-display);
-		font-size: 1rem;
+		font-size: 1.150rem;
 		font-weight: 550;
 		color: var(--text-1);
 		line-height: 1.1;
@@ -657,18 +652,14 @@
 	.glance em {
 		font-style: normal;
 		font-family: var(--font-mono);
-		font-size: 0.45rem;
+		font-size: 0.700rem;
 		color: var(--text-4);
 	}
 	.tabs {
 		display: flex;
-		overflow-x: auto;
-		scrollbar-width: none;
+		flex-wrap: wrap;
 		border-bottom: 1px solid var(--line);
 		background: var(--surface-1);
-	}
-	.tabs::-webkit-scrollbar {
-		display: none;
 	}
 	.tabs button {
 		display: inline-flex;
@@ -679,12 +670,12 @@
 		background: transparent;
 		color: var(--text-3);
 		padding: 0.45rem 0.55rem;
-		font-size: 0.6rem;
+		font-size: 0.780rem;
 		white-space: nowrap;
 	}
 	.tabs button span {
 		font-family: var(--font-mono);
-		font-size: 0.4rem;
+		font-size: 0.700rem;
 		color: var(--text-4);
 	}
 	.tabs button:hover {
@@ -711,7 +702,7 @@
 	h3 {
 		margin: 0 0 0.25rem;
 		font-family: var(--font-mono);
-		font-size: 0.52rem;
+		font-size: 0.676rem;
 		font-weight: 500;
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
@@ -736,7 +727,7 @@
 		color: var(--text-3);
 		padding: 0.18rem 0.38rem;
 		font-family: var(--font-mono);
-		font-size: 0.46rem;
+		font-size: 0.700rem;
 		letter-spacing: 0.03em;
 	}
 	.highlight-toggle:hover {
@@ -764,14 +755,14 @@
 	}
 	.org span {
 		font-family: var(--font-mono);
-		font-size: 0.54rem;
+		font-size: 0.702rem;
 		color: var(--accent-0);
 		letter-spacing: 0.06em;
 		white-space: nowrap;
 	}
 	.org p {
 		margin: 0;
-		font-size: 0.58rem;
+		font-size: 0.754rem;
 		color: var(--text-3);
 		line-height: 1.35;
 	}
@@ -790,7 +781,7 @@
 		color: var(--text-2);
 		border-radius: 0.1rem;
 		padding: 0.2rem 0.42rem 0.2rem 0.32rem;
-		font-size: 0.58rem;
+		font-size: 0.754rem;
 		transition: all 0.15s ease;
 	}
 	.neighbors button:hover {
@@ -805,12 +796,12 @@
 	}
 	.empty {
 		margin: 0.3rem 0 0;
-		font-size: 0.62rem;
+		font-size: 0.806rem;
 		color: var(--text-4);
 	}
 	.note {
 		margin: 0.35rem 0 0;
-		font-size: 0.58rem;
+		font-size: 0.754rem;
 		line-height: 1.45;
 		color: var(--text-4);
 	}
@@ -823,7 +814,7 @@
 	.snippet h3 {
 		margin: 0.3rem 0 0.32rem;
 		font-family: var(--font-display);
-		font-size: 0.9rem;
+		font-size: 1.170rem;
 		font-weight: 600;
 		letter-spacing: -0.01em;
 		text-transform: none;
@@ -831,7 +822,7 @@
 	}
 	.snippet p {
 		margin: 0 0 0.4rem;
-		font-size: 0.63rem;
+		font-size: 0.819rem;
 		line-height: 1.55;
 		color: var(--text-2);
 	}
@@ -839,7 +830,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.25rem;
-		font-size: 0.54rem;
+		font-size: 0.702rem;
 		color: var(--water-1);
 		text-decoration: none;
 	}
@@ -850,11 +841,8 @@
 		padding: 0.42rem 0.8rem;
 		border-top: 1px solid var(--line);
 		font-family: var(--font-mono);
-		font-size: 0.46rem;
+		font-size: 0.700rem;
 		color: var(--text-4);
-	}
-	footer .median {
-		margin-left: auto;
 	}
 	footer a {
 		color: var(--text-3);
@@ -929,13 +917,10 @@
 	}
 	@media (max-width: 480px) {
 		.glance strong {
-			font-size: 0.88rem;
+			font-size: 1.144rem;
 		}
 		.links a {
-			font-size: 0.5rem;
-		}
-		footer .median {
-			display: none;
+			font-size: 0.650rem;
 		}
 	}
 </style>

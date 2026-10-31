@@ -71,15 +71,14 @@ await check('tema muda e persiste no documento', async () => {
 	if (theme !== 'dark') throw new Error(`tema=${theme}`);
 });
 
-await check('globo e relevo são ativados sem reload', async () => {
-	await page.locator('button[title="Globo 3D"]').click();
-	await page.waitForTimeout(1400);
-	if (!page.url().includes('globe=1')) throw new Error(`globo: url=${page.url()}`);
+await check('globo é padrão e relevo ativa sem reload', async () => {
+	const badge = await page.locator('.projection-badge').innerText();
+	if (!badge.includes('Globo')) throw new Error(`badge=${badge}`);
 	await page.locator('button[title="Relevo 3D com modelo digital de elevação"]').click();
 	await page.waitForTimeout(1400);
-	if (!page.url().includes('terrain=1') || page.url().includes('globe=1')) {
-		throw new Error(`relevo: url=${page.url()}`);
-	}
+	if (!page.url().includes('terrain=1')) throw new Error(`relevo: url=${page.url()}`);
+	const pitch = await page.locator('.map-canvas').getAttribute('data-pitch');
+	if (Number(pitch) < 30) throw new Error(`pitch=${pitch}`);
 });
 
 await check('jogo de silhuetas inicia e aceita tecla 1', async () => {

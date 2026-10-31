@@ -43,7 +43,7 @@
 		status = {},
 		interactive = true,
 		showLabels = true,
-		projection = 'mercator',
+		projection = 'globe',
 		terrain = false,
 		onselect,
 		onhover,
@@ -61,7 +61,7 @@
 	let activeFill: string = MAP_LAYER.fillA;
 	let scaleLabel = $state('');
 	let scaleWidth = $state(90);
-	let projectionLabel = $state('Mercator');
+	let projectionLabel = $state('Globo');
 	let pitch = $state(0);
 
 	let labelEntries: {
@@ -253,8 +253,9 @@
 		map.setPaintProperty(MAP_LAYER.citiesMinor, 'circle-stroke-color', p.halo);
 		map.setPaintProperty(MAP_LAYER.micro, 'circle-color', p.accent);
 		map.setPaintProperty(MAP_LAYER.micro, 'circle-stroke-color', p.halo);
-		map.setPaintProperty(MAP_LAYER.hillshade, 'hillshade-shadow-color', dark ? '#050403' : '#5f523c');
-		map.setPaintProperty(MAP_LAYER.hillshade, 'hillshade-highlight-color', dark ? '#c9bda4' : '#fffaf0');
+		map.setPaintProperty(MAP_LAYER.hillshade, 'hillshade-exaggeration', dark ? 0.72 : 0.62);
+		map.setPaintProperty(MAP_LAYER.hillshade, 'hillshade-shadow-color', dark ? '#050403' : '#4d412e');
+		map.setPaintProperty(MAP_LAYER.hillshade, 'hillshade-highlight-color', dark ? '#d8ccb2' : '#fffaf0');
 		if (map.getLayer(MAP_LAYER.rivers)) {
 			map.setPaintProperty(MAP_LAYER.rivers, 'line-color', p.river);
 			map.setPaintProperty(MAP_LAYER.lakes, 'fill-color', p.water);
@@ -563,7 +564,7 @@
 				container,
 				style: createMapStyle(theme.resolved) as StyleSpecification,
 				center: [0, 16],
-				zoom: isMobile ? -0.3 : 1.3,
+				zoom: isMobile ? 1.2 : 1.8,
 				minZoom: -0.6,
 				maxZoom: 7.4,
 				attributionControl: false,
@@ -706,8 +707,8 @@
 		if (!map) return;
 		if (terrain) {
 			map.setMaxPitch(65);
-			map.setTerrain({ source: 'terrain-dem', exaggeration: 1.25 });
-			if (map.getPitch() < 20) map.easeTo({ pitch: 48, duration: 700, essential: true });
+			map.setTerrain({ source: 'terrain-dem', exaggeration: 1.6 });
+			if (map.getPitch() < 20) map.easeTo({ pitch: 55, duration: 700, essential: true });
 		} else {
 			map.setTerrain(null);
 			map.setMaxPitch(0);
@@ -798,7 +799,7 @@
 
 	export function resetView() {
 		const isMobile = typeof window !== 'undefined' && window.innerWidth < 720;
-		map?.flyTo({ center: [0, 16], zoom: isMobile ? -0.3 : 1.3, duration: 760, essential: true });
+		map?.flyTo({ center: [0, 16], zoom: isMobile ? 1.2 : 1.8, duration: 760, essential: true });
 	}
 
 	export function zoomBy(delta: number) {

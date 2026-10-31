@@ -91,7 +91,7 @@ docs/{ROADMAP,INSPIRATION,HANDOFF}.md
 ## Decisões desta sessão
 
 - **Identidade:** direção B (Atlas Editorial); o escuro é o atlas à noite.
-- **Mapa:** Mercator + Globo; relevo 3D com AWS Terrarium; crossfade por duas camadas de fill.
+- **Mapa:** projeção Globo como padrão (Mercator removido da interface); relevo 3D com AWS Terrarium; crossfade por duas camadas de fill.
 - **Microestados:** pontos de capital clicáveis (`cities` com `micro: true`).
 - **História:** timeline 1945–2026 com eventos curados e recorte de blocos; usa polígonos
   atuais e diz isso. CShapes não foi integrado.

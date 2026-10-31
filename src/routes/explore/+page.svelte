@@ -24,7 +24,6 @@
 	let hovered = $state<string | null>(null);
 	let mapRef: MapCanvas | null = null;
 	let view = $state({ lat: 0, lng: 0, zoom: 1.3 });
-	let projection = $state<'mercator' | 'globe'>('mercator');
 	let terrain = $state(false);
 	let mobileLegend = $state(false);
 	let hintDismissed = $state(false);
@@ -51,11 +50,9 @@
 		if (requestedLayer && layerById.has(requestedLayer)) layerId = requestedLayer;
 		const requestedCountry = params.get('country');
 		if (requestedCountry && getCountry(requestedCountry)) selected = requestedCountry;
-		if (params.get('globe') === '1') projection = 'globe';
 		if (params.get('terrain') === '1') terrain = true;
 		const requestedYear = Number(params.get('year'));
 		if (requestedYear >= 1945 && requestedYear <= 2026) historyYear = requestedYear;
-		if (projection === 'globe') terrain = false;
 		urlsReady = true;
 	});
 
@@ -64,7 +61,6 @@
 		const params = new URLSearchParams();
 		params.set('layer', layerId);
 		if (selected) params.set('country', selected);
-		if (projection === 'globe') params.set('globe', '1');
 		if (terrain) params.set('terrain', '1');
 		if (layerId === 'history' && historyYear) params.set('year', String(historyYear));
 		const next = params.toString();
@@ -83,8 +79,6 @@
 		if (requestedCountry && getCountry(requestedCountry) && requestedCountry !== selected) {
 			select(requestedCountry);
 		}
-		if (params.get('globe') === '1' && projection !== 'globe') setProjection('globe');
-		if (params.get('globe') !== '1' && projection === 'globe') setProjection('mercator');
 		if (params.get('terrain') === '1' && !terrain) toggleTerrain();
 		if (params.get('terrain') !== '1' && terrain) terrain = false;
 		const requestedYear = Number(params.get('year'));
@@ -130,14 +124,8 @@
 		highlightNeighbors = false;
 	}
 
-	function setProjection(next: 'mercator' | 'globe') {
-		projection = next;
-		if (next === 'globe') terrain = false;
-	}
-
 	function toggleTerrain() {
 		terrain = !terrain;
-		if (terrain && projection === 'globe') projection = 'mercator';
 	}
 
 	function onKeydown(event: KeyboardEvent) {
@@ -147,9 +135,7 @@
 			if (selected) selected = null;
 			return;
 		}
-		if (event.key === 'g') {
-			setProjection(projection === 'globe' ? 'mercator' : 'globe');
-		} else if (event.key === 't') {
+		if (event.key === 't') {
 			toggleTerrain();
 		} else if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
 			const ids = ['political', 'physical', 'population', 'economy', 'geopolitics', 'history'] as LayerId[];
@@ -177,7 +163,6 @@
 		{layer}
 		{selected}
 		{highlight}
-		{projection}
 		{terrain}
 		onselect={select}
 		onhover={(code) => (hovered = code)}
@@ -245,24 +230,9 @@
 			<span class="zoom">z{view.zoom.toFixed(1)}</span>
 		</div>
 		<div class="switch-row">
-			<div class="segmented" role="group" aria-label="Projeção do mapa">
-				<button
-					type="button"
-					class:active={projection === 'mercator'}
-					onclick={() => setProjection('mercator')}
-					title="Projeção Mercator"
-				>
-					<Icon name="compass" size={13} /> 2D
-				</button>
-				<button
-					type="button"
-					class:active={projection === 'globe'}
-					onclick={() => setProjection('globe')}
-					title="Globo 3D"
-				>
-					<Icon name="globe3d" size={13} /> Globo
-				</button>
-			</div>
+			<span class="projection-badge" title="Projeção Globo, sem a distorção de área do mapa plano">
+				<Icon name="globe3d" size={13} /> Globo
+			</span>
 			<button
 				type="button"
 				class="terrain-toggle"
@@ -311,7 +281,7 @@
 		<span>·</span>
 		<span>{indicatorKeys.length} indicadores</span>
 		<span>·</span>
-		<span>{projection === 'globe' ? 'Globo' : 'Mercator'}</span>
+		<span>Globo</span>
 		<span>·</span>
 		<span>Natural Earth 1:50m</span>
 		{#if terrain}
@@ -442,12 +412,16 @@
 		align-items: stretch;
 		gap: 0.3rem;
 	}
-	.segmented {
+	.projection-badge {
 		display: inline-flex;
+		align-items: center;
+		gap: 0.28rem;
 		border: 1px solid var(--line);
 		background: var(--surface-2);
+		color: var(--text-3);
+		padding: 0.35rem 0.5rem;
+		font-size: 0.66rem;
 	}
-	.segmented button,
 	.terrain-toggle {
 		display: inline-flex;
 		align-items: center;
@@ -459,18 +433,13 @@
 		font-size: 0.6rem;
 		transition: background 0.15s ease, color 0.15s ease;
 	}
-	.segmented button + button {
-		border-left: 1px solid var(--line);
-	}
 	.terrain-toggle {
 		border: 1px solid var(--line);
 		background: var(--surface-2);
 	}
-	.segmented button:hover,
 	.terrain-toggle:hover {
 		color: var(--text-1);
 	}
-	.segmented button.active,
 	.terrain-toggle.active {
 		background: color-mix(in oklab, var(--accent-1) 16%, var(--surface-2));
 		color: var(--accent-2);
