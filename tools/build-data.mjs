@@ -71,7 +71,19 @@ const INDICATORS = [
 	{ key: 'industryShare', code: 'NV.IND.TOTL.ZS', name: 'Indústria no valor adicionado', unit: '% do PIB', format: 'dec1', dir: 'higher' },
 	{ key: 'agriShare', code: 'NV.AGR.TOTL.ZS', name: 'Agricultura no valor adicionado', unit: '% do PIB', format: 'dec1', dir: 'higher' },
 	{ key: 'co2PerCapita', code: 'EN.GHG.CO2.PC.CE.AR5', name: 'Emissões de CO₂ per capita', unit: 't CO₂ por pessoa', format: 'dec2', dir: 'lower' },
-	{ key: 'researchShare', code: 'GB.XPD.RSDV.GD.ZS', name: 'Investimento em P&D', unit: '% do PIB', format: 'dec2', dir: 'higher' }
+	{ key: 'researchShare', code: 'GB.XPD.RSDV.GD.ZS', name: 'Investimento em P&D', unit: '% do PIB', format: 'dec2', dir: 'higher' },
+	{ key: 'gini', code: 'SI.POV.GINI', name: 'Índice de Gini', unit: 'índice 0–100', format: 'dec1', dir: 'lower' },
+	{ key: 'unemployment', code: 'SL.UEM.TOTL.ZS', name: 'Desemprego', unit: '% da força de trabalho', format: 'dec1', dir: 'lower' },
+	{ key: 'inflation', code: 'FP.CPI.TOTL.ZG', name: 'Inflação (IPC)', unit: '% ao ano', format: 'dec1', dir: 'lower' },
+	{ key: 'debtShare', code: 'GC.DOD.TOTL.GD.ZS', name: 'Dívida do governo', unit: '% do PIB', format: 'dec1', dir: 'lower' },
+	{ key: 'co2Total', code: 'EN.GHG.CO2.MT.CE.AR5', name: 'Emissões de CO₂', unit: 'Mt CO₂', format: 'dec1', dir: 'lower' },
+	{ key: 'energyUse', code: 'EG.USE.PCAP.KG.OE', name: 'Consumo de energia', unit: 'kg eq. petróleo por pessoa', format: 'int', dir: 'higher' },
+	{ key: 'tourism', code: 'ST.INT.ARVL', name: 'Chegadas de turistas', unit: 'pessoas por ano', format: 'int', dir: 'higher' },
+	{ key: 'schoolEnrollment', code: 'SE.SEC.ENRR', name: 'Matrícula no ensino médio', unit: '% do grupo etário', format: 'dec1', dir: 'higher' },
+	{ key: 'healthShare', code: 'SH.XPD.CHEX.GD.ZS', name: 'Gastos com saúde', unit: '% do PIB', format: 'dec1', dir: 'higher' },
+	{ key: 'govEffectiveness', code: 'GOV_WGI_GE.EST', name: 'Efetividade do governo (WGI)', unit: 'escore −2,5 a 2,5', format: 'dec2', dir: 'higher' },
+	{ key: 'controlCorruption', code: 'GOV_WGI_CC.EST', name: 'Controle da corrupção (WGI)', unit: 'escore −2,5 a 2,5', format: 'dec2', dir: 'higher' },
+	{ key: 'ruleOfLaw', code: 'GOV_WGI_RL.EST', name: 'Estado de direito (WGI)', unit: 'escore −2,5 a 2,5', format: 'dec2', dir: 'higher' }
 ];
 
 const WB_YEARS = '2016:2025';
@@ -161,7 +173,7 @@ const TYPE_PT = {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function fetchCached(url, file, { json = true, attempts = 4 } = {}) {
+async function fetchCached(url, file, { json = true, attempts = 6 } = {}) {
 	if (!existsSync(CACHE)) await mkdir(CACHE, { recursive: true });
 	const p = path.join(CACHE, file);
 	if (existsSync(p) && !REFRESH) return json ? JSON.parse(await readFile(p, 'utf8')) : await readFile(p);
@@ -176,7 +188,7 @@ async function fetchCached(url, file, { json = true, attempts = 4 } = {}) {
 			return json ? JSON.parse(text) : text;
 		} catch (err) {
 			lastError = err;
-			if (i < attempts) await sleep(1500 * i);
+			if (i < attempts) await sleep(4000 * i);
 		}
 	}
 	throw lastError;
@@ -189,6 +201,67 @@ const norm = (s) =>
 		.toLowerCase()
 		.replace(/[^a-z0-9]+/g, ' ')
 		.trim();
+
+/** Projeção equirretangular simples para silhuetas de jogo. */
+function silhouettePath(geometry) {
+	let rings = [];
+	if (geometry.type === 'Polygon') rings = geometry.coordinates;
+	else if (geometry.type === 'MultiPolygon') rings = geometry.coordinates.flat();
+	else return null;
+
+	const projected = [];
+	let minX = Infinity;
+	let maxX = -Infinity;
+	let minY = Infinity;
+	let maxY = -Infinity;
+
+	for (const ring of rings) {
+		if (ring.length < 3) continue;
+		// Costura do antimeridiano: desloca o anel para perto do primeiro ponto.
+		const base = ring[0][0];
+		const shifted = ring.map(([lon, lat]) => {
+			let x = lon;
+			while (x - base > 180) x -= 360;
+			while (x - base < -180) x += 360;
+			const phi = (lat * Math.PI) / 180;
+			const y = -Math.log(Math.tan(Math.PI / 4 + phi / 2));
+			return [x, y];
+		});
+		for (const [x, y] of shifted) {
+			if (x < minX) minX = x;
+			if (x > maxX) maxX = x;
+			if (y < minY) minY = y;
+			if (y > maxY) maxY = y;
+		}
+		projected.push(shifted);
+	}
+	if (!projected.length || !Number.isFinite(minX)) return null;
+
+	const spanX = Math.max(maxX - minX, 0.0001);
+	const spanY = Math.max(maxY - minY, 0.0001);
+	const scale = 100 / Math.max(spanX, spanY);
+	const offX = (100 - spanX * scale) / 2;
+	const offY = (100 - spanY * scale) / 2;
+
+	const simplify = (points) => {
+		if (points.length <= 8) return points;
+		const step = Math.max(1, Math.floor(points.length / 90));
+		const out = points.filter((_, i) => i % step === 0);
+		if (out[out.length - 1] !== points[points.length - 1]) out.push(points[points.length - 1]);
+		return out;
+	};
+
+	return projected
+		.map((ring) => {
+			const pts = simplify(ring).map(([x, y]) => {
+				const px = offX + (x - minX) * scale;
+				const py = offY + (y - minY) * scale;
+				return `${px.toFixed(1)},${py.toFixed(1)}`;
+			});
+			return `M${pts.join('L')}Z`;
+		})
+		.join('');
+}
 
 async function main() {
 	console.log('› fronteiras (Natural Earth)');
@@ -222,12 +295,16 @@ async function main() {
 	/* ---------- indicadores: World Bank ---------- */
 	console.log('› indicadores (World Bank)');
 	const wb = {};
+	const wbSeries = {};
 	const wbMeta = {};
 	for (const ind of INDICATORS) {
 		const url = `https://api.worldbank.org/v2/country/all/indicator/${ind.code}?format=json&per_page=20000&date=${WB_YEARS}`;
 		let rows = [];
 		try {
 			const payload = await fetchCached(url, `wb_${ind.code}.json`);
+			if (!Array.isArray(payload?.[1])) {
+				throw new Error(payload?.message?.[0]?.value ?? 'resposta sem série');
+			}
 			wbMeta[ind.key] = {
 				...ind,
 				source: SOURCES.indicators.name,
@@ -235,15 +312,16 @@ async function main() {
 				license: SOURCES.indicators.license,
 				lastUpdated: payload?.[0]?.lastupdated ?? null
 			};
-			rows = Array.isArray(payload?.[1]) ? payload[1] : [];
+			rows = payload[1];
 		} catch (err) {
 			console.warn(`  ! ${ind.code}: ${err.message}`);
 			wbMeta[ind.key] = { ...ind, unavailable: true };
-			await sleep(2000);
+			await sleep(3000);
 			continue;
 		}
 
 		const byIso = new Map();
+		const seriesByIso = new Map();
 		for (const r of rows) {
 			if (r.value == null) continue;
 			const iso = r.countryiso3code;
@@ -252,8 +330,13 @@ async function main() {
 			const prev = byIso.get(iso);
 			// mantém o ano mais recente disponível
 			if (!prev || year > prev.y) byIso.set(iso, { v: r.value, y: year });
+			const series = seriesByIso.get(iso) ?? [];
+			series.push([year, Math.round(r.value * 100) / 100]);
+			seriesByIso.set(iso, series);
 		}
+		for (const series of seriesByIso.values()) series.sort((a, b) => a[0] - b[0]);
 		wb[ind.key] = byIso;
+		wbSeries[ind.key] = seriesByIso;
 		const coverage = byIso.size;
 		console.log(`  · ${ind.key.padEnd(18)} ${String(coverage).padStart(3)} países`);
 		await sleep(1200);
@@ -296,7 +379,12 @@ async function main() {
 		if (wbCode) {
 			for (const ind of INDICATORS) {
 				const hit = wb[ind.key]?.get(wbCode);
-				if (hit) indicators[ind.key] = { v: Math.round(hit.v * 100) / 100, y: hit.y };
+				if (!hit) continue;
+				const series = wbSeries[ind.key]?.get(wbCode) ?? [];
+				indicators[ind.key] =
+					series.length >= 2
+						? { v: Math.round(hit.v * 100) / 100, y: hit.y, s: series }
+						: { v: Math.round(hit.v * 100) / 100, y: hit.y };
 			}
 		}
 
@@ -350,7 +438,9 @@ async function main() {
 				labelY: p.LABEL_Y,
 				labelRank: p.LABELRANK ?? 10,
 				continent: c.continent,
-				selectable: true
+				selectable: true,
+				status: c.status,
+				disputed: ['Disputed', 'Breakaway', 'Indeterminate', 'Lease'].includes(p.TYPE)
 			},
 			geometry: f.geometry
 		});
@@ -381,6 +471,11 @@ async function main() {
 		'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_lakes.geojson',
 		'ne_110m_lakes.geojson'
 	);
+	const coastlineRaw = await fetchCached(
+		'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_coastline.geojson',
+		'ne_50m_coastline.geojson'
+	);
+
 	const physical = {
 		rivers: {
 			type: 'FeatureCollection',
@@ -405,8 +500,75 @@ async function main() {
 				},
 				geometry: f.geometry
 			}))
+		},
+		coastline: {
+			type: 'FeatureCollection',
+			features: coastlineRaw.features.map((f) => ({
+				type: 'Feature',
+				properties: {},
+				geometry: f.geometry
+			}))
 		}
 	};
+
+	/* ---------- cidades principais (pontos, não limites urbanos) ---------- */
+	console.log('› cidades principais (Natural Earth)');
+	const byCountryCities = new Map();
+	for (const f of places.features) {
+		const p = f.properties;
+		const code = p.ADM0_A3;
+		if (!code || code === '-99') continue;
+		const pop = p.POP_MAX ?? 0;
+		const capital = p.ADM0CAP === 1;
+		if (pop < 500_000 && !(capital && pop >= 150_000)) continue;
+		const [lng, lat] = f.geometry.coordinates;
+		const row = {
+			name: p.NAME_PT || p.NAME_EN || p.NAME || '',
+			nameEn: p.NAME_EN || p.NAME || '',
+			pop,
+			code,
+			capital,
+			lat: Math.round(lat * 10000) / 10000,
+			lng: Math.round(lng * 10000) / 10000,
+			minZoom: pop >= 10_000_000 ? 0 : pop >= 5_000_000 ? 0.8 : pop >= 2_000_000 ? 1.6 : 2.4
+		};
+		const list = byCountryCities.get(code) ?? [];
+		list.push(row);
+		byCountryCities.set(code, list);
+	}
+	const cityFeatures = [];
+	for (const list of byCountryCities.values()) {
+		list.sort((a, b) => Number(b.capital) - Number(a.capital) || b.pop - a.pop);
+		const chosen = list.filter((city) => city.capital).slice(0, 1).concat(
+			list.filter((city) => !city.capital).slice(0, 4)
+		);
+		for (const city of chosen.slice(0, 5)) {
+			cityFeatures.push({
+				type: 'Feature',
+				properties: {
+					name: city.name,
+					nameEn: city.nameEn,
+					pop: city.pop,
+					code: city.code,
+					capital: city.capital,
+					minZoom: city.minZoom
+				},
+				geometry: { type: 'Point', coordinates: [city.lng, city.lat] }
+			});
+		}
+	}
+	const cities = { type: 'FeatureCollection', features: cityFeatures };
+
+	/* ---------- silhuetas para o jogo de reconhecimento ---------- */
+	console.log('› silhuetas dos países');
+	const silhouettes = {};
+	for (const c of countries) {
+		if (!c.unMember || (c.areaKm2 ?? 0) < 20_000) continue;
+		const feature = features.find((f) => f.properties.code === c.code);
+		if (!feature?.geometry) continue;
+		const d = silhouettePath(feature.geometry);
+		if (d) silhouettes[c.code] = d;
+	}
 
 	await mkdir(OUT, { recursive: true });
 	await writeFile(
@@ -424,6 +586,14 @@ async function main() {
 	await writeFile(
 		path.join(OUT, 'physical.json'),
 		JSON.stringify({ retrieved: RETRIEVED, ...physical }, null, 0)
+	);
+	await writeFile(
+		path.join(OUT, 'cities.json'),
+		JSON.stringify({ retrieved: RETRIEVED, cities }, null, 0)
+	);
+	await writeFile(
+		path.join(OUT, 'silhouettes.json'),
+		JSON.stringify({ retrieved: RETRIEVED, silhouettes }, null, 0)
 	);
 	await writeFile(
 		path.join(OUT, 'sources.json'),

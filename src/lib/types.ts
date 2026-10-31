@@ -18,7 +18,19 @@ export type IndicatorKey =
 	| 'industryShare'
 	| 'agriShare'
 	| 'co2PerCapita'
-	| 'researchShare';
+	| 'researchShare'
+	| 'gini'
+	| 'unemployment'
+	| 'inflation'
+	| 'debtShare'
+	| 'co2Total'
+	| 'energyUse'
+	| 'tourism'
+	| 'schoolEnrollment'
+	| 'healthShare'
+	| 'govEffectiveness'
+	| 'controlCorruption'
+	| 'ruleOfLaw';
 
 export type IndicatorFormat = 'int' | 'dec1' | 'dec2' | 'usd' | 'usd-pc';
 
@@ -27,6 +39,8 @@ export interface IndicatorValue {
 	v: number;
 	/** Ano de referência da observação. */
 	y: number;
+	/** Série observada [[ano, valor], …] quando há mais de um ponto. */
+	s?: [number, number][];
 }
 
 export interface Currency {
