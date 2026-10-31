@@ -1,0 +1,211 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+@import 'flag-icons/css/flag-icons.min.css';
+@import 'maplibre-gl/dist/maplibre-gl.css';
+
+@theme {
+	--font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--font-mono: 'JetBrains Mono Variable', ui-monospace, 'SFMono-Regular', monospace;
+
+	--color-ink-950: #06090e;
+	--color-ink-900: #0a0f16;
+	--color-ink-850: #0d141d;
+	--color-ink-800: #111a25;
+	--color-ink-750: #151f2c;
+	--color-ink-700: #1a2532;
+	--color-ink-600: #26333f;
+	--color-ink-500: #35434f;
+
+	--color-mist-100: #e9eff7;
+	--color-mist-200: #cfd9e6;
+	--color-mist-300: #aab7c8;
+	--color-mist-400: #8593a6;
+	--color-mist-500: #6a788a;
+
+	--color-gold-300: #f0cd8e;
+	--color-gold-400: #e6b45c;
+	--color-gold-500: #d29b3f;
+	--color-gold-600: #a97a2b;
+
+	--color-signal-300: #a5d3ff;
+	--color-signal-400: #6fb7ff;
+	--color-signal-500: #3d94e8;
+
+	--color-positive-400: #4ec9a0;
+	--color-negative-400: #f0716f;
+
+	--radius-panel: 1rem;
+
+	--ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+	:root {
+		color-scheme: dark;
+		--header-h: 3.5rem;
+	}
+
+	html,
+	body {
+		height: 100%;
+	}
+
+	body {
+		background-color: var(--color-ink-950);
+		color: var(--color-mist-100);
+		font-family: var(--font-sans);
+		font-optical-sizing: auto;
+		-webkit-font-smoothing: antialiased;
+		text-rendering: optimizeLegibility;
+		overflow-x: hidden;
+	}
+
+	::selection {
+		background: color-mix(in oklab, var(--color-gold-400) 30%, transparent);
+		color: #fff;
+	}
+
+	:focus-visible {
+		outline: 2px solid var(--color-signal-400);
+		outline-offset: 2px;
+	}
+
+	h1,
+	h2,
+	h3,
+	h4 {
+		letter-spacing: -0.025em;
+		text-wrap: balance;
+	}
+
+	p {
+		text-wrap: pretty;
+	}
+
+	button,
+	[role='button'] {
+		cursor: pointer;
+	}
+
+	button:disabled {
+		cursor: not-allowed;
+	}
+
+	::-webkit-scrollbar {
+		width: 10px;
+		height: 10px;
+	}
+	::-webkit-scrollbar-track {
+		background: transparent;
+	}
+	::-webkit-scrollbar-thumb {
+		background: var(--color-ink-600);
+		border-radius: 999px;
+		border: 3px solid transparent;
+		background-clip: content-box;
+	}
+	::-webkit-scrollbar-thumb:hover {
+		background: var(--color-ink-500);
+		background-clip: content-box;
+	}
+}
+
+@utility panel {
+	background: color-mix(in oklab, var(--color-ink-850) 96%, transparent);
+	border: 1px solid color-mix(in oklab, #fff 8%, transparent);
+	box-shadow:
+		0 1px 0 0 color-mix(in oklab, #fff 4%, transparent) inset,
+		0 24px 60px -24px rgb(0 0 0 / 0.75);
+	backdrop-filter: blur(18px) saturate(120%);
+}
+
+@utility hairline {
+	border-color: color-mix(in oklab, #fff 8%, transparent);
+}
+
+@utility tnum {
+	font-variant-numeric: tabular-nums;
+	font-feature-settings: 'tnum' 1;
+}
+
+@utility eyebrow {
+	font-family: var(--font-mono);
+	font-size: 0.6875rem;
+	line-height: 1;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: var(--color-mist-400);
+}
+
+@utility text-gradient {
+	background: linear-gradient(100deg, var(--color-mist-100) 10%, var(--color-gold-300) 55%, var(--color-signal-300) 95%);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+}
+
+/* ---- shared motion ---- */
+@keyframes fade-up {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@keyframes fade-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes sheet-in {
+	from {
+		opacity: 0;
+		transform: translateY(18px) scale(0.995);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@keyframes pulse-soft {
+	0%,
+	100% {
+		opacity: 0.5;
+	}
+	50% {
+		opacity: 1;
+	}
+}
+
+@utility animate-fade-up {
+	animation: fade-up 0.5s var(--ease-out-soft) both;
+}
+
+@utility animate-fade-in {
+	animation: fade-in 0.3s ease both;
+}
+
+@utility animate-sheet-in {
+	animation: sheet-in 0.35s var(--ease-out-soft) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}

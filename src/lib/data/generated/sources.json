@@ -1,0 +1,31 @@
+{
+  "retrieved": "2026-10-31",
+  "sources": {
+    "boundaries": {
+      "name": "Natural Earth — Admin 0 Countries (1:50m)",
+      "url": "https://www.naturalearthdata.com/downloads/110m-cultural-vectors/",
+      "license": "Domínio público",
+      "scale": "1:50m",
+      "note": "Recorte generalizado. Microestados podem não estar representados. Fronteiras disputadas não expressam posição política."
+    },
+    "facts": {
+      "name": "mledoze/countries (base do projeto REST Countries)",
+      "url": "https://github.com/mledoze/countries",
+      "license": "ODbL 1.0",
+      "note": "Capital, moeda, área, idiomas e países vizinhos."
+    },
+    "physical": {
+      "name": "Natural Earth — Rios e lagos (1:110m)",
+      "url": "https://www.naturalearthdata.com/downloads/110m-physical-vectors/",
+      "license": "Domínio público",
+      "scale": "1:110m",
+      "note": "Apenas as feições principais. O relevo é representado por rótulos curados, não por um modelo digital de elevação."
+    },
+    "indicators": {
+      "name": "World Bank Open Data",
+      "url": "https://data.worldbank.org",
+      "license": "CC BY 4.0",
+      "note": "Série mais recente disponível por país dentro da janela consultada."
+    }
+  }
+}
