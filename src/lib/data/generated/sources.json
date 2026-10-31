@@ -15,11 +15,11 @@
       "note": "Capital, moeda, área, idiomas e países vizinhos."
     },
     "physical": {
-      "name": "Natural Earth — Rios e lagos (1:110m)",
-      "url": "https://www.naturalearthdata.com/downloads/110m-physical-vectors/",
+      "name": "Natural Earth — Rios, lagos e litoral",
+      "url": "https://www.naturalearthdata.com/downloads/",
       "license": "Domínio público",
-      "scale": "1:110m",
-      "note": "Apenas as feições principais. O relevo é representado por rótulos curados, não por um modelo digital de elevação."
+      "scale": "1:50m / 1:110m",
+      "note": "Rios e lagos em 1:110m; linha de costa em 1:50m. O relevo sombreado e o modo 3D usam um modelo digital público carregado sob demanda."
     },
     "indicators": {
       "name": "World Bank Open Data",

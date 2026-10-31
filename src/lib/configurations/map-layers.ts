@@ -1,8 +1,18 @@
 import type { CardSection, IndicatorKey, LayerId } from '#lib/types';
+import type { ResolvedTheme } from '#lib/theme.svelte';
 
 export interface LegendSwatch {
 	label: string;
 	color: string;
+}
+
+export interface LayerColors {
+	/** Paleta do coroplético, do menor para o maior valor. */
+	palette: string[];
+	noData: string;
+	land: { fill: string; stroke: string; hover: string };
+	/** Tints categóricos (continentes, feições). */
+	tints?: LegendSwatch[];
 }
 
 export interface LayerConfig {
@@ -15,12 +25,14 @@ export interface LayerConfig {
 	/** Indicador usado no coroplético. Ausente = camada sem coroplético. */
 	indicator?: IndicatorKey;
 	scale?: 'log' | 'linear';
-	palette?: string[];
-	noData: string;
 	sections: CardSection[];
 	/** Organizações que podem ser destacadas nesta camada. */
 	blocs?: string[];
 	showPhysical?: boolean;
+	showCities?: boolean;
+	showCoastline?: boolean;
+	/** Hachura em territórios com estatuto disputado. */
+	showDisputed?: boolean;
 	legend:
 		| {
 				type: 'gradient';
@@ -38,16 +50,55 @@ export interface LayerConfig {
 				type: 'none';
 				note?: string;
 		  };
-	land: { fill: string; stroke: string; hover: string };
+	colors: { light: LayerColors; dark: LayerColors };
 }
 
-const POLITICAL_TINTS: LegendSwatch[] = [
-	{ label: 'América do Sul', color: '#1d303b' },
-	{ label: 'América do Norte', color: '#223040' },
-	{ label: 'Europa', color: '#2a2f42' },
-	{ label: 'África', color: '#2e2a22' },
-	{ label: 'Ásia', color: '#1f3132' },
-	{ label: 'Oceania', color: '#263033' }
+export type ResolvedLayer = Omit<LayerConfig, 'colors' | 'legend'> &
+	LayerColors & {
+		legend:
+			| {
+					type: 'gradient';
+					low: string;
+					high: string;
+					unit: string;
+					note?: string;
+			  }
+			| {
+					type: 'categorical';
+					items: LegendSwatch[];
+					note?: string;
+			  }
+			| {
+					type: 'none';
+					note?: string;
+			  };
+	};
+
+const CONTINENTS_PT = [
+	'América do Sul',
+	'América do Norte',
+	'Europa',
+	'África',
+	'Ásia',
+	'Oceania'
+] as const;
+
+const POLITICAL_LIGHT: LegendSwatch[] = [
+	{ label: 'América do Sul', color: '#d5c095' },
+	{ label: 'América do Norte', color: '#e8dcc2' },
+	{ label: 'Europa', color: '#cbb692' },
+	{ label: 'África', color: '#e4cc92' },
+	{ label: 'Ásia', color: '#dcc8a2' },
+	{ label: 'Oceania', color: '#d8d3b4' }
+];
+
+const POLITICAL_DARK: LegendSwatch[] = [
+	{ label: 'América do Sul', color: '#2a2b22' },
+	{ label: 'América do Norte', color: '#2e2c22' },
+	{ label: 'Europa', color: '#332c28' },
+	{ label: 'África', color: '#332a1e' },
+	{ label: 'Ásia', color: '#2b2e25' },
+	{ label: 'Oceania', color: '#2d2e26' }
 ];
 
 export const mapLayers: LayerConfig[] = [
@@ -57,47 +108,73 @@ export const mapLayers: LayerConfig[] = [
 		label: 'Político',
 		short: 'Político',
 		description: 'Fronteiras, capitais, vizinhos e continentes.',
-		icon: 'globe',
-		noData: '#18222f',
+		icon: 'border',
 		sections: ['identity', 'neighbors'],
+		showCoastline: true,
 		legend: {
 			type: 'categorical',
-			items: POLITICAL_TINTS,
+			items: POLITICAL_LIGHT,
 			note: 'Cores apenas orientam a leitura; não expressam alinhamento político.'
 		},
-		land: { fill: '#18222f', stroke: '#2c3a4a', hover: '#243448' }
+		colors: {
+			light: {
+				palette: ['#d5c095', '#e8dcc2', '#cbb692', '#e4cc92', '#dcc8a2', '#d8d3b4'],
+				noData: '#e2d6bf',
+				land: { fill: '#e2d6bf', stroke: '#8a7756', hover: '#d3c2a2' },
+				tints: POLITICAL_LIGHT
+			},
+			dark: {
+				palette: ['#2a2b22', '#2e2c22', '#332c28', '#332a1e', '#2b2e25', '#2d2e26'],
+				noData: '#26231c',
+				land: { fill: '#26231c', stroke: '#6d6250', hover: '#352f24' },
+				tints: POLITICAL_DARK
+			}
+		}
 	},
 	{
 		id: 'physical',
 		index: '02',
 		label: 'Físico',
 		short: 'Físico',
-		description: 'Rios, lagos, relevo e grandes formações.',
+		description: 'Rios, lagos, litoral, relevo e formações.',
 		icon: 'terrain',
-		noData: '#1a2118',
 		sections: ['identity', 'environment', 'neighbors'],
 		showPhysical: true,
+		showCoastline: true,
 		legend: {
 			type: 'categorical',
 			items: [
-				{ label: 'Rios e lagos', color: '#3f7f9c' },
-				{ label: 'Relevo', color: '#b9a47a' }
+				{ label: 'Relevo sombreado', color: '#8f7355' },
+				{ label: 'Água', color: '#4f8ea1' },
+				{ label: 'Litoral', color: '#6b5940' },
+				{ label: 'Fronteira', color: '#a1906f' }
 			],
-			note: 'Relevo simplificado por rótulos curados; não é um modelo digital de elevação.'
+			note: 'O relevo sombreado vem de um modelo digital público (AWS Terrain Tiles) e depende da rede. As cores dos países não representam elevação.'
 		},
-		land: { fill: '#1a2118', stroke: '#2b3626', hover: '#263020' }
+		colors: {
+			light: {
+				palette: ['#c8d2b4', '#b6c29c', '#c8b98c', '#c2a172', '#a9855f', '#8b6a4c'],
+				noData: '#d8d1bc',
+				land: { fill: '#d8d1bc', stroke: '#8d7d61', hover: '#cabf9f' }
+			},
+			dark: {
+				palette: ['#232b22', '#2b3527', '#3b3b26', '#4a3d26', '#5c4730', '#6f5136'],
+				noData: '#20241d',
+				land: { fill: '#20241d', stroke: '#6e6550', hover: '#2f3527' }
+			}
+		}
 	},
 	{
 		id: 'population',
 		index: '03',
 		label: 'Demografia',
 		short: 'População',
-		description: 'Densidade, crescimento, expectativa de vida e urbanização.',
-		icon: 'users',
+		description: 'Densidade, crescimento, expectativa de vida e cidades.',
+		icon: 'density',
 		indicator: 'popDensity',
 		scale: 'log',
-		palette: ['#101a24', '#173247', '#1f5170', '#2f7fa3', '#56b3cf', '#9fe6f4'],
-		noData: '#111820',
+		showCities: true,
+		showCoastline: true,
 		sections: ['demography', 'identity', 'neighbors'],
 		legend: {
 			type: 'gradient',
@@ -105,7 +182,18 @@ export const mapLayers: LayerConfig[] = [
 			high: 'Mais denso',
 			unit: 'hab/km²'
 		},
-		land: { fill: '#111a25', stroke: '#2b3a4a', hover: '#1b2a3a' }
+		colors: {
+			light: {
+				palette: ['#e6e0d0', '#c6d6cb', '#9bbfb4', '#6b9f96', '#3c7b77', '#1c5759'],
+				noData: '#e0d9c8',
+				land: { fill: '#e0d9c8', stroke: '#8d7d61', hover: '#cfc6ae' }
+			},
+			dark: {
+				palette: ['#1c211d', '#23403b', '#2e625c', '#44867c', '#68a99a', '#9ed3c2'],
+				noData: '#211f19',
+				land: { fill: '#211f19', stroke: '#6d6250', hover: '#302d24' }
+			}
+		}
 	},
 	{
 		id: 'economy',
@@ -116,8 +204,7 @@ export const mapLayers: LayerConfig[] = [
 		icon: 'coins',
 		indicator: 'gdpPerCapita',
 		scale: 'log',
-		palette: ['#171410', '#3a2f1a', '#6b5424', '#a17d33', '#d4a94f', '#f3d792'],
-		noData: '#15130f',
+		showCoastline: true,
 		sections: ['economy', 'identity', 'neighbors'],
 		legend: {
 			type: 'gradient',
@@ -125,23 +212,46 @@ export const mapLayers: LayerConfig[] = [
 			high: 'Maior PIB per capita',
 			unit: 'US$ correntes'
 		},
-		land: { fill: '#15130f', stroke: '#3a3226', hover: '#241f17' }
+		colors: {
+			light: {
+				palette: ['#e9e1ce', '#d8c49c', '#c4a268', '#a97c42', '#855a25', '#5f3f13'],
+				noData: '#e2dac8',
+				land: { fill: '#e2dac8', stroke: '#8d7d61', hover: '#d1c5a9' }
+			},
+			dark: {
+				palette: ['#211d16', '#3c301c', '#5d4726', '#826134', '#ac8946', '#d6b268'],
+				noData: '#201d16',
+				land: { fill: '#201d16', stroke: '#6d6250', hover: '#2e281c' }
+			}
+		}
 	},
 	{
 		id: 'geopolitics',
 		index: '05',
 		label: 'Geopolítica',
 		short: 'Geopolítica',
-		description: 'Alianças, blocos econômicos e organizações.',
-		icon: 'shield',
-		noData: '#161d26',
+		description: 'Alianças, blocos, organizações e territórios disputados.',
+		icon: 'alliance',
+		showCoastline: true,
+		showDisputed: true,
 		sections: ['geopolitics', 'identity', 'neighbors'],
 		blocs: ['nato', 'eu', 'brics', 'opec', 'g20', 'asean'],
 		legend: {
 			type: 'none',
-			note: 'Escolha um bloco para destacar os membros no mapa.'
+			note: 'Escolha um bloco para destacar os membros. Hachura marca estatuto disputado em Kosovo, Palestina, Saara Ocidental, Malvinas, Siachen e Chagos, sem atribuir soberania.'
 		},
-		land: { fill: '#161d26', stroke: '#2b3948', hover: '#202c3a' }
+		colors: {
+			light: {
+				palette: ['#e2d9c6'],
+				noData: '#e2d9c6',
+				land: { fill: '#e2d9c6', stroke: '#8d7d61', hover: '#d2c6ad' }
+			},
+			dark: {
+				palette: ['#24211a'],
+				noData: '#24211a',
+				land: { fill: '#24211a', stroke: '#6d6250', hover: '#332e23' }
+			}
+		}
 	},
 	{
 		id: 'history',
@@ -149,21 +259,40 @@ export const mapLayers: LayerConfig[] = [
 		label: 'História',
 		short: 'História',
 		description: 'Federações dissolvidas, independências e mudanças de nome.',
-		icon: 'clock',
-		noData: '#1c1916',
+		icon: 'timeline',
+		showCoastline: true,
 		sections: ['history', 'geopolitics', 'identity'],
 		blocs: ['ussr', 'yugoslavia', 'eu', 'nato'],
 		legend: {
 			type: 'none',
-			note: 'Camadas históricas mostram fronteiras e blocos de outros períodos.'
+			note: 'Recortes históricos usam os polígonos atuais como aproximação. Não são fronteiras do período.'
 		},
-		land: { fill: '#1c1916', stroke: '#3a3229', hover: '#28231d' }
+		colors: {
+			light: {
+				palette: ['#e5d9c2'],
+				noData: '#e5d9c2',
+				land: { fill: '#e5d9c2', stroke: '#8d7d61', hover: '#d6c6a8' }
+			},
+			dark: {
+				palette: ['#251f18'],
+				noData: '#251f18',
+				land: { fill: '#251f18', stroke: '#6d6250', hover: '#352c20' }
+			}
+		}
 	}
 ];
 
 export const layerById = new Map(mapLayers.map((l) => [l.id, l]));
 export const defaultLayer = mapLayers[0];
 
-export function getLayer(id: LayerId): LayerConfig {
-	return layerById.get(id) ?? defaultLayer;
+export function getLayer(id: LayerId, theme: ResolvedTheme = 'light'): ResolvedLayer {
+	const base = layerById.get(id) ?? defaultLayer;
+	const colors = base.colors[theme];
+	const legend =
+		base.legend.type === 'categorical' && colors.tints
+			? { ...base.legend, items: colors.tints }
+			: base.legend;
+	return { ...base, ...colors, legend };
 }
+
+export const layerContinents = CONTINENTS_PT;

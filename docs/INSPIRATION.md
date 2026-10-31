@@ -51,7 +51,25 @@ sem copiar layout, paleta ou marca.
 
 ---
 
-## 2. Três direções de identidade (testar antes de escolher)
+## 1.1 Direção escolhida (implementada)
+
+**B — Atlas Editorial**, com o modo escuro lido como o mesmo atlas à noite.
+
+- Papel quente, tinta, vinho, ocre e verde; sem vidro ou gradiente decorativo.
+- Fraunces para display, Inter para UI, JetBrains Mono para dados e metadados.
+- Ícones próprios de 24 px / traço 1,5, derivados de símbolos cartográficos.
+- Réguas de 1 px, ticks, numeração de seção, legendas de instrumento e grão de papel.
+- Motion: 180–320 ms, `cubic-bezier(.22, 1, .36, 1)`, stagger de 30–50 ms; tudo respeita
+  `prefers-reduced-motion`.
+- Telas de referência implementadas: Explore, Play, Game, Dossiê, Sobre e landing.
+
+As direções A (Carta Náutica) e C (Sala de Mapas) continuam documentadas como alternativas;
+A foi absorvida parcialmente no modo escuro (azul-tinta e latão) e C ficou como referência de
+arquivo/fichas para uma futura página de coleções.
+
+---
+
+## 2. Três direções de identidade (referência)
 
 ### A. Carta Náutica — “instrumento de navegação”
 - **Sensação:** carta marítima noturna, latão, tinta, precisão.

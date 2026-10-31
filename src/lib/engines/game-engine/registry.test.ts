@@ -9,13 +9,14 @@ function codesIn(round: GameRound): string[] {
 	if (round.rule.type === 'code') out.push(round.rule.code);
 	if (round.rule.type === 'set' || round.rule.type === 'order') out.push(...round.rule.codes);
 	out.push(...(round.choices ?? []), ...(round.focus ?? []), ...(round.items ?? []));
+	out.push(...(round.options ?? []).map((option) => option.value));
 	return out;
 }
 
 describe('registro de jogos', () => {
-	it('tem cinco jogos com slugs únicos', () => {
-		expect(games).toHaveLength(5);
-		expect(new Set(games.map((g) => g.slug)).size).toBe(5);
+	it('tem sete jogos com slugs únicos', () => {
+		expect(games).toHaveLength(7);
+		expect(new Set(games.map((g) => g.slug)).size).toBe(7);
 	});
 
 	for (const game of games) {
@@ -64,6 +65,28 @@ describe('registro de jogos', () => {
 			if (round.rule.type === 'code' && round.choices) {
 				expect(round.choices).toContain(round.rule.code);
 			}
+		}
+	});
+
+	it('rodadas de múltipla escolha têm quatro alternativas e a resposta', () => {
+		for (const slug of ['silhouettes', 'borders']) {
+			const rounds = buildRounds(slug, 21);
+			for (const round of rounds) {
+				expect(round.interaction).toBe('choice');
+				expect(round.options).toHaveLength(4);
+				expect(round.options?.map((option) => option.value)).toContain(
+					round.rule.type === 'code' ? round.rule.code : ''
+				);
+				expect(new Set(round.options?.map((option) => option.value)).size).toBe(4);
+			}
+		}
+	});
+
+	it('silhuetas têm contorno SVG e respostas distintas', () => {
+		const rounds = buildRounds('silhouettes', 4);
+		for (const round of rounds) {
+			expect(round.silhouette?.startsWith('M')).toBe(true);
+			expect(round.silhouette?.length).toBeGreaterThan(20);
 		}
 	});
 

@@ -1,7 +1,8 @@
 # Handoff — como continuar em uma nova sessão
 
-Esta sessão entregou o MVP. O contexto está alto; o trabalho pesado deve continuar em uma
-sessão nova, com o prompt abaixo.
+**Estado:** P0 e P1 do roadmap executados em 2026-10-31. O projeto está em
+`~/projects/foss/mundivista`, com 63 testes, `svelte-check` sem erros, build estático,
+axe sem violações sérias e smoke test em Firefox.
 
 ---
 
@@ -14,97 +15,112 @@ TypeScript + Tailwind 4 + MapLibre 6, adapter-static).
 Leia, nesta ordem:
 1. README.md
 2. docs/ROADMAP.md
-3. docs/INSPIRATION.md
+3. docs/INSPIRATION.md (direção escolhida: B, Atlas Editorial)
 4. docs/HANDOFF.md
 
-O dono do produto aprovou o nome "Mundivista". O MVP já tem mapa, 6 camadas, card de país,
-20 indicadores do Banco Mundial, 5 jogos, pontuação e página de fontes. Estado: 44 testes
-verdes, svelte-check 0 erros, build estático OK.
-
-Objetivo desta sessão: executar o P0 do roadmap, com prioridade para:
-(a) testar 3 direções de identidade visual e implementar a escolhida (menos "AI slop",
-    mais atlas/cartografia/geopolítica; ícones próprios; tipografia com personalidade);
-(b) mapa com tema claro/escuro + globo 3D + terreno opcional;
-(c) seleção/pan/zoom mais fluidos e rápidos;
-(d) camadas político/físico/demografia/economia/geopolítica/história com estilos
-    cartográficos distintos, não só cores;
-(e) card de país com hierarquia melhor, comparação, série temporal e link para dossiê;
-(f) Play e jogos com mais animação, temas e UI própria;
-(g) mobile: bottom sheet com snap points, controles e performance.
+O P0 e o P1 estão implementados. Antes de mexer, rode:
+npm test && npm run check && npm run build
+e, com preview em http://localhost:4173: npm run smoke && npm run a11y && npm run shots.
 
 Regras:
 - Não inventar dados. Todo indicador precisa de fonte, ano e unidade; lacuna = "não disponível".
-- Não quebrar o worker do MapLibre: ele usa
-  `import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'` +
-  `setWorkerUrl(workerUrl)`. Testar build + preview após mexer.
+- Não quebrar o worker do MapLibre:
+  import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url' + setWorkerUrl.
+  Testar build + preview após mexer.
 - O motor de jogos não pode depender do mapa.
-- O nome/branding vive em src/lib/brand.ts.
-- Rodar `npm run check`, `npm test` e `npm run build` antes de cada commit.
-- Commits pequenos e descritivos. Sem dados fictícios, sem botões decorativos.
-- Se uma decisão visual for grande, gerar screenshots desktop (1440x900) e mobile (390x844)
-  antes/depois e comparar.
+- O nome/branding vive em src/lib/brand.ts; a identidade em src/app.css.
+- Commits pequenos e descritivos.
+- Screenshots desktop (1440x900) e mobile (390x844), claro e escuro, para mudanças visuais.
 
-Comece auditando a UI atual e propondo as 3 direções de identidade (com paleta, tipografia,
-ícones e exemplo de mapa). Depois implemente a direção aprovada e siga para o mapa 3D/temas.
+Prioridades abertas (ver ROADMAP §3):
+(a) seletor de dificuldade/vidas/timer opcional nos jogos;
+(b) tradução EN completa do conteúdo editorial (i18n do shell já existe);
+(c) biomas/clima, bathymetria e fluxos comerciais;
+(d) HDI/TI/Freedom House/RSF com revisão de licença;
+(e) budgets de performance no CI;
+(f) P2: backend/PostGIS, contas, editor e ranking.
 ```
 
 ---
 
-## Estado técnico (para não redescobrir)
+## Comandos
 
-### Comandos
 ```bash
 cd ~/projects/foss/mundivista
 npm run dev        # dev
 npm run check      # svelte-check (deve dar 0)
-npm test           # 44 testes
+npm test           # 63 testes
 npm run build      # build estático em build/
-npm run preview    # preview do build
+npm run preview    # preview do build (porta 4173)
 npm run data:build # regenera dados com cache
 npm run data:refresh
+npm run shots      # screenshots em docs/screenshots
+npm run smoke      # interação no preview
+npm run a11y       # axe-core WCAG 2.1 AA
 ```
-
-### Estrutura
-```
-src/lib/
-  brand.ts
-  components/{map,cards,navigation,games,ui}/
-  configurations/map-layers.ts
-  data/{generated,countries,organizations,historical,snippets,capitals-pt,physical-labels,world}.ts
-  engines/{map-engine,game-engine,scoring-engine}/
-  format.ts
-  types.ts
-src/routes/{explore,play,game/[slug],sobre}
-tools/build-data.mjs
-docs/{ROADMAP,INSPIRATION,HANDOFF}.md
-```
-
-### Decisões já tomadas
-- Dados: Natural Earth 1:50m (fronteiras, rios, lagos, capitais), mledoze/countries
-  (capital, moeda, área, vizinhos), World Bank (20 indicadores, 2016–2025, último valor
-  por país com ano).
-- O GeoJSON é importado com `?url` e servido como asset; não entra no bundle JS.
-- Rótulos do mapa são DOM com colisão (não symbol layers), para tipografia própria.
-- Coroplético por quantis com `feature-state` + expressão `interpolate`.
-- Jogos: `GameRound` declara `rule` (code/set/text/order) e `interaction`; o motor valida
-  e o `GameRunner` renderiza. Novos jogos entram em `registry.ts`.
-- Tema escuro atual: `--color-ink-*`, `--color-mist-*`, `--color-gold-*`,
-  `--color-signal-*` em `src/app.css`.
-
-### Armadilhas conhecidas
-- `#lib` exige `paths` no `tsconfig.json`; Vite resolve pelo `imports` do package.json.
-- Rotas dinâmicas com `prerender = true` precisam de `entries` (jogo já tem).
-- `npm run preview` precisa ser reiniciado após build; se a porta estiver ocupada,
-  `fuser -k 4173/tcp` (não usar `pkill` com o padrão do próprio comando).
-- O Firefox do Playwright está em `~/.cache/ms-playwright/firefox-1555/firefox/firefox`;
-  `playwright-core` foi removido do projeto. Reinstalar como dev dep se for tirar screenshots.
-- O card no mobile cobre boa parte do mapa; o próximo passo é bottom sheet com snap points.
-- Microestados são difíceis de clicar em zoom mundial; considerar camada de pontos.
-- O build atual tem um chunk grande (MapLibre ~1.1MB / 298KB gzip); avaliar lazy load.
 
 ---
 
-## Backlog do dono (texto original, para não perder nada)
+## Estrutura
+
+```
+src/
+  app.css              # tokens claro/escuro, tipografia, utilities, motion
+  lib/
+    brand.ts
+    theme.svelte.ts    # preferência system/light/dark
+    i18n.ts            # mensagens PT/EN do shell
+    progress.ts        # recordes, progresso e desafio diário
+    components/{map,cards,navigation,games,ui}/
+      map/MapCanvas.svelte  # estilo, crossfade, globe, DEM, rótulos, hit area
+      map/Timeline.svelte   # linha do tempo 1945–2026
+      navigation/CommandPalette.svelte
+      cards/CountryCard.svelte / LocatorMap.svelte / Sparkline.svelte
+      games/GameRunner.svelte
+    configurations/map-layers.ts  # camadas + cores por tema
+    data/generated/    # countries, indicators, world, physical, cities, silhouettes
+    data/{disputed,timeline,organizations,historical,snippets,cities,silhouettes}
+    engines/{map-engine,game-engine,scoring-engine}/
+  routes/{explore,country/[code],play,game/[slug],sobre}
+tools/{build-data,screenshots,smoke,a11y}.mjs
+docs/{ROADMAP,INSPIRATION,HANDOFF}.md
+```
+
+---
+
+## Decisões desta sessão
+
+- **Identidade:** direção B (Atlas Editorial); o escuro é o atlas à noite.
+- **Mapa:** Mercator + Globo; relevo 3D com AWS Terrarium; crossfade por duas camadas de fill.
+- **Microestados:** pontos de capital clicáveis (`cities` com `micro: true`).
+- **História:** timeline 1945–2026 com eventos curados e recorte de blocos; usa polígonos
+  atuais e diz isso. CShapes não foi integrado.
+- **Disputados:** lista curada (KOS, PSX, SAH, FLK, KAS, IOT), hachura e nota; Israel não
+  é hachurado só porque o Natural Earth marca TYPE=Disputed.
+- **Dados:** 32 indicadores, séries 2016–2025, cidades, litoral e silhuetas no pipeline.
+- **Jogos:** 7 jogos; novos Silhuetas e Cadeia de Fronteiras; progresso persistente.
+- **Busca:** command palette carregada sob demanda no TopBar, disponível em todas as rotas.
+
+---
+
+## Armadilhas conhecidas
+
+- `#lib` exige `paths` no `tsconfig.json`; Vite resolve pelo `imports` do package.json.
+- Rotas dinâmicas com `prerender = true` precisam de `entries` (jogo e dossiê já têm).
+- `page.url.searchParams` não pode ser lido durante prerender; o TopBar usa
+  `typeof window` para escolher o locale.
+- `npm run preview` precisa ser reiniciado após build; se a porta estiver ocupada,
+  `fuser -k 4173/tcp`.
+- Firefox do Playwright está em `~/.cache/ms-playwright/firefox-1555/firefox/firefox`;
+  os scripts usam esse caminho.
+- O skip link aponta para `#conteudo`; toda rota nova precisa desse id.
+- O build tem dois chunks grandes (>500 kB): MapLibre é lazy; o chunk compartilhado foi
+  reduzido ao carregar a palette sob demanda.
+- `PSE`/`PSX`, `XKX`/`KOS`, `SSD`/`SDS` são aliases; o mapa usa os códigos do Natural Earth.
+
+---
+
+## Backlog do dono (texto original)
 
 > o mapa em si precisa de mais refino, ter escolha entre fundo claro ou escuro do mapa,
 > deixar o mapa mais fluído de e escolher os países, animações mais fluidas e mais rápido,
@@ -118,5 +134,3 @@ docs/{ROADMAP,INSPIRATION,HANDOFF}.md
 > tema, e se inspirar no que funciona, mas somos originais, então vamos seguir com o resto
 > das otimizações tbm, mobile, mais dados, mais modos, melhorar a ui/ux, testar diferentes
 > identidades visuais, polir a perfomance/animações e afins.
-
-Itens já feitos desta lista: nome aprovado, links Wikipédia/Britannica no card.

@@ -1,5 +1,6 @@
 import { countries, indicatorMeta } from '#lib/data/countries';
 import { capitalInPortuguese } from '#lib/data/capitals-pt';
+import { silhouettes } from '#lib/data/silhouettes';
 import { organizations, organizationById } from '#lib/data/organizations';
 import { formatIndicatorLong } from '#lib/format';
 import type { Country, IndicatorKey } from '#lib/types';
@@ -335,9 +336,107 @@ function buildLandlocked(seed?: number): GameRound[] {
 	return rounds.slice(0, 8);
 }
 
+const silhouettePool = sovereign.filter(
+	(c) => silhouettes[c.code] && (c.areaKm2 ?? 0) >= 30_000
+);
+
+function buildSilhouettes(seed?: number): GameRound[] {
+	const rng = createRng(seed);
+	const targets = sample(silhouettePool, 8, rng);
+	return targets.map((country, i) => {
+		const sameContinent = silhouettePool.filter(
+			(c) => c.code !== country.code && c.continent === country.continent
+		);
+		const others = sample(sameContinent.length >= 3 ? sameContinent : silhouettePool.filter((c) => c.code !== country.code), 3, rng);
+		const options = shuffle([country, ...others], rng).map((c) => ({ value: c.code, label: c.name }));
+		return {
+			id: `silhouette-${i}-${country.code}`,
+			prompt: 'Qual país tem este contorno?',
+			hint: 'A forma do território, sem fronteiras internas.',
+			interaction: 'choice',
+			answerKind: 'code',
+			rule: { type: 'code', code: country.code },
+			silhouette: silhouettes[country.code],
+			options,
+			explanation: `${country.name} — ${country.continent ?? 'localização não classificada'}. ${country.areaKm2 ? `Área: ${Math.round(country.areaKm2).toLocaleString('pt-BR')} km².` : ''}`,
+			source: { name: 'Natural Earth 1:50m', url: 'https://www.naturalearthdata.com/' }
+		};
+	});
+}
+
+const borderPool = sovereign.filter((c) => c.borders.length >= 3);
+
+function buildBorders(seed?: number): GameRound[] {
+	const rng = createRng(seed);
+	const targets = sample(borderPool, 8, rng);
+	return targets.map((country, i) => {
+		const neighbors = country.borders
+			.map((code) => countries.find((c) => c.code === code))
+			.filter((c): c is Country => Boolean(c));
+		const nonNeighbors = countries.filter(
+			(c) =>
+				c.unMember &&
+				c.code !== country.code &&
+				!country.borders.includes(c.code) &&
+				c.continent === country.continent
+		);
+		const fallback = countries.filter(
+			(c) => c.unMember && c.code !== country.code && !country.borders.includes(c.code)
+		);
+		const othersPool = nonNeighbors.length >= 3 ? nonNeighbors : fallback;
+		const askNeighbor = i % 2 === 1;
+
+		const neighborAnswer = pick(neighbors, rng);
+		const nonNeighborAnswer = pick(othersPool, rng);
+		const distractors = askNeighbor
+			? sample(
+					othersPool.filter((c) => c.code !== nonNeighborAnswer.code),
+					3,
+					rng
+				)
+			: sample(
+					neighbors.filter((c) => c.code !== neighborAnswer.code),
+					3,
+					rng
+				);
+		const answer = askNeighbor ? neighborAnswer : nonNeighborAnswer;
+		const choices = [answer, ...distractors].slice(0, 4);
+		const fillerPool = askNeighbor ? othersPool : neighbors;
+		for (const candidate of shuffle(fillerPool, rng)) {
+			if (choices.length >= 4) break;
+			if (!choices.some((chosen) => chosen.code === candidate.code)) choices.push(candidate);
+		}
+		if (choices.length < 4) {
+			for (const candidate of shuffle(askNeighbor ? fallback : neighbors, rng)) {
+				if (choices.length >= 4) break;
+				if (!choices.some((chosen) => chosen.code === candidate.code)) choices.push(candidate);
+			}
+		}
+		const options = shuffle(choices, rng).map((c) => ({ value: c.code, label: c.name }));
+
+		return {
+			id: `borders-${i}-${country.code}`,
+			prompt: askNeighbor
+				? `Qual destes países faz fronteira terrestre com ${country.name}?`
+				: `Qual destes países NÃO faz fronteira terrestre com ${country.name}?`,
+			hint: `Continente: ${country.continent ?? 'não classificado'}.`,
+			interaction: 'choice',
+			answerKind: 'code',
+			rule: { type: 'code', code: answer.code },
+			options,
+			camera: country.latlng ? { center: [country.latlng[1], country.latlng[0]], zoom: 2.6 } : undefined,
+			explanation: askNeighbor
+				? `${answer.name} faz fronteira com ${country.name}. Os outros três não têm fronteira terrestre comum.`
+				: `${answer.name} não faz fronteira com ${country.name}. Os outros três são vizinhos terrestres.`,
+			source: { name: 'mledoze/countries', url: 'https://github.com/mledoze/countries' }
+		};
+	});
+}
+
 export const games: GameDefinition[] = [
 	{
 		slug: 'country-finder',
+		difficulty: 'Médio',
 		title: 'Países do Mundo',
 		tagline: 'Clique no país certo',
 		description:
@@ -352,6 +451,7 @@ export const games: GameDefinition[] = [
 	},
 	{
 		slug: 'capital-match',
+		difficulty: 'Médio',
 		title: 'Capitais',
 		tagline: 'Do nome à capital',
 		description:
@@ -366,6 +466,7 @@ export const games: GameDefinition[] = [
 	},
 	{
 		slug: 'world-rankings',
+		difficulty: 'Difícil',
 		title: 'Rankings do Mundo',
 		tagline: 'Quem está no topo?',
 		description:
@@ -380,6 +481,7 @@ export const games: GameDefinition[] = [
 	},
 	{
 		slug: 'blocs',
+		difficulty: 'Difícil',
 		title: 'Blocos e Alianças',
 		tagline: 'Quem está dentro?',
 		description:
@@ -394,6 +496,7 @@ export const games: GameDefinition[] = [
 	},
 	{
 		slug: 'landlocked',
+		difficulty: 'Fácil',
 		title: 'Sem Litoral',
 		tagline: 'Mar ou terra?',
 		description:
@@ -405,6 +508,36 @@ export const games: GameDefinition[] = [
 		mechanic: 'Escolha no mapa',
 		icon: 'wave',
 		build: buildLandlocked
+	},
+	{
+		slug: 'silhouettes',
+		difficulty: 'Médio',
+		title: 'Silhuetas',
+		tagline: 'Reconheça pelo contorno',
+		description:
+			'Sem nome, sem bandeira, sem fronteiras internas: só a forma do território. Quatro alternativas por rodada.',
+		category: 'Geografia',
+		interaction: 'choice',
+		rounds: 8,
+		minutes: 3,
+		mechanic: 'Múltipla escolha',
+		icon: 'contour',
+		build: buildSilhouettes
+	},
+	{
+		slug: 'borders',
+		difficulty: 'Difícil',
+		title: 'Cadeia de Fronteiras',
+		tagline: 'Quem faz fronteira com quem',
+		description:
+			'Vizinhos terrestres, intrusos e países do mesmo continente. Quatro alternativas, uma resposta verificável.',
+		category: 'Geopolítica',
+		interaction: 'choice',
+		rounds: 8,
+		minutes: 4,
+		mechanic: 'Múltipla escolha',
+		icon: 'border',
+		build: buildBorders
 	}
 ];
 

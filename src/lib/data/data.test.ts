@@ -1,8 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { countries, countryByCode, indicatorMeta, manifest, retrievedAt } from './countries';
-import { organizations } from './organizations';
+import {
+	countries,
+	countryByCode,
+	getCountry,
+	indicatorMeta,
+	manifest,
+	retrievedAt
+} from './countries';
+import { organizations, organizationById } from './organizations';
 import { snippets } from './snippets';
 import { historicalRecords } from './historical';
+import { cityPoints } from './cities';
+import { silhouettes } from './silhouettes';
+import { worldOutline } from './world-silhouette';
+import { timelineEvents, TIMELINE_END, TIMELINE_START } from './timeline';
+import { disputedCodes, disputedTerritories } from './disputed';
 
 describe('integridade dos dados', () => {
 	it('carrega países com identificadores e rótulos', () => {
@@ -68,6 +80,77 @@ describe('integridade dos dados', () => {
 			if (record.independence) {
 				expect(record.independence).toBeGreaterThan(800);
 				expect(record.independence).toBeLessThanOrEqual(new Date().getFullYear());
+			}
+		}
+	});
+
+	it('séries temporais são ordenadas e terminam no valor exibido', () => {
+		for (const country of countries) {
+			for (const [key, value] of Object.entries(country.indicators)) {
+				if (!value.s) continue;
+				expect(value.s.length, `${country.code}/${key}`).toBeGreaterThanOrEqual(2);
+				const years = value.s.map(([year]) => year);
+				expect(years).toEqual([...years].sort((a, b) => a - b));
+				const last = value.s[value.s.length - 1];
+				expect(last[0]).toBe(value.y);
+				expect(last[1]).toBe(value.v);
+			}
+		}
+	});
+
+	it('tem pelo menos 30 indicadores com metadados', () => {
+		expect(Object.keys(indicatorMeta).length).toBeGreaterThanOrEqual(30);
+	});
+
+	it('cidades têm coordenadas válidas e código existente', () => {
+		expect(cityPoints.length).toBeGreaterThan(150);
+		for (const city of cityPoints) {
+			const [lng, lat] = city.geometry.coordinates;
+			expect(lng).toBeGreaterThanOrEqual(-180);
+			expect(lng).toBeLessThanOrEqual(180);
+			expect(lat).toBeGreaterThanOrEqual(-90);
+			expect(lat).toBeLessThanOrEqual(90);
+			expect(countryByCode.has(city.properties.code), city.properties.name).toBe(true);
+		}
+	});
+
+	it('silhuetas e contorno do mundo são caminhos SVG', () => {
+		expect(worldOutline.startsWith('M')).toBe(true);
+		expect(worldOutline.length).toBeGreaterThan(5000);
+		expect(Object.keys(silhouettes).length).toBeGreaterThan(80);
+		for (const [code, path] of Object.entries(silhouettes)) {
+			expect(countryByCode.has(code), code).toBe(true);
+			expect(path.startsWith('M'), code).toBe(true);
+			expect(path.length, code).toBeGreaterThan(20);
+		}
+	});
+
+	it('alias de código resolve o polígono correto', () => {
+		expect(getCountry('PSE')?.code).toBe('PSX');
+		expect(getCountry('XKX')?.code).toBe('KOS');
+		expect(getCountry('SSD')?.code).toBe('SDS');
+	});
+
+	it('territórios disputados têm nota, fonte e polígono', () => {
+		expect(disputedCodes.length).toBeGreaterThanOrEqual(5);
+		for (const code of disputedCodes) {
+			const info = disputedTerritories[code];
+			expect(countryByCode.has(code), code).toBe(true);
+			expect(info.note.length).toBeGreaterThan(50);
+			expect(info.source.url.startsWith('https://')).toBe(true);
+		}
+	});
+
+	it('linha do tempo é ordenada, datada e cita organizações existentes', () => {
+		const years = timelineEvents.map((event) => event.year);
+		expect(years).toEqual([...years].sort((a, b) => a - b));
+		for (const event of timelineEvents) {
+			expect(event.year).toBeGreaterThanOrEqual(TIMELINE_START);
+			expect(event.year).toBeLessThanOrEqual(TIMELINE_END);
+			expect(event.source.url.startsWith('https://')).toBe(true);
+			expect(event.detail.length).toBeGreaterThan(20);
+			for (const org of event.orgs ?? []) {
+				expect(organizationById.has(org), org).toBe(true);
 			}
 		}
 	});

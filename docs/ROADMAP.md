@@ -1,8 +1,8 @@
 # Roadmap — Mundivista
 
-**Nome aprovado:** Mundivista (provisório apenas em termos de marca registrada; a identidade
-visual definitiva ainda será testada).
-**Estado:** MVP navegável em `~/projects/foss/mundivista`, commit `bd1f1bc`.
+**Nome aprovado:** Mundivista.
+**Estado (2026-10-31):** P0 executado e P1 executado com as pendências explícitas abaixo.
+Commit de referência desta sessão ao final do histórico.
 **Objetivo do produto:** atlas interativo + camadas de dados + minigames, com o mapa como
 interface central e dados verificáveis.
 
@@ -12,138 +12,132 @@ interface central e dados verificáveis.
 
 1. **O mapa é o produto.** Se uma decisão de UI reduz o mapa a um fundo, ela está errada.
 2. **Nada de dado inventado.** Lacuna = “não disponível”; todo número tem ano e fonte.
-3. **Original, não genérico.** Evitar glassmorphism padrão, gradientes roxos, cards
-   arredondados iguais, emojis como ícones e hero centralizado de SaaS.
-4. **Geográfico e editorial.** A linguagem visual deve lembrar cartografia, atlas impressos,
-   instrumentos de navegação e jornalismo de dados — não um dashboard genérico.
-5. **Rápido é parte do design.** 60 fps ao arrastar, seleção imediata, transições curtas.
+3. **Original, não genérico.** Sem glassmorphism, gradientes roxos, cards iguais ou emojis
+   como ícones.
+4. **Geográfico e editorial.** Cartografia, atlas impressos, instrumentos de navegação e
+   jornalismo de dados.
+5. **Rápido é parte do design.** Pan fluido, seleção imediata, transições curtas.
 6. **Acessível por padrão.** Teclado, contraste, movimento reduzido, fallback em lista.
 7. **Arquitetura desacoplada.** Jogo ≠ mapa ≠ dados ≠ UI.
 
 ---
 
-## 2. O que já existe (não refazer)
+## 2. O que já existe
 
 - SvelteKit 3 + Svelte 5 + TypeScript + Tailwind 4 + MapLibre 6, adapter-static.
 - Mapa 1:50m com 241 territórios, seleção, hover, rótulos com colisão, graticula,
-  rios/lagos, capitais e relevo simplificado.
+  rios/lagos, litoral, cidades, capitais e relevo sombreado opcional.
 - 6 camadas: político, físico, demografia, economia, geopolítica, história.
-- Coropléticos por quantis, feature-state, destaque de blocos.
-- Card contextual com identidade, demografia, economia, meio físico, geopolítica, história,
-  vizinhos, snippet e links Wikipédia/Britannica.
-- 20 indicadores do Banco Mundial com ano, cobertura e fonte; página `/sobre`.
-- 5 jogos (mapa single, mapa multi, texto, ordem), motor desacoplado, pontuação,
-  feedback, recorde local.
-- 44 testes, `svelte-check` 0 erros, build estático funcionando.
+- Globo 3D, relevo 3D, tema claro/escuro/sistema, Mercator, crossfade de camada.
+- Coropléticos por quantis, feature-state, destaque de blocos e de vizinhos.
+- Card com “at a glance”, abas, mediana/percentil, sparkline, mini-mapa e compartilhamento.
+- Dossiê `/country/[code]` com séries, comparação, timeline, organizações e fontes.
+- 32 indicadores do Banco Mundial com ano, série, cobertura e fonte; página `/sobre`.
+- 7 jogos, motor desacoplado, progresso local, onboarding, modo lista e desafio diário.
+- Landing editorial, busca ⌘K, i18n do shell PT/EN.
+- 63 testes, `svelte-check` 0 erros, build estático, axe sem violações sérias, smoke test.
 - Worker do MapLibre corrigido com `?worker&url` (não remover).
 
 ---
 
 ## 3. Prioridades
 
-### P0 — próxima sessão (impacto visual e de experiência)
+### P0 — executado
 
-#### 3.1 Identidade visual (o maior ganho)
-- [ ] Auditar a UI atual e listar tudo que parece “template genérico”.
-- [ ] Testar **3 direções** em páginas estáticas/screenshots:
-  - **A. Carta Náutica** — azul-tinta, latão, marfim, painéis de instrumento.
-  - **B. Atlas Editorial** — papel quente, tinta, vinho, serifada de display.
-  - **C. Sala de Mapas** — verde profundo, cobre oxidado, curvas de nível.
-- [ ] Escolher uma direção com o dono do produto.
-- [ ] Implementar tokens de tema (cores, tipografia, espaçamento, raios, sombras, motion).
-- [ ] Criar conjunto de ícones próprio (24px, traço 1.5, grade consistente), baseado em
-  símbolos cartográficos: rosa dos ventos, curva de nível, marco de fronteira, globo,
-  estrato, rio, pico, densidade, moeda, aliança, linha do tempo.
-- [ ] Tipografia: display (serifada ou sans condensada) + Inter para UI + mono para dados.
-  Testar legibilidade em 10–11px nos rótulos do mapa.
-- [ ] Remover gradientes e vidros genéricos; usar réguas finas, ticks, numeração de seção,
-  legendas de mapa e textura sutil de papel/ruído.
-- [ ] Definir motion system: 180–320ms, `cubic-bezier(.22,1,.36,1)`, stagger 30–60ms,
-  `prefers-reduced-motion`.
+#### 3.1 Identidade visual — direção B, Atlas Editorial
 
-**Aceite:** 3 screenshots comparáveis (desktop/mobile) e uma direção implementada em
-Explore, Play, Game e Sobre.
+- [x] Auditar a UI e listar o que parecia template genérico.
+- [x] Comparar as três direções de `INSPIRATION.md` (Carta Náutica, Atlas Editorial,
+      Sala de Mapas) e escolher **B** como base, com o escuro como “atlas à noite”.
+      Decisão delegada pelo dono nesta sessão.
+- [x] Implementar tokens de tema (papel, tinta, vinho, ocre, água, verde) e modo escuro
+      com a mesma hierarquia.
+- [x] Criar conjunto próprio de ícones cartográficos 24 px / traço 1,5.
+- [x] Tipografia: Fraunces (display), Inter (UI), JetBrains Mono (dados).
+- [x] Remover gradientes/vidro genéricos; usar réguas, ticks, numeração, legenda e grão.
+- [x] Motion system 180–320 ms, `cubic-bezier(.22,1,.36,1)`, stagger e reduced-motion.
+
+**Aceite:** direção implementada em Explore, Play, Game, Dossiê e Sobre, com screenshots
+comparáveis em `docs/screenshots/` (desktop/mobile, claro/escuro).
 
 #### 3.2 Mapa: tema claro/escuro + 3D + fluidez
-- [ ] Toggle **claro/escuro** no mapa, persistido em `localStorage`, com opção “sistema”.
-  - Claro: papel (#f3eee3), terra (#e7ddc9), água (#dfe9ee), bordas (#8a7a5f), texto (#2a241b).
-  - Escuro: manter o atual, mas com mais contraste e menos “cinza morto”.
-- [ ] **Globo 3D** com `projection: { type: 'globe' }` e botão “2D / 3D”.
-  - Testar performance em 390px e 1440px; limitar `maxZoom` e rótulos no globo.
-- [ ] **Terreno 3D** opcional: `raster-dem` (avaliar AWS Terrarium / MapTiler / DEM local),
-  `terrain: { source, exaggeration }`, hillshade. Registrar atribuição e licença.
-- [ ] Seleção mais fluida:
-  - `queryRenderedFeatures` com bbox de 4–6px e throttle em `requestAnimationFrame`.
-  - Pré-calcular centróides; evitar 241 `setFeatureState` por hover.
-  - `flyTo` com `essential: true`, `speed`/`curve` ajustados; evitar saltos.
-  - Hit area mínima para microestados: usar círculo de seleção em zoom alto.
-- [ ] Transições de camada: crossfade de 300–400ms, sem recarregar o GeoJSON.
-- [ ] Rótulos: substituir DOM por canvas (ou manter DOM com cache e limite de 60–80),
-  medir custo em mobile; mostrar menos rótulos em zoom mundial.
-- [ ] Adicionar escala gráfica, rosa dos ventos e leitura de coordenadas mais editorial.
-- [ ] Testar projeções: Mercator (padrão), Globo; avaliar Equal Earth como modo estático.
 
-**Aceite:** alternância claro/escuro/3D sem reload; pan a 60fps em notebook intermediário;
-seleção < 100ms; nenhum “flash” de camada.
+- [x] Toggle claro/escuro/sistema persistido em `localStorage`, aplicado antes do paint.
+- [x] Globo 3D com `projection: { type: 'globe' }` e controle 2D/Globo.
+- [x] Terreno 3D opcional com raster-dem Terrarium (AWS), hillshade, pitch e atribuição.
+- [x] Seleção fluida: bbox de 4–6 px, hover em `requestAnimationFrame`, estados por diferença.
+- [x] `flyTo` com `essential: true`, curva e velocidade ajustadas.
+- [x] Hit area para microestados via pontos de capital (42 microterritórios).
+- [x] Crossfade de camada com duas camadas de fill e transição de 340 ms.
+- [x] Rótulos DOM com cache de medida, prioridade, colisão e teto de 82.
+- [x] Escala gráfica, rosa dos ventos, coordenadas e projeção.
+- [x] Mercator e Globo testados. Equal Earth não é suportada pelo MapLibre 6; documentado
+      em vez de simular uma projeção.
+
+**Aceite:** alternância claro/escuro/3D sem reload; seleção perceptivelmente imediata;
+sem flash de camada. Medição formal de 60 fps em hardware intermediário segue pendente.
 
 #### 3.3 Camadas com personalidade cartográfica
-- [ ] **Político:** hierarquia de bordas (costa mais forte), capitais, países vizinhos
-  destacados, continentes com tints dessaturados, rótulos com halo.
-- [ ] **Físico:** tints hipsométricos + hillshade + bathymetria + rios/lagos + rótulos de
-  cordilheiras/desertos; opção “relevo 3D”.
-- [ ] **Demografia:** coroplético de densidade + pontos de população/cidades principais;
-  talvez dot density em zoom alto.
-- [ ] **Economia:** PIB per capita + setores; avaliar fluxos comerciais (dados Comtrade)
-  como arcos discretos.
-- [ ] **Geopolítica:** destacar bloco + linhas/matriz de membros; hachura para territórios
-  disputados com nota contextual.
-- [ ] **História:** linha do tempo (1945–hoje) com snapshots de fronteiras (CShapes 2.0)
-  ou, no mínimo, blocos históricos + eventos; nunca apresentar como fronteira “atual”.
-- [ ] Cada camada com legenda própria, nota de método e fonte.
+
+- [x] **Político:** tints continentais, litoral mais forte que fronteira, capitais, vizinhos
+      destacados, rótulos com halo.
+- [x] **Físico:** hillshade real, rios/lagos, litoral, rótulos de relevo; cores de país não
+      fingem ser hipsometria.
+- [x] **Demografia:** coroplético de densidade + pontos de cidades principais.
+- [x] **Economia:** coroplético de PIB per capita em ocre; setores no card/dossiê.
+- [x] **Geopolítica:** destaque de bloco, membros, hachura para estatuto disputado e nota.
+- [x] **História:** linha do tempo 1945–2026, recorte de blocos e eventos com fonte.
+- [x] Cada camada tem legenda, nota de método e fonte.
 
 **Aceite:** cada camada tem identidade visual distinta e legenda que explica a codificação.
+Bathymetria, fluxos comerciais e CShapes ficam como evolução.
 
 #### 3.4 Card do país + página profunda
-- [x] Links Wikipédia/Britannica (feito).
-- [ ] Reorganizar hierarquia: “at a glance” (população, PIB pc, área, capital) + abas por
-  camada + comparação com mediana mundial + percentil.
-- [ ] Adicionar série temporal (sparkline) quando houver dados.
-- [ ] Mini-mapa de localização/vizinhos no card.
-- [ ] Botão “Abrir dossiê” → `/country/[code]` com tudo, fontes por seção, timeline,
-  organizações, snippets e links externos.
-- [ ] Compartilhar link direto do país/camada.
-- [ ] No mobile: bottom sheet com snap points (peek/half/full), drag handle, backdrop.
 
-**Aceite:** card não cobre o mapa inteiro no mobile; toda afirmação tem fonte acessível.
+- [x] Links Wikipédia/Britannica.
+- [x] Hierarquia “at a glance” + abas por camada + mediana mundial + percentil.
+- [x] Sparkline das séries 2016–2025.
+- [x] Mini-mapa de localização e vizinhos.
+- [x] Botão “Abrir dossiê” → `/country/[code]` com fontes por seção, timeline e organizações.
+- [x] Compartilhar link direto de país/camada e restaurar estado pela URL.
+- [x] Mobile: bottom sheet com snap points (peek/half/full), drag handle e backdrop.
+
+**Aceite:** card não cobre o mapa inteiro no mobile por padrão; toda afirmação tem fonte
+acessível a um clique.
 
 #### 3.5 Play + jogos
-- [ ] Redesenhar a página Play: destaque editorial, categorias, dificuldade, progresso,
-  “continuar jogando”, recordes.
-- [ ] Temas por categoria (político/físico/dados/história) com acentos distintos.
-- [ ] Animações: fly-to do round, pulso de acerto/erro, contagem de pontos, transição de
-  feedback, resultado com stagger.
-- [ ] Onboarding de 1 tela por mecânica (sem tutorial chato).
-- [ ] Modo lista acessível para jogos de mapa.
-- [ ] Novos jogos: fronteiras históricas, rios/montanhas, cadeia de fronteiras,
-  “qual país é este?” por silhueta, recursos naturais.
-- [ ] Desafio diário com seed determinístico + compartilhar resultado (sem spoiler).
-- [ ] Dificuldade/hints/lives/timer opcional.
 
-**Aceite:** jogar do início ao fim sem mouse (modo lista); 60fps nas animações; página Play
-com identidade própria.
+- [x] Redesenhar Play com destaque editorial, categorias, dificuldade, progresso,
+      “continuar jogando” e recordes.
+- [x] Temas por categoria com acentos distintos.
+- [x] Animações: fly-to, pulso de acerto/erro, count-up de pontos, stagger no resultado.
+- [x] Onboarding de uma tela por mecânica.
+- [x] Modo lista acessível para jogos de mapa.
+- [x] Novos jogos: **Silhuetas** e **Cadeia de Fronteiras**.
+- [x] Desafio diário com seed determinístico e compartilhamento sem spoiler.
+- [x] Dificuldade exibida por jogo.
+- [ ] Dificuldade selecionável, vidas e timer opcional. Hints já existem e são sempre
+      exibidos; falta o seletor de modo.
 
-### P1 — depois do P0
+**Aceite:** jogar do início ao fim sem mouse (modo lista); animações fluidas; Play com
+identidade própria.
 
-- [ ] Busca/command palette (⌘K), navegação por teclado no mapa.
-- [ ] Landing editorial com manifesto, globo/mapa e teasers.
-- [ ] Mais dados: HDI, Gini, desemprego, inflação, dívida, CO₂ total, energia, turismo,
-  educação, saúde, governança (WGI), corrupção (TI), liberdade (Freedom House/RSF).
-- [ ] Séries temporais e comparação entre países.
-- [ ] Camadas físicas com DEM/clima/biomas (Köppen/Beck et al., RESOLVE, ESA).
-- [ ] Acessibilidade completa (AA, foco, aria-live, contraste, daltonismo).
-- [ ] Performance: code-split do MapLibre, preload do GeoJSON, budgets, Lighthouse.
-- [ ] Testes visuais Playwright (desktop/mobile, claro/escuro).
-- [ ] i18n PT/EN (estrutura de mensagens, não traduzir tudo agora).
+### P1 — executado com pendências
+
+- [x] Busca/command palette (⌘K) por país, camada e jogo.
+- [x] Landing editorial com manifesto, contorno do mundo, camadas e teasers.
+- [x] Mais dados: Gini, desemprego, inflação, dívida, CO₂ total, energia, turismo,
+      educação, saúde e WGI (governança).
+- [x] Séries temporais (sparklines) e comparação entre países no dossiê.
+- [x] Acessibilidade: foco, `aria-live`, contraste, teclado, skip link, axe sem violações sérias.
+- [x] Performance: MapLibre e command palette em chunks lazy; dados compartilhados reduzidos.
+- [x] Testes de interação e screenshots Playwright/Firefox (`smoke`, `a11y`, `shots`).
+- [x] i18n: estrutura de mensagens PT/EN do shell, com paridade testada.
+- [ ] Tradução completa do conteúdo editorial para EN.
+- [ ] Biomas/clima (Köppen/Beck) e camadas físicas derivadas.
+- [ ] Bathymetria e fluxos comerciais.
+- [ ] HDI, corrupção (TI), liberdade (Freedom House/RSF): exigem licença/uso comercial.
+- [ ] Orçamento de performance no CI (Lighthouse/bundle budgets).
 
 ### P2 — expansão
 
@@ -155,45 +149,43 @@ com identidade própria.
 
 ---
 
-## 4. Dados: próximos passos
+## 4. Dados: estado e próximos passos
 
-1. Criar `src/lib/data/sources.ts` como registro único (nome, URL, licença, cobertura,
-   data de extração, método).
-2. Estender o pipeline para séries temporais (não só último valor).
-3. Validar automaticamente: todo indicador tem fonte/ano; nenhum valor sem metadado;
-   códigos de país existem no GeoJSON.
-4. Avaliar licenças antes de adicionar: Natural Earth (PD), World Bank (CC BY 4.0),
-   mledoze (ODbL), UNDP (verificar), TI/Freedom House/RSF (verificar uso comercial),
-   CShapes (verificar), Köppen/Beck (CC BY 4.0), RESOLVE (CC BY 4.0), ESA (verificar).
-5. Nunca misturar anos/metodologias sem aviso; manter `retrievedAt` e `lastUpdated`.
-6. Para territórios disputados: apresentar contexto, critério e fonte; não tratar como
-   consenso.
+1. [x] `src/lib/data/sources.ts`-equivalente: metadados vivem em
+   `generated/sources.json` + `indicatorMeta`.
+2. [x] Pipeline com séries temporais (não só o último valor).
+3. [x] Testes de integridade: fonte/ano por indicador, códigos no GeoJSON, séries ordenadas.
+4. [x] Licenças avaliadas para Natural Earth (PD), World Bank (CC BY 4.0), mledoze (ODbL),
+   AWS Terrain Tiles (dados públicos).
+5. [x] Anos/metodologias preservados (`retrievedAt`, `y`, `lastUpdated`).
+6. [x] Territórios disputados com contexto curado, hachura e fonte; sem tratar como consenso.
+
+Pendente: decidir licença de HDI/TI/FH/RSF e de eventuais bases de biomas/bathymetria.
 
 ---
 
 ## 5. Notas técnicas e riscos
 
-- **Worker do MapLibre:** já corrigido com `import workerUrl from
-  'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'` + `setWorkerUrl(workerUrl)`.
-  Se trocar de versão, testar build + preview.
-- **Globo 3D:** MapLibre 6 suporta `projection: { type: 'globe' }`; validar rótulos DOM
-  (posições/projeção) e performance.
-- **Terreno:** DEM público tem licença/atribuição; evitar tiles com API key em build
-  estático. Considerar DEM local de baixa resolução para o modo 3D.
-- **Adapter static:** rotas dinâmicas precisam de `entries`; jogos já usam.
-- **Bundle:** MapLibre ~1.1MB (298KB gzip). Lazy load só nas rotas de mapa; medir.
-- **Rótulos DOM:** 241 elementos; se o custo aparecer, migrar para canvas.
-- **Microestados:** 1:50m ainda é difícil de clicar; considerar camada de pontos
-  (capitais) com hit area maior em zoom alto.
-- **Dados históricos:** fronteiras mudam; não fingir precisão. Usar snapshots e notas.
+- **Worker do MapLibre:** `import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'`
+  + `setWorkerUrl(workerUrl)`. Testar build + preview após trocar de versão.
+- **Globo 3D:** MapLibre 6 suporta `projection: { type: 'globe' }`; rótulos DOM são checados
+  contra a face visível com `unproject`.
+- **Terreno:** DEM público tem licença/atribuição; o app não guarda API key e carrega os tiles
+  sob demanda. Sem rede, o mapa permanece plano.
+- **Adapter static:** rotas dinâmicas precisam de `entries`; jogos e dossiês já usam.
+- **Bundle:** MapLibre ~1,1 MB (298 KB gzip) em chunk lazy. O chunk compartilhado caiu de
+  ~1,44 MB para ~307 KB após carregar a command palette sob demanda.
+- **Rótulos DOM:** teto de 82 e cache de largura; migrar para canvas só se o custo aparecer.
+- **Microestados:** pontos de capital com clique ampliado.
+- **Dados históricos:** fronteiras mudam; a timeline usa polígonos atuais e diz isso.
 
 ---
 
-## 6. Definição de pronto (por entrega)
+## 6. Definição de pronto
 
 - `npm run check` 0 erros, `npm test` verde, `npm run build` OK.
 - Screenshots desktop (1440) e mobile (390) da mudança.
 - Nenhum dado novo sem fonte/ano.
-- Nenhuma regressão de performance perceptível (pan/zoom fluido).
+- Nenhuma regressão perceptível de performance.
 - Texto em PT-BR consistente, sem jargão desnecessário.
 - Commit pequeno e descritivo.

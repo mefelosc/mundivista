@@ -17,7 +17,7 @@
 {#if game}
 	<GameRunner {game} />
 {:else}
-	<div class="missing">
+	<div id="conteudo" class="missing">
 		<p>Jogo não encontrado.</p>
 		<a href="/play">Voltar à biblioteca</a>
 	</div>

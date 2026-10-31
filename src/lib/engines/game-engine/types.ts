@@ -5,7 +5,7 @@
  * devolve resultado. O mapa é apenas um dos renderizadores possíveis.
  */
 
-export type GameInteraction = 'map-single' | 'map-multi' | 'text' | 'order';
+export type GameInteraction = 'map-single' | 'map-multi' | 'text' | 'order' | 'choice';
 
 export type AnswerKind = 'code' | 'codes' | 'text' | 'order';
 
@@ -33,6 +33,10 @@ export interface GameRound {
 	choices?: string[];
 	/** Itens na ordem inicial (interação 'order'). */
 	items?: string[];
+	/** Alternativas rotuladas (interação 'choice'). */
+	options?: { value: string; label: string }[];
+	/** Contorno SVG viewBox 0 0 100 100 (jogo de silhuetas). */
+	silhouette?: string;
 	explanation: string;
 	source?: GameSource;
 	camera?: { center: [number, number]; zoom: number };
@@ -49,6 +53,7 @@ export interface GameDefinition {
 	minutes: number;
 	/** Rótulo curto da mecânica, exibido na biblioteca. */
 	mechanic: string;
+	difficulty: 'Fácil' | 'Médio' | 'Difícil';
 	icon: string;
 	build: (seed?: number) => GameRound[];
 }

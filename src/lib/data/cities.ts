@@ -7,6 +7,7 @@ export interface CityProps {
 	pop: number;
 	code: string;
 	capital: boolean;
+	micro: boolean;
 	minZoom: number;
 }
 

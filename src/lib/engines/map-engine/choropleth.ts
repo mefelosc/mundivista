@@ -1,5 +1,9 @@
 import type { ExpressionSpecification } from 'maplibre-gl';
-import type { LayerConfig } from '#lib/configurations/map-layers';
+
+export interface ChoroplethConfig {
+	palette?: string[];
+	scale?: 'log' | 'linear';
+}
 
 export interface ChoroplethScale {
 	expression: ExpressionSpecification;
@@ -15,7 +19,7 @@ const PALETTE_POSITIONS = [0, 0.2, 0.4, 0.6, 0.8, 1];
  * Constrói a expressão de cor do coroplético usando quantis.
  * Quantis evitam que países extremos achatam a escala toda.
  */
-export function buildChoropleth(layer: LayerConfig, rawValues: number[]): ChoroplethScale | null {
+export function buildChoropleth(layer: ChoroplethConfig, rawValues: number[]): ChoroplethScale | null {
 	const palette = layer.palette;
 	if (!palette?.length || !rawValues.length) return null;
 

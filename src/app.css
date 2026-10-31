@@ -1,49 +1,126 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/inter';
+@import '@fontsource-variable/fraunces';
 @import '@fontsource-variable/jetbrains-mono';
 @import 'flag-icons/css/flag-icons.min.css';
 @import 'maplibre-gl/dist/maplibre-gl.css';
 
+/*
+ * Direção visual: Atlas Editorial.
+ * Papel quente, tinta, vinho e ocre; réguas finas, numeração e tipografia serifada
+ * de display. O modo escuro é o mesmo atlas à noite — não uma inversão automática.
+ */
+
 @theme {
 	--font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--font-display: 'Fraunces Variable', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
 	--font-mono: 'JetBrains Mono Variable', ui-monospace, 'SFMono-Regular', monospace;
 
-	--color-ink-950: #06090e;
-	--color-ink-900: #0a0f16;
-	--color-ink-850: #0d141d;
-	--color-ink-800: #111a25;
-	--color-ink-750: #151f2c;
-	--color-ink-700: #1a2532;
-	--color-ink-600: #26333f;
-	--color-ink-500: #35434f;
+	--color-ink-950: var(--surface-0);
+	--color-ink-900: var(--surface-1);
+	--color-ink-850: var(--surface-2);
+	--color-ink-800: var(--surface-3);
+	--color-ink-750: var(--surface-4);
+	--color-ink-700: var(--surface-5);
+	--color-ink-600: var(--line-strong);
+	--color-ink-500: var(--line-emphasis);
 
-	--color-mist-100: #e9eff7;
-	--color-mist-200: #cfd9e6;
-	--color-mist-300: #aab7c8;
-	--color-mist-400: #8593a6;
-	--color-mist-500: #6a788a;
+	--color-mist-100: var(--text-1);
+	--color-mist-200: var(--text-2);
+	--color-mist-300: var(--text-2);
+	--color-mist-400: var(--text-3);
+	--color-mist-500: var(--text-4);
 
-	--color-gold-300: #f0cd8e;
-	--color-gold-400: #e6b45c;
-	--color-gold-500: #d29b3f;
-	--color-gold-600: #a97a2b;
+	--color-gold-300: var(--accent-2);
+	--color-gold-400: var(--accent-1);
+	--color-gold-500: var(--accent-1);
+	--color-gold-600: var(--accent-0);
 
-	--color-signal-300: #a5d3ff;
-	--color-signal-400: #6fb7ff;
-	--color-signal-500: #3d94e8;
+	--color-signal-300: var(--water-1);
+	--color-signal-400: var(--water-0);
+	--color-signal-500: var(--water-0);
 
-	--color-positive-400: #4ec9a0;
-	--color-negative-400: #f0716f;
+	--color-positive-400: var(--positive);
+	--color-negative-400: var(--negative);
 
-	--radius-panel: 1rem;
+	--radius-panel: 0.2rem;
 
 	--ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @layer base {
 	:root {
-		color-scheme: dark;
+		color-scheme: light;
 		--header-h: 3.5rem;
+		--rail-w: 8.6rem;
+		--sheet-w: 25rem;
+
+		/* Papel e tinta — modo claro (padrão) */
+		--surface-0: #f4efe4;
+		--surface-1: #f0e9db;
+		--surface-2: #f7f2e8;
+		--surface-3: #eee5d3;
+		--surface-4: #e6dbc7;
+		--surface-5: #ddd0b8;
+		--text-1: #1c1914;
+		--text-2: #403a2e;
+		--text-3: #5c5344;
+		--text-4: #6a5f4e;
+		--line: rgba(28, 25, 20, 0.13);
+		--line-strong: rgba(28, 25, 20, 0.24);
+		--line-emphasis: rgba(28, 25, 20, 0.4);
+		--accent-0: #6d4a17;
+		--accent-1: #8a6224;
+		--accent-2: #7a2f2f;
+		--water-0: #4f7c88;
+		--water-1: #35616d;
+		--wine: #7a2f2f;
+		--wine-soft: #a34a45;
+		--forest: #4f6650;
+		--positive: #3f7355;
+		--negative: #a4413a;
+		--map-paper: #e9e0ce;
+		--map-land: #e2d6bf;
+		--map-stroke: #8d7d61;
+		--map-text: #2a241b;
+		--grain-opacity: 0.035;
+
+		--motion-panel: 240ms;
+		--motion-sheet: 300ms;
+		--motion-feedback: 190ms;
+		--motion-map: 760ms;
+	}
+
+	[data-theme='dark'] {
+		color-scheme: dark;
+		--surface-0: #12100d;
+		--surface-1: #17140f;
+		--surface-2: #1b1712;
+		--surface-3: #211c16;
+		--surface-4: #29231b;
+		--surface-5: #332c22;
+		--text-1: #f1e8d7;
+		--text-2: #d6cab5;
+		--text-3: #b3a58d;
+		--text-4: #938673;
+		--line: rgba(241, 232, 215, 0.13);
+		--line-strong: rgba(241, 232, 215, 0.24);
+		--line-emphasis: rgba(241, 232, 215, 0.42);
+		--accent-0: #b98a3f;
+		--accent-1: #d8a84e;
+		--accent-2: #e0b968;
+		--water-0: #79a9b4;
+		--water-1: #a3c8d0;
+		--wine: #c46a5f;
+		--wine-soft: #d98a80;
+		--forest: #8aa385;
+		--positive: #74b992;
+		--negative: #d97a70;
+		--map-paper: #12100d;
+		--map-land: #1d1a15;
+		--map-stroke: #6d6250;
+		--map-text: #e8ddc9;
+		--grain-opacity: 0.05;
 	}
 
 	html,
@@ -51,9 +128,13 @@
 		height: 100%;
 	}
 
+	html {
+		background: var(--surface-0);
+	}
+
 	body {
-		background-color: var(--color-ink-950);
-		color: var(--color-mist-100);
+		background-color: var(--surface-0);
+		color: var(--text-1);
 		font-family: var(--font-sans);
 		font-optical-sizing: auto;
 		-webkit-font-smoothing: antialiased;
@@ -61,21 +142,35 @@
 		overflow-x: hidden;
 	}
 
+	body::before {
+		content: '';
+		position: fixed;
+		inset: 0;
+		z-index: 0;
+		pointer-events: none;
+		opacity: var(--grain-opacity);
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+		mix-blend-mode: multiply;
+	}
+	[data-theme='dark'] body::before {
+		mix-blend-mode: screen;
+	}
+
 	::selection {
-		background: color-mix(in oklab, var(--color-gold-400) 30%, transparent);
-		color: #fff;
+		background: color-mix(in oklab, var(--accent-1) 34%, transparent);
+		color: var(--text-1);
 	}
 
 	:focus-visible {
-		outline: 2px solid var(--color-signal-400);
-		outline-offset: 2px;
+		outline: 2px solid var(--accent-1);
+		outline-offset: 3px;
 	}
 
 	h1,
 	h2,
 	h3,
 	h4 {
-		letter-spacing: -0.025em;
+		letter-spacing: -0.015em;
 		text-wrap: balance;
 	}
 
@@ -93,35 +188,41 @@
 	}
 
 	::-webkit-scrollbar {
-		width: 10px;
-		height: 10px;
+		width: 9px;
+		height: 9px;
 	}
 	::-webkit-scrollbar-track {
 		background: transparent;
 	}
 	::-webkit-scrollbar-thumb {
-		background: var(--color-ink-600);
+		background: var(--line-strong);
 		border-radius: 999px;
 		border: 3px solid transparent;
 		background-clip: content-box;
 	}
 	::-webkit-scrollbar-thumb:hover {
-		background: var(--color-ink-500);
+		background: var(--line-emphasis);
 		background-clip: content-box;
 	}
 }
 
 @utility panel {
-	background: color-mix(in oklab, var(--color-ink-850) 96%, transparent);
-	border: 1px solid color-mix(in oklab, #fff 8%, transparent);
+	background: var(--surface-2);
+	border: 1px solid var(--line);
+	border-radius: var(--radius-panel);
 	box-shadow:
-		0 1px 0 0 color-mix(in oklab, #fff 4%, transparent) inset,
-		0 24px 60px -24px rgb(0 0 0 / 0.75);
-	backdrop-filter: blur(18px) saturate(120%);
+		0 1px 0 0 color-mix(in oklab, #fff 30%, transparent) inset,
+		0 18px 36px -28px rgb(0 0 0 / 0.55);
+}
+
+[data-theme='dark'] .panel {
+	box-shadow:
+		0 1px 0 0 color-mix(in oklab, #fff 3%, transparent) inset,
+		0 18px 36px -26px rgb(0 0 0 / 0.8);
 }
 
 @utility hairline {
-	border-color: color-mix(in oklab, #fff 8%, transparent);
+	border-color: var(--line);
 }
 
 @utility tnum {
@@ -131,25 +232,87 @@
 
 @utility eyebrow {
 	font-family: var(--font-mono);
-	font-size: 0.6875rem;
+	font-size: 0.625rem;
 	line-height: 1;
-	letter-spacing: 0.14em;
+	letter-spacing: 0.16em;
 	text-transform: uppercase;
-	color: var(--color-mist-400);
+	color: var(--text-4);
 }
 
-@utility text-gradient {
-	background: linear-gradient(100deg, var(--color-mist-100) 10%, var(--color-gold-300) 55%, var(--color-signal-300) 95%);
-	-webkit-background-clip: text;
-	background-clip: text;
-	color: transparent;
+@utility display {
+	font-family: var(--font-display);
+	font-optical-sizing: auto;
+	font-variation-settings: 'SOFT' 20, 'WONK' 0;
+	letter-spacing: -0.02em;
 }
 
-/* ---- shared motion ---- */
+@utility rule {
+	height: 1px;
+	background: var(--line);
+}
+
+@utility tick {
+	background-image: repeating-linear-gradient(
+		90deg,
+		var(--line-strong) 0 1px,
+		transparent 1px 7px
+	);
+	height: 4px;
+}
+
+/* ---- botões e chips ---- */
+@utility btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.4rem;
+	border: 1px solid var(--line-strong);
+	background: var(--surface-2);
+	color: var(--text-2);
+	border-radius: 0.15rem;
+	padding: 0.42rem 0.7rem;
+	font-size: 0.75rem;
+	font-weight: 500;
+	line-height: 1.1;
+	text-decoration: none;
+	transition:
+		background var(--motion-feedback) ease,
+		border-color var(--motion-feedback) ease,
+		color var(--motion-feedback) ease;
+}
+@utility btn-accent {
+	border-color: color-mix(in oklab, var(--accent-1) 62%, transparent);
+	background: color-mix(in oklab, var(--accent-1) 14%, var(--surface-2));
+	color: var(--accent-0);
+}
+@utility chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	border: 1px solid var(--line);
+	border-radius: 0.12rem;
+	padding: 0.18rem 0.42rem;
+	font-family: var(--font-mono);
+	font-size: 0.56rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--text-3);
+	background: transparent;
+}
+
+.btn:hover {
+	border-color: var(--line-emphasis);
+	color: var(--text-1);
+}
+.btn-accent:hover {
+	background: color-mix(in oklab, var(--accent-1) 22%, var(--surface-2));
+}
+
+/* ---- motion ---- */
 @keyframes fade-up {
 	from {
 		opacity: 0;
-		transform: translateY(10px);
+		transform: translateY(8px);
 	}
 	to {
 		opacity: 1;
@@ -169,7 +332,7 @@
 @keyframes sheet-in {
 	from {
 		opacity: 0;
-		transform: translateY(18px) scale(0.995);
+		transform: translateY(14px);
 	}
 	to {
 		opacity: 1;
@@ -180,23 +343,37 @@
 @keyframes pulse-soft {
 	0%,
 	100% {
-		opacity: 0.5;
+		opacity: 0.45;
 	}
 	50% {
 		opacity: 1;
 	}
 }
 
+@keyframes ink-in {
+	from {
+		opacity: 0;
+		filter: blur(2px);
+	}
+	to {
+		opacity: 1;
+		filter: none;
+	}
+}
+
 @utility animate-fade-up {
-	animation: fade-up 0.5s var(--ease-out-soft) both;
+	animation: fade-up 0.42s var(--ease-out-soft) both;
 }
-
 @utility animate-fade-in {
-	animation: fade-in 0.3s ease both;
+	animation: fade-in 0.26s ease both;
+}
+@utility animate-sheet-in {
+	animation: sheet-in var(--motion-sheet) var(--ease-out-soft) both;
 }
 
-@utility animate-sheet-in {
-	animation: sheet-in 0.35s var(--ease-out-soft) both;
+.stagger > * {
+	animation: fade-up 0.42s var(--ease-out-soft) both;
+	animation-delay: calc(var(--index, 0) * 45ms);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,26 +1,37 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
-	import type { ExpressionSpecification, Map as MlMap, MapMouseEvent, StyleSpecification } from 'maplibre-gl';
+	import type {
+		ExpressionSpecification,
+		GeoJSONSource,
+		Map as MlMap,
+		MapMouseEvent,
+		StyleSpecification
+	} from 'maplibre-gl';
 	import { countries, getCountry } from '#lib/data/countries';
 	import { physicalLabels } from '#lib/data/physical-labels';
 	import { physicalUrl } from '#lib/data/world';
+	import { cityPoints } from '#lib/data/cities';
 	import { capitalInPortuguese } from '#lib/data/capitals-pt';
 	import { buildChoropleth, withNoData } from '#lib/engines/map-engine/choropleth';
-	import { createMapStyle, MAP_LAYER } from '#lib/engines/map-engine/style';
-	import type { LayerConfig } from '#lib/configurations/map-layers';
+	import { createMapStyle, MAP_LAYER, mapPalette } from '#lib/engines/map-engine/style';
+	import { theme } from '#lib/theme.svelte';
+	import type { ResolvedLayer } from '#lib/configurations/map-layers';
 
 	interface Props {
-		layer: LayerConfig;
+		layer: ResolvedLayer;
 		selected?: string | null;
 		highlight?: string[];
 		focus?: string[] | null;
 		status?: Record<string, 'correct' | 'wrong'>;
 		interactive?: boolean;
 		showLabels?: boolean;
+		projection?: 'mercator' | 'globe';
+		terrain?: boolean;
 		onselect?: (code: string) => void;
 		onhover?: (code: string | null) => void;
 		onview?: (view: { lat: number; lng: number; zoom: number }) => void;
+		onready?: () => void;
 		class?: string;
 	}
 
@@ -32,9 +43,12 @@
 		status = {},
 		interactive = true,
 		showLabels = true,
+		projection = 'mercator',
+		terrain = false,
 		onselect,
 		onhover,
 		onview,
+		onready,
 		class: className = ''
 	}: Props = $props();
 
@@ -44,10 +58,15 @@
 	let ready = $state(false);
 	let failed = $state(false);
 	let hovered = $state<string | null>(null);
+	let activeFill: string = MAP_LAYER.fillA;
+	let scaleLabel = $state('');
+	let scaleWidth = $state(90);
+	let projectionLabel = $state('Mercator');
+	let pitch = $state(0);
 
 	let labelEntries: {
 		el: HTMLElement;
-		kind: 'country' | 'capital' | 'physical';
+		kind: 'country' | 'capital' | 'physical' | 'city';
 		code?: string;
 		lat: number;
 		lng: number;
@@ -71,110 +90,215 @@
 		return w;
 	}
 
-	const CONTINENT_MATCH = [
-		'match',
-		['get', 'continent'],
-		'América do Sul',
-		'#1d303b',
-		'América do Norte',
-		'#223040',
-		'Europa',
-		'#2a2f42',
-		'África',
-		'#2e2a22',
-		'Ásia',
-		'#1f3132',
-		'Oceania',
-		'#263033',
-		'#18222f'
-	] as unknown as ExpressionSpecification;
+	function continentExpression(colors: ResolvedLayer): ExpressionSpecification {
+		const tints = colors.tints ?? [];
+		const pairs: string[] = [];
+		for (const tint of tints) pairs.push(tint.label, tint.color);
+		return [
+			'match',
+			['get', 'continent'],
+			...pairs,
+			colors.land.fill
+		] as unknown as ExpressionSpecification;
+	}
+
+	/* ---------- estados de feature: sempre por diferença ---------- */
+	const prevSelected = new Set<string>();
+	const prevHighlight = new Set<string>();
+	const prevFocus = new Set<string>();
+	let prevStatus = new Set<string>();
+	let focusActive = false;
 
 	function applySelected() {
 		if (!map || !ready) return;
-		for (const country of countries) {
-			map!.setFeatureState(
-				{ source: 'countries', id: country.code },
-				{ selected: country.code === selected }
-			);
+		if (selected) {
+			map.setFeatureState({ source: 'countries', id: selected }, { selected: true });
 		}
+		for (const code of prevSelected) {
+			if (code !== selected) {
+				map.setFeatureState({ source: 'countries', id: code }, { selected: false });
+			}
+		}
+		prevSelected.clear();
+		if (selected) prevSelected.add(selected);
 	}
 
 	function applyHighlight() {
 		if (!map || !ready) return;
-		const set = new Set(highlight);
-		for (const country of countries) {
-			map!.setFeatureState(
-				{ source: 'countries', id: country.code },
-				{ highlight: set.has(country.code) }
-			);
+		const next = new Set(highlight);
+		for (const code of prevHighlight) {
+			if (!next.has(code)) map.setFeatureState({ source: 'countries', id: code }, { highlight: false });
 		}
+		for (const code of next) {
+			if (!prevHighlight.has(code)) map.setFeatureState({ source: 'countries', id: code }, { highlight: true });
+		}
+		prevHighlight.clear();
+		for (const code of next) prevHighlight.add(code);
 	}
 
 	function applyFocus() {
 		if (!map || !ready) return;
-		const set = focus ? new Set(focus) : null;
-		for (const country of countries) {
-			map!.setFeatureState(
-				{ source: 'countries', id: country.code },
-				{ focus: set ? set.has(country.code) : false, inFocus: set ? set.has(country.code) : true }
-			);
+		const next = focus ? new Set(focus) : null;
+		if (next) {
+			// Mudança de rodada, não de hover: vale varrer os 241 territórios uma vez.
+			for (const country of countries) {
+				const inside = next.has(country.code);
+				map.setFeatureState(
+					{ source: 'countries', id: country.code },
+					{ focus: inside, inFocus: inside }
+				);
+			}
+			prevFocus.clear();
+			for (const code of next) prevFocus.add(code);
+			focusActive = true;
+		} else if (focusActive) {
+			for (const country of countries) {
+				map.setFeatureState(
+					{ source: 'countries', id: country.code },
+					{ focus: false, inFocus: true }
+				);
+			}
+			prevFocus.clear();
+			focusActive = false;
 		}
 	}
-
-	let previousStatus = new Set<string>();
 
 	function applyStatus() {
 		if (!map || !ready) return;
-		for (const code of previousStatus) {
-			map!.setFeatureState({ source: 'countries', id: code }, { status: 'none' });
+		const next = new Set(Object.keys(status));
+		for (const code of prevStatus) {
+			if (!next.has(code)) map.setFeatureState({ source: 'countries', id: code }, { status: 'none' });
 		}
-		previousStatus = new Set(Object.keys(status));
 		for (const [code, value] of Object.entries(status)) {
-			map!.setFeatureState({ source: 'countries', id: code }, { status: value });
+			map.setFeatureState({ source: 'countries', id: code }, { status: value });
 		}
+		prevStatus = next;
 	}
 
-	function applyLayer() {
+	function fillExpression(layerConfig: ResolvedLayer): string | ExpressionSpecification {
+		if (layerConfig.indicator) {
+			const values = countries
+				.map((c) => c.indicators[layerConfig.indicator!]?.v)
+				.filter((v): v is number => typeof v === 'number');
+			const scale = buildChoropleth(layerConfig, values);
+			return scale ? withNoData(scale.expression, layerConfig.noData) : layerConfig.noData;
+		}
+		if (layerConfig.id === 'political') return continentExpression(layerConfig);
+		return layerConfig.land.fill;
+	}
+
+	function applyLayer(animate = true) {
 		if (!map || !ready) return;
 
 		if (layer.indicator) {
-			const values = countries
-				.map((c) => c.indicators[layer.indicator!]?.v)
-				.filter((v): v is number => typeof v === 'number');
-			const scale = buildChoropleth(layer, values);
 			for (const country of countries) {
 				const value = country.indicators[layer.indicator];
-				map!.setFeatureState(
+				map.setFeatureState(
 					{ source: 'countries', id: country.code },
 					value ? { has: true, value: value.v } : { has: false, value: 0 }
 				);
 			}
-			if (scale) {
-				map!.setPaintProperty(
-					MAP_LAYER.fill,
-					'fill-color',
-					withNoData(scale.expression, layer.noData)
-				);
-			} else {
-				map!.setPaintProperty(MAP_LAYER.fill, 'fill-color', layer.noData);
-			}
-		} else if (layer.id === 'political') {
-			map!.setPaintProperty(MAP_LAYER.fill, 'fill-color', CONTINENT_MATCH);
-		} else {
-			map!.setPaintProperty(MAP_LAYER.fill, 'fill-color', layer.land.fill);
 		}
 
-		map!.setPaintProperty(MAP_LAYER.border, 'line-color', layer.land.stroke);
-		for (const id of [MAP_LAYER.rivers, MAP_LAYER.lakes]) {
-			if (map!.getLayer(id)) {
-				map!.setLayoutProperty(id, 'visibility', layer.showPhysical ? 'visible' : 'none');
-			}
+		const expression = fillExpression(layer);
+		const target = activeFill === MAP_LAYER.fillA ? MAP_LAYER.fillB : MAP_LAYER.fillA;
+		const current = activeFill;
+		if (animate) {
+			map.setPaintProperty(target, 'fill-color', expression);
+			map.setPaintProperty(target, 'fill-opacity', 1);
+			map.setPaintProperty(current, 'fill-opacity', 0);
+			activeFill = target;
+		} else {
+			map.setPaintProperty(target, 'fill-opacity', 0);
+			map.setPaintProperty(current, 'fill-opacity', 1);
+			map.setPaintProperty(current, 'fill-color', expression);
+			activeFill = current;
 		}
+
+		setVisibility(MAP_LAYER.rivers, !!layer.showPhysical);
+		setVisibility(MAP_LAYER.lakes, !!layer.showPhysical);
+		setVisibility(MAP_LAYER.coastline, !!layer.showCoastline);
+		setVisibility(MAP_LAYER.citiesMajor, !!layer.showCities);
+		setVisibility(MAP_LAYER.citiesMinor, !!layer.showCities);
+		setVisibility(MAP_LAYER.disputed, !!layer.showDisputed);
+		updateHillshadeVisibility();
 	}
 
+	function setVisibility(id: string, visible: boolean) {
+		if (!map?.getLayer(id)) return;
+		map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
+	}
+
+	function updateHillshadeVisibility() {
+		const visible = terrain || layer.id === 'physical';
+		setVisibility(MAP_LAYER.hillshade, visible);
+	}
+
+	function applyTheme() {
+		if (!map || !ready) return;
+		const p = mapPalette(theme.resolved);
+		const dark = theme.resolved === 'dark';
+		map.setPaintProperty('background', 'background-color', p.ocean);
+		map.setPaintProperty(MAP_LAYER.graticuleMinor, 'line-color', p.graticule);
+		map.setPaintProperty(MAP_LAYER.graticuleMajor, 'line-color', p.graticule);
+		map.setPaintProperty(MAP_LAYER.graticuleMinor, 'line-opacity', dark ? 0.05 : 0.07);
+		map.setPaintProperty(MAP_LAYER.graticuleMajor, 'line-opacity', dark ? 0.11 : 0.13);
+		map.setPaintProperty(MAP_LAYER.border, 'line-color', p.border);
+		map.setPaintProperty(MAP_LAYER.selected, 'line-color', p.accent);
+		map.setPaintProperty(MAP_LAYER.hover, 'line-color', p.accent);
+		map.setPaintProperty(MAP_LAYER.focusLine, 'line-color', p.clay);
+		map.setPaintProperty(MAP_LAYER.citiesMajor, 'circle-color', p.accent);
+		map.setPaintProperty(MAP_LAYER.citiesMajor, 'circle-stroke-color', p.halo);
+		map.setPaintProperty(MAP_LAYER.citiesMinor, 'circle-color', p.clay);
+		map.setPaintProperty(MAP_LAYER.citiesMinor, 'circle-stroke-color', p.halo);
+		map.setPaintProperty(MAP_LAYER.micro, 'circle-color', p.accent);
+		map.setPaintProperty(MAP_LAYER.micro, 'circle-stroke-color', p.halo);
+		map.setPaintProperty(MAP_LAYER.hillshade, 'hillshade-shadow-color', dark ? '#050403' : '#5f523c');
+		map.setPaintProperty(MAP_LAYER.hillshade, 'hillshade-highlight-color', dark ? '#c9bda4' : '#fffaf0');
+		if (map.getLayer(MAP_LAYER.rivers)) {
+			map.setPaintProperty(MAP_LAYER.rivers, 'line-color', p.river);
+			map.setPaintProperty(MAP_LAYER.lakes, 'fill-color', p.water);
+			map.setPaintProperty(MAP_LAYER.coastline, 'line-color', p.coast);
+		}
+		applyLayer(false);
+		ensureHatch(p.border);
+		scheduleLabels();
+	}
+
+	/* ---------- hachura de territórios com estatuto disputado ---------- */
+	function ensureHatch(color: string) {
+		if (!map) return;
+		const size = 18;
+		const canvas = document.createElement('canvas');
+		canvas.width = size;
+		canvas.height = size;
+		const ctx = canvas.getContext('2d');
+		if (!ctx) return;
+		ctx.clearRect(0, 0, size, size);
+		ctx.strokeStyle = color;
+		ctx.globalAlpha = 0.9;
+		ctx.lineWidth = 1.1;
+		for (let x = -size; x < size * 2; x += 7) {
+			ctx.beginPath();
+			ctx.moveTo(x, size);
+			ctx.lineTo(x + size, 0);
+			ctx.stroke();
+		}
+		const image = ctx.getImageData(0, 0, size, size);
+		const data = {
+			width: size,
+			height: size,
+			data: new Uint8Array(image.data)
+		};
+		if (map.hasImage('disputed-hatch')) map.updateImage('disputed-hatch', data);
+		else map.addImage('disputed-hatch', data, { pixelRatio: 2 });
+	}
+
+	/* ---------- rótulos DOM ---------- */
 	function labelClass(kind: string): string {
 		if (kind === 'country') return 'map-label';
 		if (kind === 'capital') return 'map-capital';
+		if (kind === 'city') return 'map-city';
 		return 'map-physical';
 	}
 
@@ -183,7 +307,7 @@
 		labelsEl.replaceChildren();
 		labelEntries = [];
 
-		const make = (text: string, kind: 'country' | 'capital' | 'physical', code?: string) => {
+		const make = (text: string, kind: 'country' | 'capital' | 'physical' | 'city', code?: string) => {
 			const el = document.createElement(kind === 'country' ? 'button' : 'span');
 			if (kind === 'country') {
 				(el as HTMLButtonElement).type = 'button';
@@ -208,7 +332,16 @@
 				code: country.code,
 				lat: country.label[1],
 				lng: country.label[0],
-				minZoom: country.labelRank <= 1 ? 0.0 : country.labelRank === 2 ? 0.6 : country.labelRank === 3 ? 1.4 : country.labelRank === 4 ? 2.2 : 3.0,
+				minZoom:
+					country.labelRank <= 1
+						? 0
+						: country.labelRank === 2
+							? 0.7
+							: country.labelRank === 3
+								? 1.5
+								: country.labelRank === 4
+									? 2.3
+									: 3.2,
 				priority: country.labelRank * 10 + (country.areaKm2 ? 0 : 5),
 				text: country.name
 			});
@@ -224,7 +357,7 @@
 				code: country.code,
 				lat: country.capitalLatLng[0],
 				lng: country.capitalLatLng[1],
-				minZoom: 3.1,
+				minZoom: 3.2,
 				priority: 200 + (country.indicators.population?.v ? Math.log10(country.indicators.population.v) : 0),
 				text: name
 			});
@@ -241,6 +374,26 @@
 				text: physical.name
 			});
 		}
+
+		for (const city of cityPoints) {
+			if (!city.properties) continue;
+			labelEntries.push({
+				el: make(city.properties.name, 'city'),
+				kind: 'city',
+				code: city.properties.code,
+				lat: city.geometry.coordinates[1],
+				lng: city.geometry.coordinates[0],
+				minZoom: city.properties.capital ? 3.4 : 4.1,
+				priority: 600 - Math.log10(Math.max(city.properties.pop, 1)) * 20,
+				text: city.properties.name
+			});
+		}
+
+		labelEntries.sort((a, b) => {
+			const order = { country: 0, physical: 1, capital: 2, city: 3 };
+			if (a.kind !== b.kind) return order[a.kind] - order[b.kind];
+			return a.priority - b.priority;
+		});
 	}
 
 	let frame = 0;
@@ -253,9 +406,12 @@
 		});
 	}
 
+	const MAX_LABELS = 82;
+
 	function updateLabels() {
-		if (!map || !labelsEl || !showLabels) {
-			if (labelsEl) for (const entry of labelEntries) entry.el.style.display = 'none';
+		if (!map || !labelsEl) return;
+		if (!showLabels) {
+			for (const entry of labelEntries) entry.el.style.display = 'none';
 			return;
 		}
 
@@ -264,30 +420,33 @@
 		const height = container.clientHeight;
 		const focusSet = focus ? new Set(focus) : null;
 		const placed: { x: number; y: number; w: number; h: number }[] = [];
+		let visibleCount = 0;
+		const globe = projection === 'globe';
+		const capitalLayers = layer.id === 'political' || layer.id === 'geopolitics' || layer.id === 'history';
 
-		const ordered = [...labelEntries].sort((a, b) => {
-			if (a.code === selected) return -1;
-			if (b.code === selected) return 1;
-			if (a.kind !== b.kind) {
-				const order = { country: 0, physical: 1, capital: 2 };
-				return order[a.kind] - order[b.kind];
+		for (const entry of labelEntries) {
+			if (visibleCount >= MAX_LABELS) {
+				entry.el.style.display = 'none';
+				continue;
 			}
-			return a.priority - b.priority;
-		});
-
-		for (const entry of ordered) {
-			// Em rodadas com foco, só os países candidatos recebem rótulo.
 			if (focusSet && entry.kind === 'country' && !focusSet.has(entry.code ?? '')) {
 				entry.el.style.display = 'none';
 				continue;
 			}
-			if (entry.kind === 'physical' && (!layer.showPhysical || zoom < entry.minZoom)) {
-				entry.el.style.display = 'none';
-				continue;
+			if (entry.kind === 'physical') {
+				if (!layer.showPhysical || zoom < entry.minZoom) {
+					entry.el.style.display = 'none';
+					continue;
+				}
 			}
 			if (entry.kind === 'capital') {
-				const allowedLayers = layer.id === 'political' || layer.id === 'geopolitics' || layer.id === 'history';
-				if (!allowedLayers || focusSet || zoom < entry.minZoom) {
+				if (!capitalLayers || focusSet || zoom < entry.minZoom) {
+					entry.el.style.display = 'none';
+					continue;
+				}
+			}
+			if (entry.kind === 'city') {
+				if (!layer.showCities || focusSet || zoom < entry.minZoom) {
 					entry.el.style.display = 'none';
 					continue;
 				}
@@ -302,8 +461,18 @@
 				entry.el.style.display = 'none';
 				continue;
 			}
+			if (globe) {
+				const back = map.unproject([point.x, point.y]);
+				const dLng = Math.abs(((back.lng - entry.lng + 540) % 360) - 180);
+				const dLat = Math.abs(back.lat - entry.lat);
+				if (dLng > 2 || dLat > 2) {
+					entry.el.style.display = 'none';
+					continue;
+				}
+			}
 
-			const isSmall = entry.kind === 'country' && zoom < 2.2 && (getCountry(entry.code ?? '')?.areaKm2 ?? 0) < 40000;
+			const isSmall =
+				entry.kind === 'country' && zoom < 2.2 && (getCountry(entry.code ?? '')?.areaKm2 ?? 0) < 40000;
 			if (isSmall && entry.code !== selected) {
 				entry.el.style.display = 'none';
 				continue;
@@ -312,12 +481,12 @@
 			const font =
 				entry.kind === 'country'
 					? '600 10px "Inter Variable", system-ui, sans-serif'
-					: entry.kind === 'capital'
-						? '400 10px "Inter Variable", system-ui, sans-serif'
-						: '500 9px "JetBrains Mono Variable", monospace';
-			const textWidth = measure(entry.text.toUpperCase(), font) + entry.text.length * 0.35;
+					: entry.kind === 'capital' || entry.kind === 'city'
+						? '400 9.5px "Inter Variable", system-ui, sans-serif'
+						: '500 9px "Fraunces Variable", serif';
+			const textWidth = measure(entry.text.toUpperCase(), font) + entry.text.length * 0.3;
 			const boxWidth = textWidth + 8;
-			const boxHeight = 15;
+			const boxHeight = entry.kind === 'physical' ? 14 : 15;
 			const rect = {
 				x: point.x - boxWidth / 2,
 				y: point.y - boxHeight / 2,
@@ -337,12 +506,51 @@
 			}
 
 			placed.push(rect);
+			visibleCount += 1;
 			entry.el.style.display = 'block';
 			entry.el.style.transform = `translate3d(${Math.round(point.x)}px, ${Math.round(point.y)}px, 0) translate(-50%, -50%)`;
 			entry.el.classList.toggle('is-selected', entry.code === selected);
 			entry.el.classList.toggle('is-hovered', entry.code === hovered);
 			entry.el.style.zIndex = entry.code === selected ? '5' : '1';
 		}
+	}
+
+	function updateScale() {
+		if (!map) return;
+		const center = map.getCenter();
+		const zoom = map.getZoom();
+		const metersPerPixel = (156543.03392 * Math.cos((center.lat * Math.PI) / 180)) / Math.pow(2, zoom);
+		const target = metersPerPixel * 96;
+		const pow = Math.pow(10, Math.floor(Math.log10(target)));
+		const nice = [1, 2, 5, 10].map((m) => m * pow).find((v) => v >= target * 0.62) ?? pow * 10;
+		const px = Math.min(120, Math.max(46, nice / metersPerPixel));
+		scaleWidth = Math.round(px);
+		scaleLabel = nice >= 1000 ? `${Math.round(nice / 1000)} km` : `${Math.round(nice)} m`;
+	}
+
+	let hoverFrame = 0;
+	let pendingPoint: { x: number; y: number } | null = null;
+
+	function queryCode(point: { x: number; y: number }, radius = 4): string | null {
+		if (!map) return null;
+		const features = map.queryRenderedFeatures(
+			[
+				[point.x - radius, point.y - radius],
+				[point.x + radius, point.y + radius]
+			],
+			{ layers: [MAP_LAYER.micro, MAP_LAYER.fillA, MAP_LAYER.fillB] }
+		);
+		return (features[0]?.properties?.code as string) ?? null;
+	}
+
+	function setHovered(code: string | null) {
+		if (!map || code === hovered) return;
+		if (hovered) map.setFeatureState({ source: 'countries', id: hovered }, { hover: false });
+		hovered = code;
+		if (code) map.setFeatureState({ source: 'countries', id: code }, { hover: true });
+		onhover?.(code);
+		map.getCanvas().style.cursor = code ? 'pointer' : '';
+		scheduleLabels();
 	}
 
 	async function setupMap() {
@@ -353,15 +561,16 @@
 			const isMobile = window.innerWidth < 720;
 			map = new maplibregl.Map({
 				container,
-				style: createMapStyle() as StyleSpecification,
+				style: createMapStyle(theme.resolved) as StyleSpecification,
 				center: [0, 16],
 				zoom: isMobile ? -0.3 : 1.3,
 				minZoom: -0.6,
-				maxZoom: 7.5,
+				maxZoom: 7.4,
 				attributionControl: false,
 				renderWorldCopies: true,
 				dragRotate: false,
-				pitchWithRotate: false
+				pitchWithRotate: false,
+				maxPitch: terrain ? 65 : 0
 			});
 
 			map.touchZoomRotate.disableRotation();
@@ -370,7 +579,6 @@
 			map.getCanvas().setAttribute('role', 'application');
 
 			map.on('error', (event) => {
-				// Erros de tile/rede não devem derrubar a interface.
 				console.warn('MapLibre:', event.error?.message ?? event.error);
 			});
 
@@ -378,47 +586,73 @@
 				try {
 					const physical = await fetch(physicalUrl).then((res) => res.json());
 					if (!map) return;
-					map!.addSource('lakes', { type: 'geojson', data: physical.lakes });
-					map!.addSource('rivers', { type: 'geojson', data: physical.rivers });
-					map!.addLayer(
+					map.addSource('lakes', { type: 'geojson', data: physical.lakes });
+					map.addSource('rivers', { type: 'geojson', data: physical.rivers });
+					map.addSource('coastline', { type: 'geojson', data: physical.coastline });
+					const p = mapPalette(theme.resolved);
+					map.addLayer(
 						{
 							id: MAP_LAYER.lakes,
 							type: 'fill',
 							source: 'lakes',
-							paint: { 'fill-color': '#0c1d2a', 'fill-opacity': 0.95 }
+							paint: { 'fill-color': p.water, 'fill-opacity': 0.95 }
 						},
 						MAP_LAYER.border
 					);
-					map!.addLayer(
+					map.addLayer(
 						{
 							id: MAP_LAYER.rivers,
 							type: 'line',
 							source: 'rivers',
 							paint: {
-								'line-color': '#2f6d8a',
-								'line-opacity': 0.7,
-								'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.4, 6, 1.8]
+								'line-color': p.river,
+								'line-opacity': 0.72,
+								'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.4, 6, 1.7]
 							}
 						},
 						MAP_LAYER.border
 					);
+					map.addLayer(
+						{
+							id: MAP_LAYER.coastline,
+							type: 'line',
+							source: 'coastline',
+							paint: {
+								'line-color': p.coast,
+								'line-opacity': 0.95,
+								'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.9, 6, 1.7]
+							}
+						},
+						MAP_LAYER.border
+					);
+					(map.getSource('cities') as GeoJSONSource | undefined)?.setData({
+						type: 'FeatureCollection',
+						features: cityPoints
+					});
 				} catch (err) {
-					console.warn('Não foi possível carregar rios e lagos', err);
+					console.warn('Não foi possível carregar rios, lagos e cidades', err);
 				}
 
+				ensureHatch(mapPalette(theme.resolved).border);
 				ready = true;
-				applyLayer();
+				applyLayer(false);
 				applySelected();
 				applyHighlight();
 				applyFocus();
 				applyStatus();
 				buildLabels();
+				updateScale();
 				updateLabels();
+				applyProjection();
+				applyTerrain();
 				map?.resize();
+				onready?.();
 			});
 
 			map.on('move', () => {
 				scheduleLabels();
+				updateScale();
+				pitch = map!.getPitch();
 				if (onview) {
 					const center = map!.getCenter();
 					onview({ lat: center.lat, lng: center.lng, zoom: map!.getZoom() });
@@ -429,41 +663,27 @@
 
 			map.on('mousemove', (event: MapMouseEvent) => {
 				if (!interactive || !map) return;
-				const feature = map!.queryRenderedFeatures(event.point, {
-					layers: [MAP_LAYER.fill]
-				})[0];
-				const code = (feature?.properties?.code as string) ?? null;
-				if (code !== hovered) {
-					if (hovered) map!.setFeatureState({ source: 'countries', id: hovered }, { hover: false });
-					hovered = code;
-					if (code) map!.setFeatureState({ source: 'countries', id: code }, { hover: true });
-					onhover?.(code);
-					map.getCanvas().style.cursor = code ? 'pointer' : '';
-					scheduleLabels();
-				}
+				pendingPoint = { x: event.point.x, y: event.point.y };
+				if (hoverFrame) return;
+				hoverFrame = requestAnimationFrame(() => {
+					hoverFrame = 0;
+					if (!pendingPoint) return;
+					setHovered(queryCode(pendingPoint));
+				});
 			});
 
-			map.on('mouseout', () => {
-				if (!map) return;
-				if (hovered) map!.setFeatureState({ source: 'countries', id: hovered }, { hover: false });
-				hovered = null;
-				onhover?.(null);
-				map.getCanvas().style.cursor = '';
-				scheduleLabels();
-			});
+			map.on('mouseout', () => setHovered(null));
 
 			map.on('click', (event: MapMouseEvent) => {
 				if (!interactive || !map) return;
-				const feature = map!.queryRenderedFeatures(event.point, {
-					layers: [MAP_LAYER.fill]
-				})[0];
-				const code = feature?.properties?.code as string | undefined;
+				const code = queryCode({ x: event.point.x, y: event.point.y }, 6);
 				if (code) onselect?.(code);
 			});
 
 			resizeObserver = new ResizeObserver(() => {
 				map?.resize();
 				scheduleLabels();
+				updateScale();
 			});
 			resizeObserver.observe(container);
 		} catch (err) {
@@ -472,12 +692,37 @@
 		}
 	}
 
+	function applyProjection() {
+		if (!map) return;
+		map.setProjection({ type: projection });
+		projectionLabel = projection === 'globe' ? 'Globo' : 'Mercator';
+		if (projection === 'globe' && map.getZoom() < 1.7) {
+			map.easeTo({ zoom: 1.8, duration: 800, essential: true });
+		}
+		scheduleLabels();
+	}
+
+	function applyTerrain() {
+		if (!map) return;
+		if (terrain) {
+			map.setMaxPitch(65);
+			map.setTerrain({ source: 'terrain-dem', exaggeration: 1.25 });
+			if (map.getPitch() < 20) map.easeTo({ pitch: 48, duration: 700, essential: true });
+		} else {
+			map.setTerrain(null);
+			map.setMaxPitch(0);
+			if (map.getPitch() > 0) map.easeTo({ pitch: 0, duration: 450 });
+		}
+		updateHillshadeVisibility();
+	}
+
 	let resizeObserver: ResizeObserver | null = null;
 
 	onMount(() => {
 		setupMap();
 		return () => {
 			if (frame) cancelAnimationFrame(frame);
+			if (hoverFrame) cancelAnimationFrame(hoverFrame);
 			resizeObserver?.disconnect();
 			map?.remove();
 			map = null;
@@ -485,7 +730,6 @@
 	});
 
 	$effect(() => {
-		// Dependências explícitas para reaplicar estados quando mudam.
 		void ready;
 		void selected;
 		if (ready) applySelected();
@@ -518,6 +762,10 @@
 	});
 
 	$effect(() => {
+		if (!interactive) setHovered(null);
+	});
+
+	$effect(() => {
 		void ready;
 		void layer;
 		if (ready) {
@@ -526,26 +774,50 @@
 		}
 	});
 
-	export function flyTo(center: [number, number], zoom = 3) {
-		map?.flyTo({ center, zoom, duration: 900, essential: true });
+	$effect(() => {
+		void ready;
+		void theme.resolved;
+		if (ready) applyTheme();
+	});
+
+	$effect(() => {
+		void ready;
+		void projection;
+		if (ready) applyProjection();
+	});
+
+	$effect(() => {
+		void ready;
+		void terrain;
+		if (ready) applyTerrain();
+	});
+
+	export function flyTo(center: [number, number], zoom = 3, duration = 900) {
+		map?.flyTo({ center, zoom, duration, essential: true, curve: 1.35, speed: 0.9 });
 	}
 
 	export function resetView() {
 		const isMobile = typeof window !== 'undefined' && window.innerWidth < 720;
-		map?.flyTo({ center: [0, 16], zoom: isMobile ? -0.3 : 1.3, duration: 700, essential: true });
+		map?.flyTo({ center: [0, 16], zoom: isMobile ? -0.3 : 1.3, duration: 760, essential: true });
 	}
 
 	export function zoomBy(delta: number) {
 		if (!map) return;
-		map.zoomTo(map.getZoom() + delta, { duration: 220 });
+		map.zoomTo(map.getZoom() + delta, { duration: 240, essential: true });
 	}
 
 	export function getMap() {
 		return map;
 	}
+
+	export function getView() {
+		if (!map) return null;
+		const center = map.getCenter();
+		return { lat: center.lat, lng: center.lng, zoom: map.getZoom() };
+	}
 </script>
 
-<div class={`map-canvas ${className}`} bind:this={container}>
+<div class={`map-canvas ${className}`} bind:this={container} data-pitch={Math.round(pitch)}>
 	<div class="map-labels" bind:this={labelsEl} aria-hidden="true"></div>
 	{#if !ready && !failed}
 		<div class="map-loading" role="status" aria-live="polite">
@@ -559,6 +831,24 @@
 			<p class="hint">Tente atualizar a página ou usar um navegador com WebGL habilitado.</p>
 		</div>
 	{/if}
+	<div class="instruments" aria-hidden={!ready}>
+		<div class="compass" title={`Projeção: ${projectionLabel}`}>
+			<svg viewBox="0 0 40 40" width="34" height="34" fill="none">
+				<circle cx="20" cy="20" r="15" stroke="currentColor" stroke-width="0.7" opacity=".45" />
+				<path d="M20 4v4M20 32v4M4 20h4M32 20h4" stroke="currentColor" stroke-width="0.8" opacity=".7" />
+				<path d="m20 8 3.2 9.3 8.8 2.7-8.8 2.7L20 32l-3.2-9.3L8 20l8.8-2.7L20 8Z" stroke="currentColor" stroke-width="0.9" />
+				<text x="20" y="3.2" text-anchor="middle" font-size="4" fill="currentColor" stroke="none">N</text>
+			</svg>
+		</div>
+		<div class="scale">
+			<span class="scale-bar" style:width={`${scaleWidth}px`}></span>
+			<span class="scale-label">{scaleLabel}</span>
+			<span class="projection">{projectionLabel}</span>
+			{#if terrain}
+				<span class="attribution">Elevação: AWS Terrain Tiles</span>
+			{/if}
+		</div>
+	</div>
 	<div class="map-vignette" aria-hidden="true"></div>
 </div>
 
@@ -567,7 +857,7 @@
 		position: absolute;
 		inset: 0;
 		overflow: hidden;
-		background: #070b12;
+		background: var(--map-paper);
 	}
 	.map-labels {
 		position: absolute;
@@ -585,36 +875,44 @@
 		border: 0;
 		padding: 2px 4px;
 		margin: 0;
-		color: rgba(233, 239, 247, 0.72);
+		color: var(--map-text);
 		font-size: 10px;
 		font-weight: 600;
-		letter-spacing: 0.09em;
+		letter-spacing: 0.1em;
 		text-transform: uppercase;
 		white-space: nowrap;
-		text-shadow: 0 1px 6px rgba(3, 6, 11, 0.95), 0 0 14px rgba(3, 6, 11, 0.8);
+		text-shadow:
+			0 0 4px var(--map-paper),
+			0 1px 8px var(--map-paper);
 		cursor: pointer;
 		line-height: 1;
-		opacity: 0.9;
+		opacity: 0.86;
 	}
 	.map-labels :global(.map-label:hover),
 	.map-labels :global(.map-label.is-hovered) {
-		color: #e9eff7;
+		color: var(--accent-0);
+		opacity: 1;
 	}
 	.map-labels :global(.map-label.is-selected) {
-		color: #f0cd8e;
+		color: var(--accent-0);
 		font-weight: 700;
+		opacity: 1;
 	}
-	.map-labels :global(.map-capital) {
+	.map-labels :global(.map-capital),
+	.map-labels :global(.map-city) {
 		position: absolute;
 		top: 0;
 		left: 0;
-		color: rgba(233, 239, 247, 0.55);
-		font-size: 10px;
+		color: var(--map-text);
+		font-size: 9.5px;
 		font-weight: 400;
 		white-space: nowrap;
-		text-shadow: 0 1px 6px rgba(3, 6, 11, 0.95);
+		text-shadow:
+			0 0 4px var(--map-paper),
+			0 1px 7px var(--map-paper);
 		line-height: 1;
-		padding-left: 9px;
+		padding-left: 8px;
+		opacity: 0.68;
 	}
 	.map-labels :global(.map-capital::before) {
 		content: '';
@@ -624,21 +922,24 @@
 		width: 3px;
 		height: 3px;
 		border-radius: 50%;
-		background: rgba(233, 239, 247, 0.7);
+		background: var(--accent-1);
 		transform: translateY(-50%);
 	}
 	.map-labels :global(.map-physical) {
 		position: absolute;
 		top: 0;
 		left: 0;
-		color: rgba(185, 164, 122, 0.82);
-		font-family: var(--font-mono);
-		font-size: 8.5px;
-		letter-spacing: 0.16em;
-		text-transform: uppercase;
+		color: var(--map-text);
+		font-family: var(--font-display);
+		font-size: 10px;
+		font-style: italic;
+		letter-spacing: 0.03em;
 		white-space: nowrap;
 		line-height: 1;
-		text-shadow: 0 1px 8px rgba(3, 6, 11, 0.9);
+		text-shadow:
+			0 0 4px var(--map-paper),
+			0 1px 8px var(--map-paper);
+		opacity: 0.62;
 	}
 	.map-loading {
 		position: absolute;
@@ -648,18 +949,18 @@
 		justify-content: center;
 		gap: 0.6rem;
 		z-index: 3;
-		color: var(--color-mist-400);
+		color: var(--text-3);
 		font-family: var(--font-mono);
-		font-size: 0.72rem;
-		letter-spacing: 0.12em;
+		font-size: 0.68rem;
+		letter-spacing: 0.14em;
 		text-transform: uppercase;
-		background: #070b12;
+		background: var(--map-paper);
 	}
 	.map-loading .dot {
-		width: 6px;
-		height: 6px;
+		width: 5px;
+		height: 5px;
 		border-radius: 50%;
-		background: var(--color-gold-400);
+		background: var(--accent-1);
 		animation: pulse-soft 1.4s ease-in-out infinite;
 	}
 	.map-failed {
@@ -673,24 +974,86 @@
 		gap: 0.5rem;
 		padding: 2rem;
 		text-align: center;
-		background: #070b12;
-		color: var(--color-mist-200);
+		background: var(--map-paper);
+		color: var(--text-2);
 	}
 	.map-failed .hint {
-		color: var(--color-mist-400);
+		color: var(--text-3);
 		font-size: 0.85rem;
+	}
+	.instruments {
+		position: absolute;
+		left: 17rem;
+		bottom: 1rem;
+		z-index: 3;
+		display: flex;
+		align-items: flex-end;
+		gap: 0.7rem;
+		color: var(--text-3);
+		pointer-events: none;
+	}
+	.compass {
+		opacity: 0.72;
+	}
+	.scale {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		padding-bottom: 0.1rem;
+		font-family: var(--font-mono);
+		font-size: 0.5rem;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--text-3);
+		text-shadow: 0 1px 4px var(--map-paper);
+	}
+	.scale-bar {
+		display: block;
+		height: 5px;
+		border: 1px solid var(--text-3);
+		border-top: 0;
+		opacity: 0.65;
+	}
+	.projection {
+		color: var(--text-4);
+	}
+	.attribution {
+		color: var(--text-4);
+		font-size: 0.42rem;
+		letter-spacing: 0.03em;
+		text-transform: none;
 	}
 	.map-vignette {
 		position: absolute;
 		inset: 0;
 		pointer-events: none;
 		z-index: 1;
-		background: radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(3, 6, 11, 0.55) 100%);
+		box-shadow: inset 0 0 160px color-mix(in oklab, var(--map-paper) 45%, transparent);
 	}
 	:global(.maplibregl-canvas) {
 		outline: none;
 	}
 	:global(.maplibregl-ctrl-attrib) {
 		display: none;
+	}
+	@media (max-width: 900px) {
+		.instruments {
+			left: 0.8rem;
+			bottom: calc(7.6rem + env(safe-area-inset-bottom));
+		}
+		.projection {
+			display: none;
+		}
+		.compass {
+			display: none;
+		}
+	}
+	@media (max-width: 620px) {
+		.scale {
+			font-size: 0.45rem;
+		}
+		.projection {
+			display: none;
+		}
 	}
 </style>

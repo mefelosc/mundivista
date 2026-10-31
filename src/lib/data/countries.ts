@@ -28,7 +28,7 @@ export const indicatorKeys = Object.keys(indicatorMeta) as IndicatorKey[];
 const aliases: Record<string, string> = {
 	XKX: 'KOS',
 	SSD: 'SDS',
-	PSX: 'PSE'
+	PSE: 'PSX'
 };
 
 export const countryByCode: ReadonlyMap<string, Country> = new Map(

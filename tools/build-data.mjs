@@ -37,11 +37,11 @@ const SOURCES = {
 		note: 'Capital, moeda, área, idiomas e países vizinhos.'
 	},
 	physical: {
-		name: 'Natural Earth — Rios e lagos (1:110m)',
-		url: 'https://www.naturalearthdata.com/downloads/110m-physical-vectors/',
+		name: 'Natural Earth — Rios, lagos e litoral',
+		url: 'https://www.naturalearthdata.com/downloads/',
 		license: 'Domínio público',
-		scale: '1:110m',
-		note: 'Apenas as feições principais. O relevo é representado por rótulos curados, não por um modelo digital de elevação.'
+		scale: '1:50m / 1:110m',
+		note: 'Rios e lagos em 1:110m; linha de costa em 1:50m. O relevo sombreado e o modo 3D usam um modelo digital público carregado sob demanda.'
 	},
 	indicators: {
 		name: 'World Bank Open Data',
@@ -87,6 +87,10 @@ const INDICATORS = [
 ];
 
 const WB_YEARS = '2016:2025';
+
+/* Hachura apenas onde soberania ou traçado são disputados de forma documentada.
+   Israel não entra: o Estado é reconhecido; o que se disputa são fronteiras. */
+const DISPUTED_CODES = new Set(['KOS', 'PSX', 'SAH', 'FLK', 'KAS', 'IOT']);
 
 /* Códigos divergentes entre Natural Earth e World Bank / mledoze. */
 const CODE_ALIASES = {
@@ -202,8 +206,61 @@ const norm = (s) =>
 		.replace(/[^a-z0-9]+/g, ' ')
 		.trim();
 
+function ringsOfGeometry(geometry) {
+	if (geometry.type === 'Polygon') return geometry.coordinates;
+	if (geometry.type === 'MultiPolygon') return geometry.coordinates.flat();
+	return [];
+}
+
 /** Projeção equirretangular simples para silhuetas de jogo. */
-function silhouettePath(geometry) {
+function simplifyRing(points, tolerance) {
+	if (points.length < 3) return points;
+	const squared = tolerance * tolerance;
+	const keep = new Uint8Array(points.length);
+	keep[0] = 1;
+	keep[points.length - 1] = 1;
+	const stack = [[0, points.length - 1]];
+
+	const distanceSq = (point, start, end) => {
+		let x = start[0];
+		let y = start[1];
+		let dx = end[0] - x;
+		let dy = end[1] - y;
+		if (dx !== 0 || dy !== 0) {
+			const t = ((point[0] - x) * dx + (point[1] - y) * dy) / (dx * dx + dy * dy);
+			if (t > 1) {
+				x = end[0];
+				y = end[1];
+			} else if (t > 0) {
+				x += dx * t;
+				y += dy * t;
+			}
+		}
+		dx = point[0] - x;
+		dy = point[1] - y;
+		return dx * dx + dy * dy;
+	};
+
+	while (stack.length) {
+		const [first, last] = stack.pop();
+		let index = -1;
+		let maxDistance = squared;
+		for (let i = first + 1; i < last; i++) {
+			const distance = distanceSq(points[i], points[first], points[last]);
+			if (distance > maxDistance) {
+				index = i;
+				maxDistance = distance;
+			}
+		}
+		if (index !== -1) {
+			keep[index] = 1;
+			stack.push([first, index], [index, last]);
+		}
+	}
+	return points.filter((_, i) => keep[i]);
+}
+
+function silhouettePath(geometry, { tolerance = 0, minRingArea = 0 } = {}) {
 	let rings = [];
 	if (geometry.type === 'Polygon') rings = geometry.coordinates;
 	else if (geometry.type === 'MultiPolygon') rings = geometry.coordinates.flat();
@@ -217,13 +274,20 @@ function silhouettePath(geometry) {
 
 	for (const ring of rings) {
 		if (ring.length < 3) continue;
+		if (minRingArea > 0) {
+			const lons = ring.map((point) => point[0]);
+			const lats = ring.map((point) => point[1]);
+			const area = (Math.max(...lons) - Math.min(...lons)) * (Math.max(...lats) - Math.min(...lats));
+			if (area < minRingArea) continue;
+		}
 		// Costura do antimeridiano: desloca o anel para perto do primeiro ponto.
 		const base = ring[0][0];
 		const shifted = ring.map(([lon, lat]) => {
-			let x = lon;
-			while (x - base > 180) x -= 360;
-			while (x - base < -180) x += 360;
+			let degrees = lon;
+			while (degrees - base > 180) degrees -= 360;
+			while (degrees - base < -180) degrees += 360;
 			const phi = (lat * Math.PI) / 180;
+			const x = (degrees * Math.PI) / 180;
 			const y = -Math.log(Math.tan(Math.PI / 4 + phi / 2));
 			return [x, y];
 		});
@@ -243,17 +307,11 @@ function silhouettePath(geometry) {
 	const offX = (100 - spanX * scale) / 2;
 	const offY = (100 - spanY * scale) / 2;
 
-	const simplify = (points) => {
-		if (points.length <= 8) return points;
-		const step = Math.max(1, Math.floor(points.length / 90));
-		const out = points.filter((_, i) => i % step === 0);
-		if (out[out.length - 1] !== points[points.length - 1]) out.push(points[points.length - 1]);
-		return out;
-	};
+	const effectiveTolerance = tolerance || Math.max(spanX, spanY) / 520;
 
 	return projected
 		.map((ring) => {
-			const pts = simplify(ring).map(([x, y]) => {
+			const pts = simplifyRing(ring, effectiveTolerance).map(([x, y]) => {
 				const px = offX + (x - minX) * scale;
 				const py = offY + (y - minY) * scale;
 				return `${px.toFixed(1)},${py.toFixed(1)}`;
@@ -440,7 +498,7 @@ async function main() {
 				continent: c.continent,
 				selectable: true,
 				status: c.status,
-				disputed: ['Disputed', 'Breakaway', 'Indeterminate', 'Lease'].includes(p.TYPE)
+				disputed: DISPUTED_CODES.has(code)
 			},
 			geometry: f.geometry
 		});
@@ -513,6 +571,7 @@ async function main() {
 
 	/* ---------- cidades principais (pontos, não limites urbanos) ---------- */
 	console.log('› cidades principais (Natural Earth)');
+	const areaByCode = new Map(countries.map((c) => [c.code, c.areaKm2 ?? Infinity]));
 	const byCountryCities = new Map();
 	for (const f of places.features) {
 		const p = f.properties;
@@ -520,7 +579,7 @@ async function main() {
 		if (!code || code === '-99') continue;
 		const pop = p.POP_MAX ?? 0;
 		const capital = p.ADM0CAP === 1;
-		if (pop < 500_000 && !(capital && pop >= 150_000)) continue;
+		if (pop < 500_000 && !capital) continue;
 		const [lng, lat] = f.geometry.coordinates;
 		const row = {
 			name: p.NAME_PT || p.NAME_EN || p.NAME || '',
@@ -528,6 +587,7 @@ async function main() {
 			pop,
 			code,
 			capital,
+			micro: (areaByCode.get(code) ?? Infinity) < 15_000,
 			lat: Math.round(lat * 10000) / 10000,
 			lng: Math.round(lng * 10000) / 10000,
 			minZoom: pop >= 10_000_000 ? 0 : pop >= 5_000_000 ? 0.8 : pop >= 2_000_000 ? 1.6 : 2.4
@@ -551,6 +611,7 @@ async function main() {
 					pop: city.pop,
 					code: city.code,
 					capital: city.capital,
+					micro: city.micro,
 					minZoom: city.minZoom
 				},
 				geometry: { type: 'Point', coordinates: [city.lng, city.lat] }
@@ -569,6 +630,12 @@ async function main() {
 		const d = silhouettePath(feature.geometry);
 		if (d) silhouettes[c.code] = d;
 	}
+
+	const worldRings = features.flatMap((f) => ringsOfGeometry(f.geometry));
+	const worldOutline = silhouettePath(
+		{ type: 'MultiPolygon', coordinates: worldRings.map((ring) => [ring]) },
+		{ tolerance: 0.012, minRingArea: 0.08 }
+	);
 
 	await mkdir(OUT, { recursive: true });
 	await writeFile(
@@ -594,6 +661,10 @@ async function main() {
 	await writeFile(
 		path.join(OUT, 'silhouettes.json'),
 		JSON.stringify({ retrieved: RETRIEVED, silhouettes }, null, 0)
+	);
+	await writeFile(
+		path.join(OUT, 'world-silhouette.json'),
+		JSON.stringify({ retrieved: RETRIEVED, path: worldOutline }, null, 0)
 	);
 	await writeFile(
 		path.join(OUT, 'sources.json'),
