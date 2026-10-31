@@ -171,6 +171,9 @@ docs/{ROADMAP,INSPIRATION,HANDOFF}.md
 - Firefox do Playwright está em `~/.cache/ms-playwright/firefox-1555/firefox/firefox`;
   os scripts usam esse caminho.
 - O skip link aponta para `#conteudo`; toda rota nova precisa desse id.
+- Zen com aceleração de hardware desligada pode criar o mapa sem desenhar as camadas WebGL
+  (só os rótulos DOM). O `MapCanvas` faz uma checagem de WebGL e, sem contexto, mostra um
+  aviso com o caminho de configuração do Zen; `src/error.html` cobre o 500 fora do app.
 - O build tem dois chunks grandes (>500 kB): MapLibre é lazy; o chunk compartilhado foi
   reduzido ao carregar a palette sob demanda.
 - `PSE`/`PSX`, `XKX`/`KOS`, `SSD`/`SDS` são aliases; o mapa usa os códigos do Natural Earth.
