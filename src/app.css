@@ -85,9 +85,6 @@
 		--negative: #ab4e46;
 		--map-paper: #eef3ee;
 		--map-ocean: #dfeaef;
-		--map-void: #cbd3c4;
-		--map-void-line: rgba(34, 50, 42, 0.1);
-		--map-void-wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='64' viewBox='0 0 200 64'%3E%3Cpath d='M0 32 Q 25 12 50 32 T 100 32 T 150 32 T 200 32' fill='none' stroke='%2322322a' stroke-opacity='.1' stroke-width='1'/%3E%3C/svg%3E");
 		--map-land: #e4e9dd;
 		--map-stroke: #7b8c80;
 		--map-text: #22322a;
@@ -127,9 +124,6 @@
 		--negative: #d97a70;
 		--map-paper: #0f1411;
 		--map-ocean: #101820;
-		--map-void: #090d0a;
-		--map-void-line: rgba(230, 238, 232, 0.055);
-		--map-void-wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='64' viewBox='0 0 200 64'%3E%3Cpath d='M0 32 Q 25 12 50 32 T 100 32 T 150 32 T 200 32' fill='none' stroke='%23e6eee8' stroke-opacity='.05' stroke-width='1'/%3E%3C/svg%3E");
 		--map-land: #1a221c;
 		--map-stroke: #66786c;
 		--map-text: #e6eee8;

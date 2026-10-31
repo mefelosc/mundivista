@@ -1285,7 +1285,7 @@
 		position: absolute;
 		inset: 0;
 		overflow: hidden;
-		background: var(--map-void);
+		background: var(--map-ocean);
 		isolation: isolate;
 	}
 	.map-space {
@@ -1293,31 +1293,7 @@
 		inset: 0;
 		z-index: 0;
 		pointer-events: none;
-		background-color: var(--map-void);
-	}
-	.map-canvas[data-projection='flat'] .map-space {
-		background-image:
-			var(--map-void-wave),
-			var(--map-void-wave),
-			linear-gradient(var(--map-void-line) 1px, transparent 1px),
-			linear-gradient(90deg, var(--map-void-line) 1px, transparent 1px),
-			radial-gradient(
-				130% 100% at 50% 44%,
-				transparent 38%,
-				color-mix(in oklab, var(--surface-0) 42%, transparent) 100%
-			);
-		background-size:
-			200px 64px,
-			400px 128px,
-			52px 52px,
-			52px 52px,
-			100% 100%;
-		background-position:
-			0 0,
-			100px 32px,
-			center,
-			center,
-			center;
+		background-color: var(--map-ocean);
 	}
 	.map-canvas[data-projection='globe'] .map-space {
 		background-color: #050907;

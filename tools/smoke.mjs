@@ -67,7 +67,7 @@ await check('pan horizontal do 2D dá a volta no mundo', async () => {
 		await page.mouse.up();
 		await page.waitForTimeout(1100);
 	}
-	await page.mouse.move(8, 120);
+	await page.mouse.move(8, 10);
 	await page.waitForTimeout(500);
 	const readout = await page.locator('.readout-main').innerText();
 	if (!/·/.test(readout)) throw new Error(`leitura inválida: ${readout}`);
@@ -250,11 +250,34 @@ await check('bandeira cobre o território ao acertar o país', async () => {
 	await page.locator('.list-search input').fill(target);
 	await page.waitForTimeout(350);
 	await page.locator('.list-mode li button').first().click();
-	await page.waitForTimeout(1200);
+	await page.waitForTimeout(900);
 	const flag = page.locator('.territory-flag');
 	if (!(await flag.count())) throw new Error('bandeira ausente');
 	const box = await flag.boundingBox();
 	if (!box || box.width < 20 || box.height < 20) throw new Error(`bandeira pequena: ${JSON.stringify(box)}`);
+	// O acerto agenda a próxima rodada sozinho.
+	await page.waitForTimeout(1100);
+	const nextPrompt = await page.locator('.prompt h1').innerText().catch(() => '');
+	if (!nextPrompt || nextPrompt === prompt) throw new Error('acerto não avançou sozinho');
+});
+
+await check('erro não avança sozinho', async () => {
+	await page.goto(`${BASE}/game/country-finder`, { waitUntil: 'networkidle' });
+	await page.waitForTimeout(800);
+	const start = page.locator('.intro-actions .primary');
+	if (await start.count()) await start.click();
+	await page.waitForTimeout(500);
+	const prompt = await page.locator('.prompt h1').innerText();
+	const target = prompt.split(':').pop().trim();
+	const wrong = target === 'Brasil' ? 'Argentina' : 'Brasil';
+	await page.getByRole('button', { name: /Modo lista/ }).click();
+	await page.locator('.list-search input').fill(wrong);
+	await page.waitForTimeout(300);
+	await page.locator('.list-mode li button').first().click();
+	await page.waitForTimeout(1700);
+	if (!(await page.locator('.feedback').count())) throw new Error('feedback sumiu no erro');
+	const still = await page.locator('.prompt h1').innerText();
+	if (still !== prompt) throw new Error('erro avançou sozinho');
 });
 
 await check('índice de países carrega e busca', async () => {

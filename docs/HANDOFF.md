@@ -96,11 +96,12 @@ docs/{ROADMAP,INSPIRATION,HANDOFF}.md
 - **Mapa:** abre no mapa base **2D em Equal Earth** (`addProjection` + proj4 no main e no
   worker), sem camada temática; globo 3D e relevo ficam como opções no globo (DEM em
   Mercator). Crossfade por duas camadas de fill.
-- **Mar, fora do mundo e wrap:** o oceano é o polígono `world-ocean` (o fundo do MapLibre é
-  transparente). Fora da linha do mundo, o CSS mostra uma mesa de carta com ondas no 2D e um
-  campo de estrelas no globo. A praça da projeção planar cobre **três mundos**; as fontes são
-  duplicadas em -360°/0°/+360° e a câmera salta 360° no `moveend`, então o pan leste–oeste é
-  infinito e invisível. O zoom exibido é o zoom da API menos `FLAT_ZOOM_OFFSET` (log₂ 3).
+- **Mar, fora do mundo e wrap:** o oceano é o polígono `world-ocean` e o fundo do MapLibre é
+  transparente. No 2D o CSS por trás do canvas usa a mesma cor do mar, então a borda do mundo
+  não aparece e o pan parece uma câmera contínua; no globo 3D o CSS é um campo de estrelas.
+  A praça da projeção planar cobre **três mundos**; as fontes são duplicadas em -360°/0°/+360°
+  e a câmera salta 360° no `moveend`, então o pan leste–oeste é infinito e invisível. O zoom
+  exibido é o zoom da API menos `FLAT_ZOOM_OFFSET` (log₂ 3).
 - **Camadas:** a camada `standard` (Padrão) é o estado inicial e não entra na lista de seis
   camadas temáticas; clicar de novo na camada ativa volta a ela.
 - **Cards/dossiê:** o card virou ficha em blocos (identidade, métricas, abas curtas,
@@ -130,6 +131,8 @@ docs/{ROADMAP,INSPIRATION,HANDOFF}.md
   Códigos históricos do WB são resolvidos por candidatos (COD, NOR, ROU, TLS, PSE, NRU);
   Somalilândia tem fatos próprios e não herda Somália; lacunas sem série continuam explícitas.
 - **Jogos:** 9 jogos; novos Silhuetas, Cadeia de Fronteiras, Bandeiras e Economia em Números; progresso persistente.
+  Acerto correto agenda auto-avanço (1 s; 1,3 s em `map-single`) com barra de tempo no feedback;
+  erro e última rodada exigem clique em “Próxima”/“Ver resultado”.
   Rankings usa montagem por cliques (pool + lista), sem setas; a interface é toda focável.
   A biblioteca usa capas visuais e tema por categoria; no jogo de países os rótulos do mapa
   ficam ocultos, e no jogo de bandeiras as alternativas não mostram bandeiras.

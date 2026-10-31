@@ -73,6 +73,9 @@
 	let daily = $state(false);
 	let seed: number | undefined;
 	let shareStatus = $state<'copied' | 'shared' | null>(null);
+	let autoAdvancing = $state(false);
+	let autoMs = $state(1100);
+	let autoTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const current = $derived(rounds[index] ?? null);
 	const orderPool = $derived((current?.items ?? []).filter((code) => !placed.includes(code)));
@@ -157,7 +160,10 @@
 		showIntro =
 			!saved && !localStorage.getItem(`mundivista:intro:${game.interaction}`);
 		const timer = setInterval(() => (now = Date.now()), 250);
-		return () => clearInterval(timer);
+		return () => {
+			clearInterval(timer);
+			clearAutoAdvance();
+		};
 	});
 
 	$effect(() => {
@@ -264,6 +270,32 @@
 			points: scored.points
 		};
 		persist();
+		if (validation.correct) scheduleAutoAdvance();
+	}
+
+	function clearAutoAdvance() {
+		if (autoTimer) {
+			clearTimeout(autoTimer);
+			autoTimer = null;
+		}
+		autoAdvancing = false;
+	}
+
+	function scheduleAutoAdvance() {
+		clearAutoAdvance();
+		// Na última rodada o botão vira "Ver resultado": deixamos a leitura
+		// do feedback final nas mãos de quem jogou.
+		if (index + 1 >= rounds.length) return;
+		autoMs = current?.interaction === 'map-single' ? 1300 : 1000;
+		autoAdvancing = true;
+		autoTimer = setTimeout(() => {
+			autoTimer = null;
+			if (!feedback?.correct || finished || showIntro) {
+				autoAdvancing = false;
+				return;
+			}
+			next();
+		}, autoMs);
 	}
 
 	function submitText(event: SubmitEvent) {
@@ -297,6 +329,7 @@
 	}
 
 	function next() {
+		clearAutoAdvance();
 		if (index + 1 >= rounds.length) {
 			finish();
 			return;
@@ -307,6 +340,7 @@
 	}
 
 	function resetRound() {
+		clearAutoAdvance();
 		selectedCodes = [];
 		textAnswer = '';
 		status = {};
@@ -318,6 +352,7 @@
 	}
 
 	function finish() {
+		clearAutoAdvance();
 		finished = true;
 		const total = summarize(results, rules).total;
 		if (!best || total > best) {
@@ -664,6 +699,9 @@
 			role="status"
 			aria-live="polite"
 		>
+			{#if autoAdvancing}
+				<span class="auto-progress" style:--auto-ms={`${autoMs}ms`} aria-hidden="true"></span>
+			{/if}
 			<div class="verdict">
 				<span class="badge">
 					{#if feedback.correct}
@@ -1294,6 +1332,23 @@
 		width: min(36rem, calc(100vw - 1.5rem));
 		padding: 0.7rem 0.8rem;
 		border-left: 3px solid var(--line-strong);
+		overflow: hidden;
+	}
+	.auto-progress {
+		position: absolute;
+		left: 0;
+		bottom: 0;
+		height: 2px;
+		background: var(--positive);
+		animation: auto-progress var(--auto-ms, 1100ms) linear forwards;
+	}
+	@keyframes auto-progress {
+		from {
+			width: 100%;
+		}
+		to {
+			width: 0;
+		}
 	}
 	.feedback.correct {
 		border-left-color: var(--positive);
