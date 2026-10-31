@@ -9,6 +9,8 @@
 		rankOf,
 		retrievedAt,
 		getCountry,
+		dependencyLabel,
+		sovereignCountry,
 		worldStats
 	} from '#lib/data/countries';
 	import { getHistorical } from '#lib/data/historical';
@@ -75,6 +77,8 @@
 	);
 	const snippet = $derived(snippetsByCountry.get(country.code)?.[0] ?? null);
 	const disputed = $derived(disputedInfo(country.code));
+	const sovereign = $derived(sovereignCountry(country));
+	const dependency = $derived(dependencyLabel(country));
 	const accent = $derived(layer.palette?.[layer.palette.length - 1] ?? 'var(--accent-1)');
 
 	const currency = $derived(
@@ -263,7 +267,7 @@
 		</div>
 		<div class="titles">
 			<h2>{country.name}</h2>
-			<p>{country.nameEn}{country.type ? ` · ${country.type}` : ''}</p>
+			<p>{country.nameEn}{dependency ?? country.type ? ` · ${dependency ?? country.type}` : ''}</p>
 		</div>
 		<div class="head-actions">
 			<button type="button" class="icon-btn" onclick={share} aria-label="Compartilhar país" title="Compartilhar">
@@ -321,6 +325,8 @@
 	</div>
 
 	<div class="body" role="tabpanel" tabindex="0" aria-label={TABS.find((t) => t.id === tab)?.label}>
+		{#key tab}
+		<div class="panel-content">
 		{#if tab === 'overview'}
 			<LocatorMap {country} {neighbors} />
 			<section>
@@ -338,6 +344,9 @@
 					value={country.languages.length ? country.languages.join(', ') : 'Não disponível'}
 				/>
 				<StatRow label="Membro da ONU" value={country.unMember === null ? 'Não disponível' : country.unMember ? 'Sim' : 'Não'} />
+				{#if sovereign}
+					<StatRow label="Soberania" value={sovereign.name} note={dependency ?? undefined} />
+				{/if}
 				<StatRow label="Sem litoral" value={country.landlocked === null ? 'Não disponível' : country.landlocked ? 'Sim' : 'Não'} />
 				{#if disputed}
 					<StatRow label="Estatuto" value={disputed.label} note={disputed.note} />
@@ -467,7 +476,9 @@
 					{/if}
 				{/each}
 			</section>
-		{/if}
+			{/if}
+		</div>
+		{/key}
 	</div>
 
 	<footer>
@@ -692,6 +703,9 @@
 		flex: 1;
 		overflow-y: auto;
 		padding: 0.7rem 0.8rem 0.9rem;
+	}
+	.panel-content {
+		animation: fade-up 0.32s var(--ease-out-soft) both;
 	}
 	.body :global(.locator) {
 		margin-bottom: 0.75rem;

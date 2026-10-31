@@ -44,6 +44,27 @@ export function getCountry(code: string | null | undefined): Country | null {
 	return countryByCode.get(aliases[code] ?? code) ?? null;
 }
 
+
+/** País soberano associado a um território dependente (Natural Earth). */
+export function sovereignCountry(country: Country): Country | null {
+	const name = country.sovereign;
+	if (!name) return null;
+	const normalized = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+	const match = countries.find((candidate) => {
+		const en = candidate.nameEn.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+		const pt = candidate.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+		return en === normalized || pt === normalized;
+	});
+	return match?.code === country.code ? null : (match ?? null);
+}
+
+/** Rótulo de dependência para cabeçalhos e fichas. */
+export function dependencyLabel(country: Country): string | null {
+	const sovereign = sovereignCountry(country);
+	if (!sovereign || country.unMember !== false) return null;
+	return `Território dependente de ${sovereign.name}`;
+}
+
 export function countryName(code: string): string {
 	return getCountry(code)?.name ?? code;
 }

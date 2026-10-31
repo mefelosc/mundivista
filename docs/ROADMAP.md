@@ -31,12 +31,13 @@ interface central e dados verificáveis.
 - Globo 3D e 2D em Equal Earth (via projeção customizada + proj4), relevo 3D no globo,
   tema claro/escuro/sistema, crossfade de camada.
 - Coropléticos por quantis, feature-state, destaque de blocos e de vizinhos sob demanda no card.
-- Card com “at a glance”, abas, mediana/percentil, sparkline, mini-mapa e compartilhamento.
+- Card com “at a glance”, abas, mediana/percentil, sparkline interativa, mini-mapa e
+  compartilhamento; soberania de territórios dependentes visível.
 - Dossiê `/country/[code]` com séries, comparação, timeline, organizações e fontes.
 - 32 indicadores do Banco Mundial com ano, série, cobertura e fonte; página `/sobre`.
 - 7 jogos, motor desacoplado, progresso local, onboarding, modo lista e desafio diário.
 - Landing editorial, busca ⌘K, i18n do shell PT/EN.
-- 63 testes, `svelte-check` 0 erros, build estático, axe sem violações sérias, smoke test.
+- 65 testes, `svelte-check` 0 erros, build estático, axe sem violações sérias, smoke test.
 - Worker do MapLibre corrigido com `?worker&url` (não remover).
 
 ---
@@ -82,7 +83,10 @@ sem flash de camada. Medição formal de 60 fps em hardware intermediário segue
 #### 3.3 Camadas com personalidade cartográfica
 
 - [x] **Político:** tints continentais, litoral mais forte que fronteira, capitais, vizinhos
-      sob demanda no card, rótulos com halo.
+      sob demanda no card, rótulos com halo e nomes de mares/oceanos.
+- [x] **Países pequenos:** pontos de acerto invisíveis com raio ampliado por cima do polígono,
+      para não abrir o vizinho maior.
+- [x] **Dependências:** soberano exibido no card e no dossiê (Groenlândia → Dinamarca).
 - [x] **Físico:** hillshade real, rios/lagos, litoral, rótulos de relevo; cores de país não
       fingem ser hipsometria.
 - [x] **Demografia:** coroplético de densidade + pontos de cidades principais.

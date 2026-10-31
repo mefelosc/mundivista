@@ -17,7 +17,8 @@
 		manifest.sources.boundaries,
 		manifest.sources.facts,
 		manifest.sources.indicators,
-		manifest.sources.physical
+		manifest.sources.physical,
+		manifest.sources.marine
 	].filter(Boolean);
 
 	const extraSources = [

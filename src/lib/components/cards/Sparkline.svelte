@@ -12,10 +12,12 @@
 	let {
 		series,
 		format = (v) => formatDec(v, 1),
-		height = 38,
+		height = 52,
 		label = 'Série temporal',
 		delta: deltaMode = 'percent'
 	}: Props = $props();
+
+	let hover = $state<number | null>(null);
 
 	const points = $derived.by(() => {
 		if (!series?.length) return [];
@@ -27,16 +29,20 @@
 			year,
 			value,
 			x: series.length === 1 ? 50 : (i / (series.length - 1)) * 100,
-			y: 29 - ((value - min) / span) * 24
+			y: 34 - ((value - min) / span) * 27
 		}));
 	});
 
 	const line = $derived(points.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' '));
 	const area = $derived(
-		points.length ? `M0,32 L${points.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' L')} L100,32 Z` : ''
+		points.length
+			? `M0,36 L${points.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' L')} L100,36 Z`
+			: ''
 	);
 	const first = $derived(series?.[0]);
 	const last = $derived(series?.[series.length - 1]);
+	const min = $derived(points.length ? Math.min(...series.map(([, v]) => v)) : null);
+	const max = $derived(points.length ? Math.max(...series.map(([, v]) => v)) : null);
 	const change = $derived(first && last ? last[1] - first[1] : null);
 	const delta = $derived(
 		change === null
@@ -52,6 +58,14 @@
 			? `${label}: de ${format(first[1])} em ${first[0]} para ${format(last[1])} em ${last[0]}.`
 			: 'Série indisponível.'
 	);
+	const active = $derived(hover !== null ? points[hover] : null);
+
+	function onMove(event: PointerEvent) {
+		if (!points.length) return;
+		const rect = (event.currentTarget as SVGSVGElement).getBoundingClientRect();
+		const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+		hover = Math.round(ratio * (points.length - 1));
+	}
 </script>
 
 <div class="spark" style:--h={`${height}px`}>
@@ -66,16 +80,43 @@
 		{/if}
 	</div>
 	{#if points.length > 1}
-		<svg viewBox="0 0 100 32" preserveAspectRatio="none" role="img" aria-label={description}>
-			<path class="area" d={area} />
-			<polyline class="line" points={line} vector-effect="non-scaling-stroke" />
-			{#if last}
-				<circle class="dot" cx={points[points.length - 1].x} cy={points[points.length - 1].y} r="1.7" vector-effect="non-scaling-stroke" />
+		<div class="chart">
+			<svg
+				viewBox="0 0 100 36"
+				preserveAspectRatio="none"
+				role="img"
+				aria-label={description}
+				onpointermove={onMove}
+				onpointerleave={() => (hover = null)}
+			>
+				<line class="grid" x1="0" y1="9" x2="100" y2="9" />
+				<line class="grid" x1="0" y1="18" x2="100" y2="18" />
+				<line class="grid" x1="0" y1="27" x2="100" y2="27" />
+				<path class="area" d={area} />
+				<polyline class="line" points={line} pathLength="1" vector-effect="non-scaling-stroke" />
+				{#if last}
+					<circle class="dot" cx={points[points.length - 1].x} cy={points[points.length - 1].y} r="1.6" vector-effect="non-scaling-stroke" />
+				{/if}
+				{#if active}
+					<line class="cursor" x1={active.x} y1="0" x2={active.x} y2="36" vector-effect="non-scaling-stroke" />
+					<circle class="hover-dot" cx={active.x} cy={active.y} r="2.2" vector-effect="non-scaling-stroke" />
+				{/if}
+			</svg>
+			{#if active}
+				<div
+					class="tooltip"
+					style:left={`${Math.min(88, Math.max(12, active.x))}%`}
+					style:top={`${Math.max(0, (active.y / 36) * 100 - 18)}%`}
+				>
+					<strong>{format(active.value)}</strong>
+					<span>{active.year}</span>
+				</div>
 			{/if}
-		</svg>
+		</div>
 		<div class="range">
-			<span>{format(Math.min(...series.map(([, v]) => v)))}</span>
-			<span>{format(Math.max(...series.map(([, v]) => v)))}</span>
+			<span>{format(min ?? 0)}</span>
+			<span class="range-label">mín · máx</span>
+			<span>{format(max ?? 0)}</span>
 		</div>
 	{:else}
 		<p class="empty">Série não disponível.</p>
@@ -85,8 +126,8 @@
 <style>
 	.spark {
 		border-top: 1px solid var(--line);
-		padding-top: 0.28rem;
-		margin-top: 0.35rem;
+		padding-top: 0.35rem;
+		margin-top: 0.4rem;
 	}
 	.top {
 		display: flex;
@@ -96,46 +137,118 @@
 	}
 	.years {
 		font-family: var(--font-mono);
-		font-size: 0.46rem;
+		font-size: 0.66rem;
 		letter-spacing: 0.06em;
 		color: var(--text-4);
 	}
 	.delta {
 		font-family: var(--font-mono);
-		font-size: 0.5rem;
+		font-size: 0.68rem;
 		color: var(--positive);
 	}
 	.delta.down {
 		color: var(--negative);
 	}
+	.chart {
+		position: relative;
+		margin-top: 3px;
+	}
 	svg {
 		display: block;
 		width: 100%;
 		height: var(--h);
-		margin-top: 2px;
 		overflow: visible;
+		touch-action: pan-y;
+	}
+	.grid {
+		stroke: var(--line);
+		stroke-width: 0.4;
+		stroke-dasharray: 1.5 2.5;
 	}
 	.area {
-		fill: color-mix(in oklab, var(--accent-1) 16%, transparent);
+		fill: color-mix(in oklab, var(--accent-1) 20%, transparent);
+		animation: spark-fade 0.7s var(--ease-out-soft) both;
 	}
 	.line {
 		fill: none;
 		stroke: var(--accent-1);
-		stroke-width: 1.4;
+		stroke-width: 2;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		stroke-dasharray: 1;
+		stroke-dashoffset: 1;
+		animation: spark-draw 0.9s var(--ease-out-soft) 0.08s forwards;
 	}
 	.dot {
 		fill: var(--accent-0);
 	}
+	.cursor {
+		stroke: var(--line-emphasis);
+		stroke-width: 0.6;
+		stroke-dasharray: 2 2;
+	}
+	.hover-dot {
+		fill: var(--surface-2);
+		stroke: var(--accent-0);
+		stroke-width: 1.2;
+	}
+	.tooltip {
+		position: absolute;
+		transform: translate(-50%, -100%);
+		display: flex;
+		align-items: baseline;
+		gap: 0.3rem;
+		background: var(--surface-2);
+		border: 1px solid var(--line-strong);
+		padding: 0.18rem 0.35rem;
+		pointer-events: none;
+		white-space: nowrap;
+		z-index: 2;
+	}
+	.tooltip strong {
+		font-family: var(--font-mono);
+		font-size: 0.68rem;
+		font-weight: 500;
+		color: var(--text-1);
+	}
+	.tooltip span {
+		font-family: var(--font-mono);
+		font-size: 0.58rem;
+		color: var(--text-4);
+	}
 	.range {
 		display: flex;
 		justify-content: space-between;
+		gap: 0.4rem;
 		font-family: var(--font-mono);
-		font-size: 0.45rem;
+		font-size: 0.62rem;
 		color: var(--text-4);
+	}
+	.range-label {
+		color: var(--text-3);
+		letter-spacing: 0.04em;
 	}
 	.empty {
 		margin: 0.2rem 0 0;
-		font-size: 0.55rem;
+		font-size: 0.66rem;
 		color: var(--text-4);
+	}
+	@keyframes spark-draw {
+		to {
+			stroke-dashoffset: 0;
+		}
+	}
+	@keyframes spark-fade {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.line {
+			stroke-dashoffset: 0;
+		}
 	}
 </style>

@@ -10,6 +10,8 @@
 		indicatorMeta,
 		rankOf,
 		retrievedAt,
+		dependencyLabel,
+		sovereignCountry,
 		worldStats
 	} from '#lib/data/countries';
 	import { capitalInPortuguese } from '#lib/data/capitals-pt';
@@ -34,6 +36,8 @@
 	);
 	const snippets = $derived(country ? (snippetsByCountry.get(country.code) ?? []) : []);
 	const disputed = $derived(country ? disputedInfo(country.code) : null);
+	const sovereign = $derived(country ? sovereignCountry(country) : null);
+	const dependency = $derived(country ? dependencyLabel(country) : null);
 
 	let compareCode = $state<string | null>(null);
 	let copied = $state(false);
@@ -228,7 +232,7 @@
 				<div class="flag-row">
 					{#if country.iso2}<span class={`fi fi-${country.iso2} hero-flag`}></span>{/if}
 					<span class="eyebrow">Dossiê · {country.code}</span>
-					{#if country.type}<span class="type">{country.type}</span>{/if}
+					{#if dependency ?? country.type}<span class="type">{dependency ?? country.type}</span>{/if}
 				</div>
 				<h1>{country.name}</h1>
 				<p class="official">{country.official ?? country.nameEn}</p>
@@ -298,6 +302,12 @@
 						<StatRow label="Moeda" value={country.currency.length ? country.currency.map((c) => `${c.code} · ${c.symbol}`).join(', ') : 'Não disponível'} />
 						<StatRow label="Idiomas" value={country.languages.length ? country.languages.join(', ') : 'Não disponível'} />
 						<StatRow label="Membro da ONU" value={country.unMember === null ? 'Não disponível' : country.unMember ? 'Sim' : 'Não'} />
+						{#if sovereign}
+							<StatRow label="Soberania" value={sovereign.name} note={dependency ?? undefined} />
+							<a class="sovereign-link" href={`/country/${sovereign.code}`}>
+								Dossiê de {sovereign.name} <Icon name="arrowRight" size={11} />
+							</a>
+						{/if}
 						<StatRow label="Sem litoral" value={country.landlocked === null ? 'Não disponível' : country.landlocked ? 'Sim' : 'Não'} />
 						{#if disputed}
 							<StatRow label="Estatuto" value={disputed.label} note={disputed.note} />
@@ -688,6 +698,19 @@
 	}
 	.facts :global(.stat) {
 		break-inside: avoid;
+	}
+	.sovereign-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.2rem;
+		margin-top: 0.25rem;
+		font-family: var(--font-mono);
+		font-size: 0.58rem;
+		color: var(--accent-0);
+		text-decoration: none;
+	}
+	.sovereign-link:hover {
+		text-decoration: underline;
 	}
 	.disputed-source {
 		display: inline-flex;

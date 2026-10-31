@@ -10,6 +10,7 @@
 	} from 'maplibre-gl';
 	import { countries, getCountry } from '#lib/data/countries';
 	import { physicalLabels } from '#lib/data/physical-labels';
+	import { marineLabels } from '#lib/data/marine-labels';
 	import { physicalUrl } from '#lib/data/world';
 	import { cityPoints } from '#lib/data/cities';
 	import { capitalInPortuguese } from '#lib/data/capitals-pt';
@@ -102,7 +103,7 @@
 
 	let labelEntries: {
 		el: HTMLElement;
-		kind: 'country' | 'capital' | 'physical' | 'city';
+		kind: 'country' | 'capital' | 'physical' | 'city' | 'marine';
 		code?: string;
 		lat: number;
 		lng: number;
@@ -336,6 +337,7 @@
 		if (kind === 'country') return 'map-label';
 		if (kind === 'capital') return 'map-capital';
 		if (kind === 'city') return 'map-city';
+		if (kind === 'marine') return 'map-marine';
 		return 'map-physical';
 	}
 
@@ -344,7 +346,7 @@
 		labelsEl.replaceChildren();
 		labelEntries = [];
 
-		const make = (text: string, kind: 'country' | 'capital' | 'physical' | 'city', code?: string) => {
+		const make = (text: string, kind: 'country' | 'capital' | 'physical' | 'city' | 'marine', code?: string) => {
 			const el = document.createElement(kind === 'country' ? 'button' : 'span');
 			if (kind === 'country') {
 				(el as HTMLButtonElement).type = 'button';
@@ -400,6 +402,18 @@
 			});
 		}
 
+		for (const marine of marineLabels) {
+			labelEntries.push({
+				el: make(marine.name, 'marine'),
+				kind: 'marine',
+				lat: marine.lat,
+				lng: marine.lng,
+				minZoom: marine.minZoom,
+				priority: marine.priority,
+				text: marine.name
+			});
+		}
+
 		for (const physical of physicalLabels) {
 			labelEntries.push({
 				el: make(physical.name, 'physical'),
@@ -427,7 +441,7 @@
 		}
 
 		labelEntries.sort((a, b) => {
-			const order = { country: 0, physical: 1, capital: 2, city: 3 };
+			const order = { country: 0, marine: 1, physical: 2, capital: 3, city: 4 };
 			if (a.kind !== b.kind) return order[a.kind] - order[b.kind];
 			return a.priority - b.priority;
 		});
@@ -469,6 +483,12 @@
 			if (focusSet && entry.kind === 'country' && !focusSet.has(entry.code ?? '')) {
 				entry.el.style.display = 'none';
 				continue;
+			}
+			if (entry.kind === 'marine') {
+				if (zoom < entry.minZoom) {
+					entry.el.style.display = 'none';
+					continue;
+				}
 			}
 			if (entry.kind === 'physical') {
 				if (!layer.showPhysical || zoom < entry.minZoom) {
@@ -520,7 +540,9 @@
 					? '600 10px "Inter Variable", system-ui, sans-serif'
 					: entry.kind === 'capital' || entry.kind === 'city'
 						? '400 9.5px "Inter Variable", system-ui, sans-serif'
-						: '500 9px "Fraunces Variable", serif';
+						: entry.kind === 'marine'
+							? 'italic 500 10.5px "Fraunces Variable", serif'
+							: '500 9px "Fraunces Variable", serif';
 			const textWidth = measure(entry.text.toUpperCase(), font) + entry.text.length * 0.3;
 			const boxWidth = textWidth + 8;
 			const boxHeight = entry.kind === 'physical' ? 14 : 15;
@@ -570,6 +592,27 @@
 
 	function queryCode(point: { x: number; y: number }, radius = 4): string | null {
 		if (!map) return null;
+		// Países pequenos: um ponto de acerto no rótulo, com raio generoso.
+		const hitRadius = 16;
+		const hits = map.queryRenderedFeatures(
+			[
+				[point.x - hitRadius, point.y - hitRadius],
+				[point.x + hitRadius, point.y + hitRadius]
+			],
+			{ layers: [MAP_LAYER.hits] }
+		);
+		let best: { code: string; distance: number } | null = null;
+		for (const feature of hits) {
+			const coordinates = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
+			const projected = map.project(coordinates);
+			const distance = Math.hypot(projected.x - point.x, projected.y - point.y);
+			if (distance <= hitRadius && (!best || distance < best.distance)) {
+				const code = feature.properties?.code as string | undefined;
+				if (code) best = { code, distance };
+			}
+		}
+		if (best) return best.code;
+
 		const features = map.queryRenderedFeatures(
 			[
 				[point.x - radius, point.y - radius],
@@ -673,6 +716,16 @@
 					(map.getSource('cities') as GeoJSONSource | undefined)?.setData({
 						type: 'FeatureCollection',
 						features: cityPoints
+					});
+					(map.getSource('country-hits') as GeoJSONSource | undefined)?.setData({
+						type: 'FeatureCollection',
+						features: countries
+							.filter((country) => (country.areaKm2 ?? Infinity) < 250_000)
+							.map((country) => ({
+								type: 'Feature',
+								properties: { code: country.code },
+								geometry: { type: 'Point', coordinates: country.label }
+							}))
 					});
 				} catch (err) {
 					console.warn('Não foi possível carregar rios, lagos e cidades', err);
@@ -963,6 +1016,24 @@
 		border-radius: 50%;
 		background: var(--accent-1);
 		transform: translateY(-50%);
+	}
+	.map-labels :global(.map-marine) {
+		position: absolute;
+		top: 0;
+		left: 0;
+		color: var(--water-1);
+		font-family: var(--font-display);
+		font-size: 10.5px;
+		font-style: italic;
+		font-weight: 500;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		white-space: nowrap;
+		line-height: 1;
+		text-shadow:
+			0 0 5px var(--map-paper),
+			0 1px 8px var(--map-paper);
+		opacity: 0.68;
 	}
 	.map-labels :global(.map-physical) {
 		position: absolute;

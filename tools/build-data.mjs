@@ -36,6 +36,13 @@ const SOURCES = {
 		license: 'ODbL 1.0',
 		note: 'Capital, moeda, área, idiomas e países vizinhos.'
 	},
+	marine: {
+		name: 'Natural Earth — Mares e oceanos (1:50m)',
+		url: 'https://www.naturalearthdata.com/downloads/50m-physical-vectors/',
+		license: 'Domínio público',
+		scale: '1:50m',
+		note: 'Nomes em português e posição de rótulo calculada dentro de cada polígono marinho.'
+	},
 	physical: {
 		name: 'Natural Earth — Rios, lagos e litoral',
 		url: 'https://www.naturalearthdata.com/downloads/',
@@ -196,6 +203,123 @@ async function fetchCached(url, file, { json = true, attempts = 6 } = {}) {
 		}
 	}
 	throw lastError;
+}
+
+
+function pointInRing(lng, lat, ring) {
+	let inside = false;
+	for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+		const [xi, yi] = ring[i];
+		const [xj, yj] = ring[j];
+		const intersects = yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+		if (intersects) inside = !inside;
+	}
+	return inside;
+}
+
+function pointInPolygon(lng, lat, rings) {
+	if (!rings.length || !pointInRing(lng, lat, rings[0])) return false;
+	return !rings.slice(1).some((hole) => pointInRing(lng, lat, hole));
+}
+
+function segmentDistanceSq(px, py, x1, y1, x2, y2) {
+	let x = x1;
+	let y = y1;
+	let dx = x2 - x1;
+	let dy = y2 - y1;
+	if (dx !== 0 || dy !== 0) {
+		const t = ((px - x) * dx + (py - y) * dy) / (dx * dx + dy * dy);
+		if (t > 1) {
+			x = x2;
+			y = y2;
+		} else if (t > 0) {
+			x += dx * t;
+			y += dy * t;
+		}
+	}
+	dx = px - x;
+	dy = py - y;
+	return dx * dx + dy * dy;
+}
+
+function ringDistanceSq(lng, lat, ring) {
+	let best = Infinity;
+	const step = Math.max(1, Math.floor(ring.length / 160));
+	for (let i = 0; i < ring.length; i += step) {
+		const a = ring[i];
+		const b = ring[(i + step) % ring.length];
+		best = Math.min(best, segmentDistanceSq(lng, lat, a[0], a[1], b[0], b[1]));
+	}
+	return best;
+}
+
+function polygonLabelPoint(rings) {
+	const outer = rings[0];
+	if (!outer?.length) return null;
+	let minX = Infinity;
+	let maxX = -Infinity;
+	let minY = Infinity;
+	let maxY = -Infinity;
+	for (const [x, y] of outer) {
+		if (x < minX) minX = x;
+		if (x > maxX) maxX = x;
+		if (y < minY) minY = y;
+		if (y > maxY) maxY = y;
+	}
+	let best = null;
+	let bestDistance = -1;
+	const steps = 22;
+	for (let ix = 1; ix < steps; ix++) {
+		for (let iy = 1; iy < steps; iy++) {
+			const lng = minX + ((maxX - minX) * ix) / steps;
+			const lat = minY + ((maxY - minY) * iy) / steps;
+			if (!pointInPolygon(lng, lat, rings)) continue;
+			const distance = ringDistanceSq(lng, lat, outer);
+			if (distance > bestDistance) {
+				bestDistance = distance;
+				best = [lng, lat];
+			}
+		}
+	}
+	return best ?? [(minX + maxX) / 2, (minY + maxY) / 2];
+}
+
+function marineLabelRows(collection) {
+	const MIN_ZOOM = { ocean: 0, sea: 2, bay: 1.8, gulf: 1.8, channel: 2.8, strait: 2.8 };
+	const chosen = new Map();
+	for (const feature of collection.features) {
+		const props = feature.properties;
+		let name = (props.name_pt || props.name_en || props.name || '').trim();
+		if (!name) continue;
+		name = name.charAt(0).toLocaleUpperCase('pt-BR') + name.slice(1);
+		const geometry = feature.geometry;
+		const rings =
+			geometry.type === 'Polygon'
+				? geometry.coordinates
+				: geometry.type === 'MultiPolygon'
+					? geometry.coordinates.flat()
+					: [];
+		if (!rings.length) continue;
+		const point = polygonLabelPoint(rings);
+		if (!point) continue;
+		const kind = props.featurecla || 'sea';
+		const key = `${name.toLowerCase()}|${kind}`;
+		const size = (feature.bbox?.[2] - feature.bbox?.[0]) * (feature.bbox?.[3] - feature.bbox?.[1]) || 0;
+		const row = {
+			name,
+			lat: Math.round(point[1] * 10000) / 10000,
+			lng: Math.round(point[0] * 10000) / 10000,
+			kind,
+			minZoom: MIN_ZOOM[kind] ?? 2.4,
+			priority: kind === 'ocean' ? 10 : kind === 'sea' ? 100 : 120,
+			size
+		};
+		const existing = chosen.get(key);
+		if (!existing || row.size > existing.size) chosen.set(key, row);
+	}
+	return [...chosen.values()]
+		.sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name, 'pt-BR'))
+		.map(({ size, ...row }) => row);
 }
 
 const norm = (s) =>
@@ -569,6 +693,14 @@ async function main() {
 		}
 	};
 
+	/* ---------- mares e oceanos ---------- */
+	console.log('› mares e oceanos (Natural Earth)');
+	const marineRaw = await fetchCached(
+		'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_geography_marine_polys.geojson',
+		'ne_50m_marine.geojson'
+	);
+	const marineLabels = marineLabelRows(marineRaw);
+
 	/* ---------- cidades principais (pontos, não limites urbanos) ---------- */
 	console.log('› cidades principais (Natural Earth)');
 	const areaByCode = new Map(countries.map((c) => [c.code, c.areaKm2 ?? Infinity]));
@@ -653,6 +785,10 @@ async function main() {
 	await writeFile(
 		path.join(OUT, 'physical.json'),
 		JSON.stringify({ retrieved: RETRIEVED, ...physical }, null, 0)
+	);
+	await writeFile(
+		path.join(OUT, 'marine-labels.json'),
+		JSON.stringify({ retrieved: RETRIEVED, labels: marineLabels }, null, 0)
 	);
 	await writeFile(
 		path.join(OUT, 'cities.json'),

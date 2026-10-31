@@ -43,8 +43,13 @@
 
 <style>
 	.stat {
-		padding: 0.4rem 0;
+		padding: 0.45rem 0.3rem;
+		margin: 0 -0.3rem;
 		border-bottom: 1px solid var(--line);
+		transition: background 0.16s ease;
+	}
+	.stat:hover {
+		background: color-mix(in oklab, var(--accent-1) 5%, transparent);
 	}
 	.stat:last-child {
 		border-bottom: 0;
@@ -84,6 +89,13 @@
 		display: block;
 		height: 100%;
 		opacity: 0.75;
+		transition: width 0.7s var(--ease-out-soft);
+		animation: bar-in 0.7s var(--ease-out-soft) both;
+	}
+	@keyframes bar-in {
+		from {
+			opacity: 0;
+		}
 	}
 	.meta {
 		display: flex;

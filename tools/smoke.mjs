@@ -52,6 +52,24 @@ await check('clique no mapa abre card e contorna o país', async () => {
 	if ((await toggle.getAttribute('aria-pressed')) !== 'true') throw new Error('destaque não ativou');
 });
 
+await check('nomes de oceanos aparecem no mapa', async () => {
+	await page.goto(`${BASE}/explore?projection=flat`, { waitUntil: 'networkidle' });
+	await page.waitForTimeout(3000);
+	const oceans = await page.locator('.map-marine').allTextContents();
+	if (!oceans.some((name) => /Atlântico|Pacífico|Índico/i.test(name))) {
+		throw new Error(`marinhos=${oceans.slice(0, 5).join(', ')}`);
+	}
+});
+
+await check('Groenlândia mostra soberania da Dinamarca', async () => {
+	await page.goto(`${BASE}/explore?country=GRL`, { waitUntil: 'networkidle' });
+	await page.waitForTimeout(2600);
+	const subtitle = await page.locator('.card .titles p').innerText();
+	if (!/Dinamarca/.test(subtitle)) throw new Error(`subtítulo=${subtitle}`);
+	const body = await page.locator('.card .body').innerText();
+	if (!/Soberania/.test(body) || !/Dinamarca/.test(body)) throw new Error('sem linha de soberania');
+});
+
 await check('command palette troca de país na mesma rota', async () => {
 	await page.keyboard.press('Control+k');
 	await page.waitForTimeout(200);

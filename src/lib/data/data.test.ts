@@ -3,6 +3,8 @@ import {
 	countries,
 	countryByCode,
 	getCountry,
+	sovereignCountry,
+	dependencyLabel,
 	indicatorMeta,
 	manifest,
 	retrievedAt
@@ -15,6 +17,7 @@ import { silhouettes } from './silhouettes';
 import { worldOutline } from './world-silhouette';
 import { timelineEvents, TIMELINE_END, TIMELINE_START } from './timeline';
 import { disputedCodes, disputedTerritories } from './disputed';
+import { marineLabels } from './marine-labels';
 
 describe('integridade dos dados', () => {
 	it('carrega países com identificadores e rótulos', () => {
@@ -129,6 +132,25 @@ describe('integridade dos dados', () => {
 		expect(getCountry('PSE')?.code).toBe('PSX');
 		expect(getCountry('XKX')?.code).toBe('KOS');
 		expect(getCountry('SSD')?.code).toBe('SDS');
+	});
+
+	it('rótulos marinhos têm nome, coordenadas e zoom', () => {
+		expect(marineLabels.length).toBeGreaterThan(40);
+		for (const label of marineLabels) {
+			expect(label.name.length).toBeGreaterThan(2);
+			expect(label.lat).toBeGreaterThanOrEqual(-90);
+			expect(label.lat).toBeLessThanOrEqual(90);
+			expect(label.lng).toBeGreaterThanOrEqual(-180);
+			expect(label.lng).toBeLessThanOrEqual(180);
+			expect(label.minZoom).toBeGreaterThanOrEqual(0);
+		}
+	});
+
+	it('territórios dependentes apontam para o soberano', () => {
+		const greenland = getCountry('GRL');
+		expect(greenland).toBeTruthy();
+		expect(sovereignCountry(greenland!)?.code).toBe('DNK');
+		expect(dependencyLabel(greenland!)).toContain('Dinamarca');
 	});
 
 	it('territórios disputados têm nota, fonte e polígono', () => {

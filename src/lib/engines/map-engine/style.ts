@@ -22,6 +22,7 @@ export const MAP_LAYER = {
 	citiesMajor: 'cities-major',
 	citiesMinor: 'cities-minor',
 	micro: 'microstate-dots',
+	hits: 'country-hit-points',
 	hillshade: 'terrain-hillshade',
 	graticuleMinor: 'graticule-minor',
 	graticuleMajor: 'graticule-major'
@@ -306,6 +307,16 @@ export function createMapStyle(
 				'circle-stroke-width': 0.9,
 				'circle-opacity': 0.9
 			}
+		},
+		{
+			id: MAP_LAYER.hits,
+			type: 'circle',
+			source: 'country-hits',
+			paint: {
+				'circle-radius': 1,
+				'circle-color': '#000000',
+				'circle-opacity': 0.01
+			}
 		}
 	];
 
@@ -322,6 +333,10 @@ export function createMapStyle(
 				promoteId: 'code'
 			},
 			cities: {
+				type: 'geojson',
+				data: { type: 'FeatureCollection', features: [] }
+			},
+			'country-hits': {
 				type: 'geojson',
 				data: { type: 'FeatureCollection', features: [] }
 			},

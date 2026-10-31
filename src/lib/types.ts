@@ -108,6 +108,7 @@ export interface DataManifest {
 		facts: SourceInfo;
 		indicators: SourceInfo;
 		physical: SourceInfo;
+		marine: SourceInfo;
 	};
 }
 

@@ -2,7 +2,7 @@
 
 > Atlas interativo de geografia, geopolítica e dados. O mapa é a interface — não o fundo.
 
-**Status:** P0 e P1 do roadmap executados. 63 testes, `svelte-check` sem erros, build estático,
+**Status:** P0 e P1 do roadmap executados. 65 testes, `svelte-check` sem erros, build estático,
 auditoria axe sem violações sérias e smoke test de interação em Firefox.
 
 ![Atlas](docs/screenshots/explore.png)
@@ -19,7 +19,7 @@ npm run preview
 Verificações:
 
 ```bash
-npm test           # 63 testes (motores, dados, timeline, i18n)
+npm test           # 65 testes (motores, dados, timeline, i18n)
 npm run check      # svelte-check, 0 erros
 npm run build      # prerender + adapter-static
 npm run smoke      # interação real no preview (Playwright/Firefox)
@@ -42,7 +42,8 @@ O `smoke`, `a11y` e `shots` esperam um preview em `http://localhost:4173`.
 
 ### Atlas
 
-- Mapa MapLibre com 241 territórios, Natural Earth 1:50m, rios, lagos, litoral e cidades.
+- Mapa MapLibre com 241 territórios, Natural Earth 1:50m, rios, lagos, litoral, cidades e
+  nomes de oceanos, mares, baías e golfos.
 - Seis camadas com identidade própria: político, físico, demografia, economia, geopolítica
   e história.
 - Coropléticos por quantis, crossfade de camada, seleção por diferença de `feature-state`,
@@ -51,7 +52,7 @@ O `smoke`, `a11y` e `shots` esperam um preview em `http://localhost:4173`.
   inferior direito; relevo 3D opcional no globo, com DEM público (AWS Terrain Tiles),
   hillshade e atribuição visível.
 - Rótulos DOM com cache de medida, colisão, prioridade e teto de 82; microestados ganham
-  pontos de capital clicáveis.
+  pontos de capital e todos os países pequenos têm área de acerto ampliada.
 - Escala gráfica, rosa dos ventos, leitura de coordenadas e projeção no canto do mapa.
 - Linha do tempo 1945–2026 na camada de história, com recorte de blocos e fontes por evento.
 - Territórios com estatuto disputado recebem hachura e nota curada, sem atribuição de soberania.
@@ -59,6 +60,7 @@ O `smoke`, `a11y` e `shots` esperam um preview em `http://localhost:4173`.
 
 ### Dossiês
 
+- Territórios dependentes mostram o soberano (ex.: Groenlândia → Dinamarca) no card e no dossiê.
 - Card de país com “at a glance”, abas por camada, comparação com a mediana mundial,
   percentil, sparkline da série 2016–2025, mini-mapa de localização e vizinhos.
 - Bottom sheet no mobile com snap points (peek/half/full) e arraste.

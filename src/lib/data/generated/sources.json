@@ -14,6 +14,13 @@
       "license": "ODbL 1.0",
       "note": "Capital, moeda, área, idiomas e países vizinhos."
     },
+    "marine": {
+      "name": "Natural Earth — Mares e oceanos (1:50m)",
+      "url": "https://www.naturalearthdata.com/downloads/50m-physical-vectors/",
+      "license": "Domínio público",
+      "scale": "1:50m",
+      "note": "Nomes em português e posição de rótulo calculada dentro de cada polígono marinho."
+    },
     "physical": {
       "name": "Natural Earth — Rios, lagos e litoral",
       "url": "https://www.naturalearthdata.com/downloads/",

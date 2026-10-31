@@ -1,7 +1,7 @@
 # Handoff — como continuar em uma nova sessão
 
 **Estado:** P0 e P1 do roadmap executados em 2026-10-31. O projeto está em
-`~/projects/foss/mundivista`, com 63 testes, `svelte-check` sem erros, build estático,
+`~/projects/foss/mundivista`, com 65 testes, `svelte-check` sem erros, build estático,
 axe sem violações sérias e smoke test em Firefox.
 
 ---
@@ -49,7 +49,7 @@ Prioridades abertas (ver ROADMAP §3):
 cd ~/projects/foss/mundivista
 npm run dev        # dev
 npm run check      # svelte-check (deve dar 0)
-npm test           # 63 testes
+npm test           # 65 testes
 npm run build      # build estático em build/
 npm run preview    # preview do build (porta 4173)
 npm run data:build # regenera dados com cache
@@ -96,6 +96,12 @@ docs/{ROADMAP,INSPIRATION,HANDOFF}.md
 - **Microestados:** pontos de capital clicáveis (`cities` com `micro: true`).
 - **História:** timeline 1945–2026 com eventos curados e recorte de blocos; usa polígonos
   atuais e diz isso. CShapes não foi integrado.
+- **Mares:** rótulos vêm de `ne_50m_geography_marine_polys`; a posição é calculada dentro do
+  polígono (polylabel simplificado) e o `name_pt` é usado.
+- **Países pequenos:** camada invisível `country-hit-points` com raio de 16 px; o clique
+  escolhe o ponto mais próximo antes de consultar os polígonos.
+- **Dependências:** `sovereignCountry()` liga Groenlândia → Dinamarca, Ilhas Feroe → Dinamarca,
+  Porto Rico → EUA etc., exibido no card e no dossiê.
 - **Disputados:** lista curada (KOS, PSX, SAH, FLK, KAS, IOT), hachura e nota; Israel não
   é hachurado só porque o Natural Earth marca TYPE=Disputed.
 - **Dados:** 32 indicadores, séries 2016–2025, cidades, litoral e silhuetas no pipeline.
