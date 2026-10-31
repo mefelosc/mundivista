@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { replaceState } from '$app/navigation';
+	import { afterNavigate, replaceState } from '$app/navigation';
 	import MapCanvas from '#lib/components/map/MapCanvas.svelte';
 	import LayerRail from '#lib/components/map/LayerRail.svelte';
 	import Legend from '#lib/components/map/Legend.svelte';
@@ -73,9 +73,7 @@
 		replaceState(url, {});
 	});
 
-	$effect(() => {
-		if (!urlsReady) return;
-		const params = page.url.searchParams;
+	function applyUrlState(params: URLSearchParams) {
 		const requestedLayer = params.get('layer') as LayerId | null;
 		if (requestedLayer && layerById.has(requestedLayer) && requestedLayer !== layerId) {
 			changeLayer(requestedLayer);
@@ -83,13 +81,20 @@
 		const requestedCountry = params.get('country');
 		if (requestedCountry && getCountry(requestedCountry) && requestedCountry !== selected) {
 			select(requestedCountry);
-		} else if (!requestedCountry && selected) {
-			selected = null;
 		}
+		if (params.get('globe') === '1' && projection !== 'globe') setProjection('globe');
+		if (params.get('globe') !== '1' && projection === 'globe') setProjection('mercator');
+		if (params.get('terrain') === '1' && !terrain) toggleTerrain();
+		if (params.get('terrain') !== '1' && terrain) terrain = false;
 		const requestedYear = Number(params.get('year'));
-		if (requestedYear >= 1945 && requestedYear <= 2026 && requestedYear !== historyYear && requestedLayer === 'history') {
+		if (requestedYear >= 1945 && requestedYear <= 2026 && requestedYear !== historyYear) {
 			historyYear = requestedYear;
 		}
+	}
+
+	afterNavigate(({ to }) => {
+		if (!to) return;
+		applyUrlState(to.url.searchParams);
 	});
 
 	function changeLayer(id: LayerId) {

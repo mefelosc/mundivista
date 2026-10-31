@@ -35,6 +35,18 @@ await check('explore carrega país e camada da URL', async () => {
 	if (!url.includes('layer=economy')) throw new Error(`url=${url}`);
 });
 
+await check('clique no mapa abre card e contorna o país', async () => {
+	await page.goto(`${BASE}/explore`, { waitUntil: 'networkidle' });
+	await page.waitForTimeout(2600);
+	await page.mouse.move(500, 500);
+	await page.waitForTimeout(200);
+	await page.mouse.click(500, 500);
+	await page.waitForTimeout(1200);
+	const title = await page.locator('.card h2').first().textContent();
+	if (title !== 'Brasil') throw new Error(`card=${title}`);
+	if (!page.url().includes('country=BRA')) throw new Error(`url=${page.url()}`);
+});
+
 await check('command palette troca de país na mesma rota', async () => {
 	await page.keyboard.press('Control+k');
 	await page.waitForTimeout(200);
