@@ -36,6 +36,7 @@ npm run check      # svelte-check, 0 erros
   capitais e graticula.
 - Card contextual que muda com a camada: identidade, demografia, economia, meio físico,
   geopolítica e história.
+- Links diretos para Wikipédia e Britannica em cada país.
 - Cada indicador mostra **ano de referência**, unidade, ranking/percentil e fonte.
 - Destaque de blocos (OTAN, UE, BRICS, OPEP, G20, ASEAN, URSS, Iugoslávia).
 - Snippets de leitura rápida ligados ao país, com fonte.
@@ -104,6 +105,14 @@ O mapa é um renderizador entre outros possíveis.
 - Relevo é simplificado por rótulos curados; não há DEM nesta versão.
 - Sem autenticação, comunidade ou editor — previstos para a fase 5.
 - Datas de independência em casos disputados seguem a fonte e trazem ressalva.
+
+## Documentação
+
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — backlog priorizado (P0/P1/P2) e critérios de aceite.
+- [`docs/INSPIRATION.md`](docs/INSPIRATION.md) — referências, anti-padrões e 3 direções de
+  identidade visual para testar.
+- [`docs/HANDOFF.md`](docs/HANDOFF.md) — estado técnico, armadilhas e prompt para continuar
+  em uma nova sessão.
 
 ## Próximos passos
 

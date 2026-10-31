@@ -59,6 +59,13 @@
 	const formerNames = $derived(
 		historical?.formerNames?.map((n) => `${n.name}${n.to ? ` (até ${n.to})` : ''}`).join(' → ')
 	);
+
+	const wikipediaUrl = $derived(
+		`https://pt.wikipedia.org/wiki/${encodeURIComponent(country.name.replaceAll(' ', '_'))}`
+	);
+	const britannicaUrl = $derived(
+		`https://www.britannica.com/search?query=${encodeURIComponent(country.nameEn)}`
+	);
 </script>
 
 <aside class="card animate-sheet-in" aria-label={`Informações sobre ${country.name}`}>
@@ -83,6 +90,16 @@
 		<span class="pill">{layer.label}</span>
 		{#if country.continent}<span>{country.continent}</span>{/if}
 		{#if country.code}<span class="mono">{country.code}</span>{/if}
+	</div>
+
+	<div class="external">
+		<a href={wikipediaUrl} target="_blank" rel="noopener noreferrer">
+			<Icon name="book" size={12} /> Wikipédia
+		</a>
+		<a href={britannicaUrl} target="_blank" rel="noopener noreferrer">
+			<Icon name="external" size={12} /> Britannica
+		</a>
+		<span class="external-hint">abre em nova aba</span>
 	</div>
 
 	<div class="body">
@@ -336,6 +353,36 @@
 		font-family: var(--font-mono);
 		font-size: 0.55rem;
 		letter-spacing: 0.08em;
+	}
+	.external {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		padding: 0 0.95rem 0.55rem;
+	}
+	.external a {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.28rem;
+		border: 1px solid rgba(255, 255, 255, 0.09);
+		background: rgba(255, 255, 255, 0.025);
+		color: var(--color-mist-300);
+		border-radius: 0.35rem;
+		padding: 0.24rem 0.45rem;
+		font-size: 0.58rem;
+		text-decoration: none;
+		transition: all 0.16s ease;
+	}
+	.external a:hover {
+		color: var(--color-gold-300);
+		border-color: color-mix(in oklab, var(--color-gold-400) 35%, transparent);
+		background: color-mix(in oklab, var(--color-gold-400) 7%, transparent);
+	}
+	.external-hint {
+		margin-left: auto;
+		font-family: var(--font-mono);
+		font-size: 0.48rem;
+		color: var(--color-mist-500);
 	}
 	.body {
 		flex: 1;
