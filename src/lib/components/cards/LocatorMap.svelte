@@ -82,11 +82,11 @@
 		border-bottom: 1px solid var(--line);
 	}
 	figcaption .eyebrow {
-		font-size: 0.48rem;
+		font-size: 0.64rem;
 	}
 	.coords {
 		font-family: var(--font-mono);
-		font-size: 0.48rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	.frame {
@@ -121,7 +121,7 @@
 		top: 0.35rem;
 		right: 0.45rem;
 		font-family: var(--font-mono);
-		font-size: 0.48rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	.north::before {

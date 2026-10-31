@@ -150,7 +150,7 @@
 		color: var(--text-1);
 	}
 	.count span {
-		font-size: 0.62rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
 	}
@@ -245,7 +245,7 @@
 		display: grid;
 		place-items: center;
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	.identity {
@@ -278,7 +278,7 @@
 	}
 	.pop em {
 		font-style: normal;
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	.map-link {

@@ -104,7 +104,7 @@
 		margin-left: 0.3rem;
 		font-style: normal;
 		font-family: var(--font-mono);
-		font-size: 0.56rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	.metric {
@@ -135,13 +135,13 @@
 		color: var(--text-4);
 	}
 	.metric.compact .metric-label {
-		font-size: 0.62rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.04em;
 	}
 	.metric-year {
 		flex-shrink: 0;
 		font-family: var(--font-mono);
-		font-size: 0.56rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	.metric-value {

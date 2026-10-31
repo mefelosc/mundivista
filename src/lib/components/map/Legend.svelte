@@ -159,7 +159,7 @@
 		gap: 0.3rem;
 		margin-top: 0.1rem;
 		font-family: var(--font-mono);
-		font-size: 0.56rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.08em;
 		color: var(--accent-0);
 		white-space: nowrap;
@@ -191,7 +191,7 @@
 		justify-content: space-between;
 		gap: 0.4rem;
 		margin-top: 0.32rem;
-		font-size: 0.62rem;
+		font-size: 0.64rem;
 		color: var(--text-3);
 	}
 	.unit {
@@ -200,7 +200,7 @@
 		text-align: center;
 		color: var(--text-4);
 		font-family: var(--font-mono);
-		font-size: 0.54rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.04em;
 	}
 	.items {
@@ -229,7 +229,7 @@
 		align-items: center;
 		gap: 0.4rem;
 		margin-top: 0.5rem;
-		font-size: 0.62rem;
+		font-size: 0.64rem;
 		line-height: 1.35;
 		color: var(--text-3);
 	}
@@ -268,7 +268,7 @@
 		padding-top: 0.4rem;
 		border-top: 1px solid var(--line);
 		font-family: var(--font-mono);
-		font-size: 0.56rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.03em;
 		color: var(--text-4);
 	}

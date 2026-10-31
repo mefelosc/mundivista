@@ -318,7 +318,7 @@
 		padding-left: 1rem;
 		border-left: 1px solid var(--line);
 		font-family: var(--font-mono);
-		font-size: 0.48rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 		color: var(--text-4);
@@ -344,7 +344,7 @@
 	}
 	.index {
 		font-family: var(--font-mono);
-		font-size: 0.52rem;
+		font-size: 0.64rem;
 		color: var(--accent-1);
 	}
 	.section-head h2 {
@@ -365,7 +365,7 @@
 	}
 	.principles span {
 		font-family: var(--font-mono);
-		font-size: 0.48rem;
+		font-size: 0.64rem;
 		color: var(--accent-1);
 	}
 	.principles h3 {
@@ -376,7 +376,7 @@
 	}
 	.principles p {
 		margin: 0;
-		font-size: 0.62rem;
+		font-size: 0.64rem;
 		line-height: 1.55;
 		color: var(--text-3);
 	}
@@ -413,7 +413,7 @@
 	}
 	.license {
 		font-family: var(--font-mono);
-		font-size: 0.46rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.05em;
 		color: var(--text-3);
 		border: 1px solid var(--line);
@@ -434,7 +434,7 @@
 	table {
 		width: 100%;
 		border-collapse: collapse;
-		font-size: 0.62rem;
+		font-size: 0.64rem;
 	}
 	th,
 	td {
@@ -445,7 +445,7 @@
 	}
 	th {
 		font-family: var(--font-mono);
-		font-size: 0.46rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 		color: var(--text-4);
@@ -458,7 +458,7 @@
 	}
 	td.mono {
 		font-family: var(--font-mono);
-		font-size: 0.52rem;
+		font-size: 0.64rem;
 		color: var(--text-3);
 	}
 	td.num {
@@ -469,13 +469,13 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.2rem;
-		font-size: 0.54rem;
+		font-size: 0.64rem;
 		color: var(--accent-0);
 		text-decoration: none;
 	}
 	.footnote {
 		margin: 0.6rem 0 0;
-		font-size: 0.56rem;
+		font-size: 0.64rem;
 		line-height: 1.55;
 		color: var(--text-4);
 	}
@@ -492,12 +492,12 @@
 		display: block;
 		margin-top: 0.3rem;
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		color: var(--accent-0);
 	}
 	.pipeline p {
 		margin: 0.3rem 0 0;
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		line-height: 1.5;
 		color: var(--text-4);
 	}
@@ -552,7 +552,7 @@
 		font-weight: 600;
 	}
 	.editorial-grid span {
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	footer {

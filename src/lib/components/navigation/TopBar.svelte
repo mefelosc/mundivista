@@ -246,7 +246,7 @@
 	}
 	.sub {
 		font-family: var(--font-mono);
-		font-size: 0.54rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.16em;
 		text-transform: uppercase;
 		color: var(--text-4);
@@ -314,7 +314,7 @@
 	}
 	kbd {
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 		border: 1px solid var(--line);
 		border-radius: 0.12rem;

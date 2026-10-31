@@ -122,7 +122,7 @@
 		border: 1px solid var(--line);
 		background: transparent;
 		color: var(--text-4);
-		font-size: 0.54rem;
+		font-size: 0.64rem;
 		padding: 0.2rem 0.36rem;
 	}
 	.clear:hover {
@@ -251,7 +251,7 @@
 	}
 	.empty {
 		margin: 0.35rem 0 0;
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		line-height: 1.5;
 		color: var(--text-4);
 	}

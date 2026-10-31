@@ -421,7 +421,7 @@
 		color: var(--text-1);
 	}
 	.hint .eyebrow {
-		font-size: 0.54rem;
+		font-size: 0.64rem;
 	}
 	.hint p {
 		margin: 0.28rem 0 0;
@@ -436,7 +436,7 @@
 		gap: 0.22rem;
 		margin-top: 0.5rem;
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	kbd {
@@ -674,12 +674,12 @@
 			border: 1px solid var(--line);
 			background: var(--surface-1);
 			color: var(--text-3);
-			font-size: 0.62rem;
+			font-size: 0.64rem;
 			padding: 0.4rem;
 			margin-top: 0.45rem;
 		}
 		.readout {
-			font-size: 0.56rem;
+			font-size: 0.64rem;
 		}
 	}
 	@media (max-width: 620px) {

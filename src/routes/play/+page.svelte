@@ -314,7 +314,7 @@
 	}
 	.stats span {
 		font-family: var(--font-mono);
-		font-size: 0.56rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
 		color: var(--text-4);
@@ -342,7 +342,7 @@
 	.resume-label p {
 		margin: 0.1rem 0 0;
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	.resume-track {
@@ -404,7 +404,7 @@
 		border-radius: 0.15rem;
 		padding: 0.18rem 0.4rem;
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
 		color: var(--text-3);
@@ -429,12 +429,12 @@
 	}
 	.daily-result span {
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	.daily-hint {
 		max-width: 12rem;
-		font-size: 0.62rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 		text-align: right;
 	}
@@ -466,7 +466,7 @@
 	}
 	.filters button span {
 		font-family: var(--font-mono);
-		font-size: 0.54rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	.filters button:hover {
@@ -535,7 +535,7 @@
 	.category,
 	.difficulty {
 		font-family: var(--font-mono);
-		font-size: 0.56rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 		padding: 0.14rem 0.36rem;
@@ -582,7 +582,7 @@
 	}
 	.meta {
 		font-family: var(--font-mono);
-		font-size: 0.62rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.02em;
 		color: var(--text-4);
 	}
@@ -595,7 +595,7 @@
 		align-items: center;
 		gap: 0.2rem;
 		font-family: var(--font-mono);
-		font-size: 0.62rem;
+		font-size: 0.64rem;
 		color: var(--accent-0);
 	}
 	.resume-chip {
@@ -660,7 +660,7 @@
 	.record-list em {
 		font-style: normal;
 		font-family: var(--font-mono);
-		font-size: 0.56rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	.record-list strong {
@@ -671,7 +671,7 @@
 	}
 	.records-note {
 		margin: 0.5rem 0 0;
-		font-size: 0.62rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	.note {

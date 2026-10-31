@@ -217,7 +217,7 @@
 	}
 	.tooltip span {
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	.empty {

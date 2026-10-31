@@ -610,7 +610,7 @@
 		flex-wrap: wrap;
 		gap: 0.4rem;
 		font-family: var(--font-mono);
-		font-size: 0.62rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--text-4);
@@ -644,7 +644,7 @@
 	}
 	.type {
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 		border: 1px solid var(--line);
 		padding: 0.12rem 0.34rem;
@@ -698,7 +698,7 @@
 	}
 	.glance-label {
 		font-family: var(--font-mono);
-		font-size: 0.56rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
 		color: var(--text-4);
@@ -720,7 +720,7 @@
 	}
 	.glance-meta {
 		font-family: var(--font-mono);
-		font-size: 0.55rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	.section-nav {
@@ -745,7 +745,7 @@
 		padding: 0.5rem 0.6rem;
 		border-bottom: 2px solid transparent;
 		font-family: var(--font-mono);
-		font-size: 0.63rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.04em;
 		color: var(--text-2);
 		text-decoration: none;
@@ -786,7 +786,7 @@
 	}
 	.index {
 		font-family: var(--font-mono);
-		font-size: 0.56rem;
+		font-size: 0.64rem;
 		color: var(--accent-1);
 	}
 	.block-head h2 {
@@ -802,7 +802,7 @@
 		align-items: center;
 		gap: 0.25rem;
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.03em;
 		color: var(--text-3);
 		text-decoration: none;
@@ -856,7 +856,7 @@
 		padding-top: 0.55rem;
 		border-top: 1px solid var(--line);
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		line-height: 1.4;
 		color: var(--text-4);
 	}
@@ -932,7 +932,7 @@
 	.org-head em {
 		font-style: normal;
 		font-family: var(--font-mono);
-		font-size: 0.56rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	.org p {
@@ -948,7 +948,7 @@
 	.org a {
 		margin-top: 0.15rem;
 		font-family: var(--font-mono);
-		font-size: 0.56rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 		text-decoration: none;
 	}
@@ -1065,7 +1065,7 @@
 		padding-bottom: 0.35rem;
 		border-bottom: 1px solid var(--line);
 		font-family: var(--font-mono);
-		font-size: 0.56rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	.compare-row {
@@ -1105,7 +1105,7 @@
 	.bar-line em {
 		font-style: normal;
 		font-family: var(--font-mono);
-		font-size: 0.56rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	.compare-values {
@@ -1145,7 +1145,7 @@
 	.metadata dd {
 		margin: 0;
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		color: var(--text-2);
 		text-align: right;
 	}

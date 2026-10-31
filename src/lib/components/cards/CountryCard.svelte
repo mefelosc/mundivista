@@ -643,7 +643,7 @@
 		min-width: 0;
 	}
 	.titles .eyebrow {
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 	}
 	h2 {
 		margin: 0.16rem 0 0;
@@ -702,7 +702,7 @@
 	}
 	.key-label {
 		font-family: var(--font-mono);
-		font-size: 0.55rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
 		color: var(--text-4);
@@ -725,7 +725,7 @@
 	.key-meta {
 		min-height: 0.8rem;
 		font-family: var(--font-mono);
-		font-size: 0.54rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	.tabs {
@@ -796,7 +796,7 @@
 		color: var(--text-3);
 		padding: 0.24rem 0.42rem;
 		font-family: var(--font-mono);
-		font-size: 0.56rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.03em;
 	}
 	.block-action:hover {
@@ -865,7 +865,7 @@
 	.units-block summary em {
 		font-style: normal;
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	.units-block summary :global(svg) {
@@ -918,7 +918,7 @@
 	.units button em {
 		font-style: normal;
 		font-family: var(--font-mono);
-		font-size: 0.48rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
 		color: var(--text-4);
@@ -929,7 +929,7 @@
 		background: var(--surface-1);
 		color: var(--text-3);
 		font-family: var(--font-mono);
-		font-size: 0.54rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.03em;
 		padding: 0.3rem 0.45rem;
 	}
@@ -965,7 +965,7 @@
 	}
 	.org span {
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		color: var(--accent-0);
 		letter-spacing: 0.05em;
 	}
@@ -978,7 +978,7 @@
 	.org em {
 		font-style: normal;
 		font-family: var(--font-mono);
-		font-size: 0.52rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 		white-space: nowrap;
 	}
@@ -1002,7 +1002,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.22rem;
-		font-size: 0.62rem;
+		font-size: 0.64rem;
 		color: var(--accent-0);
 		text-decoration: none;
 	}
@@ -1014,7 +1014,7 @@
 		align-items: center;
 		gap: 0.3rem;
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		color: var(--accent-0);
 		text-decoration: none;
 	}

@@ -126,7 +126,7 @@
 		inset: -6% -4%;
 		z-index: 0;
 		pointer-events: none;
-		opacity: 0.62;
+		opacity: 0.74;
 		animation: map-drift 26s ease-in-out infinite alternate;
 	}
 	.map-bg svg {
@@ -134,8 +134,8 @@
 		height: 100%;
 	}
 	.map-bg path {
-		fill: color-mix(in oklab, var(--accent-1) 5%, transparent);
-		stroke: color-mix(in oklab, var(--accent-1) 30%, var(--line-strong));
+		fill: color-mix(in oklab, var(--accent-1) 6%, transparent);
+		stroke: color-mix(in oklab, var(--accent-1) 42%, var(--line-strong));
 		stroke-width: 0.14;
 		vector-effect: non-scaling-stroke;
 	}
@@ -179,7 +179,7 @@
 	}
 	.edition {
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.04em;
 		color: var(--text-4);
 	}
@@ -289,7 +289,7 @@
 	}
 	.stats dt {
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 		color: var(--text-4);
@@ -308,7 +308,7 @@
 		align-items: flex-end;
 		gap: 0.3rem;
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 		text-align: right;
 	}

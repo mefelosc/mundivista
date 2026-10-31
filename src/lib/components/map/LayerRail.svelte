@@ -125,12 +125,12 @@
 		padding: 0 0.1rem 0 0.2rem;
 	}
 	.head .eyebrow {
-		font-size: 0.62rem;
+		font-size: 0.64rem;
 	}
 	.index {
 		margin-left: auto;
 		font-family: var(--font-mono);
-		font-size: 0.58rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 	}
 	.rail-toggle {
@@ -187,7 +187,7 @@
 	}
 	.layers .num {
 		font-family: var(--font-mono);
-		font-size: 0.56rem;
+		font-size: 0.64rem;
 		color: var(--text-4);
 		width: 1.1rem;
 		flex-shrink: 0;
@@ -241,7 +241,7 @@
 		border-radius: 0.25rem;
 	}
 	.blocs .eyebrow {
-		font-size: 0.52rem;
+		font-size: 0.64rem;
 	}
 	.chips {
 		display: flex;
@@ -255,7 +255,7 @@
 		border-radius: 0.15rem;
 		padding: 0.22rem 0.38rem;
 		font-family: var(--font-mono);
-		font-size: 0.56rem;
+		font-size: 0.64rem;
 		letter-spacing: 0.04em;
 		transition: all 0.15s ease;
 	}
@@ -302,7 +302,7 @@
 			flex-direction: column;
 			gap: 0.2rem;
 			min-height: auto;
-			font-size: 0.58rem;
+			font-size: 0.64rem;
 			padding: 0.32rem 0.5rem;
 			min-width: 3.6rem;
 			align-items: center;
