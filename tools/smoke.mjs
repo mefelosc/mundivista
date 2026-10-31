@@ -45,6 +45,11 @@ await check('clique no mapa abre card e contorna o país', async () => {
 	const title = await page.locator('.card h2').first().textContent();
 	if (title !== 'Brasil') throw new Error(`card=${title}`);
 	if (!page.url().includes('country=BRA')) throw new Error(`url=${page.url()}`);
+	const toggle = page.locator('.highlight-toggle');
+	if ((await toggle.getAttribute('aria-pressed')) !== 'false') throw new Error('vizinhos já destacados');
+	await toggle.click();
+	await page.waitForTimeout(250);
+	if ((await toggle.getAttribute('aria-pressed')) !== 'true') throw new Error('destaque não ativou');
 });
 
 await check('command palette troca de país na mesma rota', async () => {

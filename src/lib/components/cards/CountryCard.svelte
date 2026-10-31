@@ -24,9 +24,18 @@
 		layer: ResolvedLayer;
 		onclose: () => void;
 		onnavigate: (code: string) => void;
+		neighborsHighlighted?: boolean;
+		ontoggleneighbors?: () => void;
 	}
 
-	let { country, layer, onclose, onnavigate }: Props = $props();
+	let {
+		country,
+		layer,
+		onclose,
+		onnavigate,
+		neighborsHighlighted = false,
+		ontoggleneighbors
+	}: Props = $props();
 
 	type TabId = 'overview' | 'demography' | 'economy' | 'environment' | 'geopolitics' | 'history';
 
@@ -339,7 +348,22 @@
 				{/if}
 			</section>
 			<section>
-				<h3>Vizinhos</h3>
+				<div class="section-head">
+					<h3>Países vizinhos</h3>
+					{#if neighbors.length && ontoggleneighbors}
+						<button
+							type="button"
+							class="highlight-toggle"
+							class:active={neighborsHighlighted}
+							onclick={ontoggleneighbors}
+							aria-pressed={neighborsHighlighted}
+							title="Destacar os vizinhos na camada do mapa"
+						>
+							<Icon name={neighborsHighlighted ? 'eyeOff' : 'eye'} size={11} />
+							{neighborsHighlighted ? 'Remover destaque' : 'Destacar no mapa'}
+						</button>
+					{/if}
+				</div>
 				{#if neighbors.length}
 					<div class="neighbors">
 						{#each neighbors as neighbor (neighbor.code)}
@@ -692,6 +716,37 @@
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
 		color: var(--text-4);
+	}
+	.section-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+		margin-bottom: 0.25rem;
+	}
+	.section-head h3 {
+		margin: 0;
+	}
+	.highlight-toggle {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		border: 1px solid var(--line);
+		background: var(--surface-1);
+		color: var(--text-3);
+		padding: 0.18rem 0.38rem;
+		font-family: var(--font-mono);
+		font-size: 0.46rem;
+		letter-spacing: 0.03em;
+	}
+	.highlight-toggle:hover {
+		color: var(--text-1);
+		border-color: var(--line-strong);
+	}
+	.highlight-toggle.active {
+		color: var(--accent-0);
+		border-color: color-mix(in oklab, var(--accent-1) 50%, transparent);
+		background: color-mix(in oklab, var(--accent-1) 12%, var(--surface-1));
 	}
 	.orgs {
 		display: flex;

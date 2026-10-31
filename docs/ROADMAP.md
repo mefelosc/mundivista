@@ -29,7 +29,7 @@ interface central e dados verificáveis.
   rios/lagos, litoral, cidades, capitais e relevo sombreado opcional.
 - 6 camadas: político, físico, demografia, economia, geopolítica, história.
 - Globo 3D, relevo 3D, tema claro/escuro/sistema, Mercator, crossfade de camada.
-- Coropléticos por quantis, feature-state, destaque de blocos e de vizinhos.
+- Coropléticos por quantis, feature-state, destaque de blocos e de vizinhos sob demanda no card.
 - Card com “at a glance”, abas, mediana/percentil, sparkline, mini-mapa e compartilhamento.
 - Dossiê `/country/[code]` com séries, comparação, timeline, organizações e fontes.
 - 32 indicadores do Banco Mundial com ano, série, cobertura e fonte; página `/sobre`.
@@ -80,7 +80,7 @@ sem flash de camada. Medição formal de 60 fps em hardware intermediário segue
 #### 3.3 Camadas com personalidade cartográfica
 
 - [x] **Político:** tints continentais, litoral mais forte que fronteira, capitais, vizinhos
-      destacados, rótulos com halo.
+      sob demanda no card, rótulos com halo.
 - [x] **Físico:** hillshade real, rios/lagos, litoral, rótulos de relevo; cores de país não
       fingem ser hipsometria.
 - [x] **Demografia:** coroplético de densidade + pontos de cidades principais.

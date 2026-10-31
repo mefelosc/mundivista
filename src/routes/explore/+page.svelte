@@ -29,6 +29,7 @@
 	let mobileLegend = $state(false);
 	let hintDismissed = $state(false);
 	let historyYear = $state<number | null>(null);
+	let highlightNeighbors = $state(false);
 	let urlsReady = false;
 
 	const layer = $derived(getLayer(layerId, theme.resolved));
@@ -38,7 +39,7 @@
 			? (organizationById.get(bloc)?.members ?? [])
 			: layerId === 'history' && historyYear
 				? membershipAt(historyYear)
-				: selected
+				: selected && highlightNeighbors
 					? (getCountry(selected)?.borders ?? [])
 					: []
 	);
@@ -114,6 +115,7 @@
 	}
 
 	function select(code: string) {
+		if (code !== selected) highlightNeighbors = false;
 		selected = code;
 		hintDismissed = true;
 		const target = getCountry(code);
@@ -125,6 +127,7 @@
 
 	function closeCard() {
 		selected = null;
+		highlightNeighbors = false;
 	}
 
 	function setProjection(next: 'mercator' | 'globe') {
@@ -205,7 +208,20 @@
 	</div>
 
 	{#if country}
-		<CountryCard {country} {layer} onclose={closeCard} onnavigate={select} />
+		<CountryCard
+			{country}
+			{layer}
+			onclose={closeCard}
+			onnavigate={select}
+			neighborsHighlighted={highlightNeighbors && !bloc && !(layerId === 'history' && historyYear)}
+			ontoggleneighbors={() => {
+				if (!highlightNeighbors) {
+					bloc = null;
+					if (layerId === 'history') historyYear = null;
+				}
+				highlightNeighbors = !highlightNeighbors;
+			}}
+		/>
 	{/if}
 
 	{#if !country && !hintDismissed}
