@@ -3,11 +3,15 @@
 	import { onMount } from 'svelte';
 	import { brand } from '#lib/brand';
 	import { theme } from '#lib/theme.svelte';
+	import { sound } from '#lib/sound.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
 
-	onMount(() => theme.init());
+	onMount(() => {
+		theme.init();
+		sound.init();
+	});
 </script>
 
 <svelte:head>

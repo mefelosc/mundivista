@@ -90,7 +90,7 @@
 			<article>
 				<span>03</span>
 				<h3>Jogar é uma forma de ler</h3>
-				<p>Sete jogos usam a mesma base do atlas. A resposta certa sempre vem com explicação e link.</p>
+				<p>{games.length} jogos usam a mesma base do atlas. A resposta certa sempre vem com explicação e link.</p>
 			</article>
 		</div>
 	</section>
@@ -118,7 +118,7 @@
 			<span class="feature-icon"><Icon name="gamepad" size={22} /></span>
 			<div>
 				<span class="eyebrow">Jogos</span>
-				<h2>Sete formas de errar</h2>
+				<h2>{games.length} formas de errar</h2>
 				<p>Silhuetas, capitais, blocos, rankings e fronteiras. Desafio diário com seed determinístico.</p>
 			</div>
 			<Icon name="arrowUpRight" size={16} />

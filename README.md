@@ -2,7 +2,7 @@
 
 > Atlas interativo de geografia, geopolítica e dados. O mapa é a interface — não o fundo.
 
-**Status:** P0 e P1 do roadmap executados. 65 testes, `svelte-check` sem erros, build estático,
+**Status:** P0 e P1 do roadmap executados. 73 testes, `svelte-check` sem erros, build estático,
 auditoria axe sem violações sérias e smoke test de interação em Firefox.
 
 ![Atlas](docs/screenshots/explore.png)
@@ -19,7 +19,7 @@ npm run preview
 Verificações:
 
 ```bash
-npm test           # 65 testes (motores, dados, timeline, i18n)
+npm test           # 73 testes (motores, dados, timeline, i18n)
 npm run check      # svelte-check, 0 erros
 npm run build      # prerender + adapter-static
 npm run smoke      # interação real no preview (Playwright/Firefox)
@@ -79,10 +79,14 @@ O `smoke`, `a11y` e `shots` esperam um preview em `http://localhost:4173`.
 | Sem Litoral | escolher entre países destacados |
 | Silhuetas | reconhecer o país pelo contorno |
 | Cadeia de Fronteiras | vizinhos, intrusos e países do mesmo continente |
+| Bandeiras | reconhecer o país pela bandeira |
+| Economia em Números | maior/menor PIB, inflação, desemprego e outros |
 
 - Motor de jogo independente do mapa: rodadas, regras, validação e pontuação.
 - Página Play editorial com categorias, dificuldade, progresso, “continuar jogando” e recordes.
 - Onboarding de uma tela por mecânica, modo lista acessível, atalhos 1–4, feedback com fonte.
+- Bandeiras e Economia em Números entre os clássicos; 9 jogos no total.
+- Sons sintetizados (WebAudio) para clique, acerto, erro e fim de jogo, com botão de mudo.
 - Count-up de pontos, pulso de acerto/erro e resultado com stagger.
 - Desafio diário com seed determinístico por data e compartilhamento sem spoiler.
 - Progresso de rodada persistido localmente, inclusive feedback pendente.

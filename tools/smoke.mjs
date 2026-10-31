@@ -82,6 +82,16 @@ await check('command palette troca de país na mesma rota', async () => {
 	if (!page.url().includes('country=JPN')) throw new Error(`url=${page.url()}`);
 });
 
+await check('som pode ser desligado e religado', async () => {
+	const button = page.locator('.sound-toggle');
+	await button.click();
+	await page.waitForTimeout(200);
+	if ((await button.getAttribute('aria-pressed')) !== 'false') throw new Error('som não desligou');
+	await button.click();
+	await page.waitForTimeout(200);
+	if ((await button.getAttribute('aria-pressed')) !== 'true') throw new Error('som não religou');
+});
+
 await check('tema muda e persiste no documento', async () => {
 	await page.locator('.theme-full button[aria-label="Tema escuro"]').click();
 	await page.waitForTimeout(250);

@@ -23,6 +23,7 @@
 		type MapProjection
 	} from '#lib/engines/map-engine/style';
 	import { theme } from '#lib/theme.svelte';
+	import { sound } from '#lib/sound.svelte';
 	import type { ResolvedLayer } from '#lib/configurations/map-layers';
 
 	interface Props {
@@ -70,6 +71,7 @@
 	let scaleWidth = $state(90);
 
 	let pitch = $state(0);
+	let wrapping = false;
 
 	const EQUAL_EARTH_DEFINITION =
 		'+proj=eqearth +lon_0=0 +x_0=0 +y_0=0 +R=6371008.8 +units=m +no_defs';
@@ -354,7 +356,10 @@
 				el.setAttribute('aria-label', text);
 				el.addEventListener('click', (event) => {
 					event.stopPropagation();
-					if (code) onselect?.(code);
+					if (code) {
+						sound.click();
+						onselect?.(code);
+					}
 				});
 			}
 			el.className = labelClass(kind);
@@ -420,7 +425,7 @@
 				kind: 'physical',
 				lat: physical.lat,
 				lng: physical.lng,
-				minZoom: physical.minZoom,
+				minZoom: Math.max(physical.minZoom, 3),
 				priority: 400,
 				text: physical.name
 			});
@@ -757,6 +762,14 @@
 			});
 			map.on('zoom', scheduleLabels);
 			map.on('resize', scheduleLabels);
+			map.on('moveend', () => {
+				if (!map || projection !== 'flat' || wrapping) return;
+				const center = map.getCenter();
+				if (Math.abs(Math.abs(center.lng) - 180) > 0.01) return;
+				wrapping = true;
+				map.jumpTo({ center: [center.lng > 0 ? center.lng - 360 : center.lng + 360, center.lat] });
+				requestAnimationFrame(() => (wrapping = false));
+			});
 
 			map.on('mousemove', (event: MapMouseEvent) => {
 				if (!interactive || !map) return;
@@ -774,7 +787,10 @@
 			map.on('click', (event: MapMouseEvent) => {
 				if (!interactive || !map) return;
 				const code = queryCode({ x: event.point.x, y: event.point.y }, 6);
-				if (code) onselect?.(code);
+				if (code) {
+					sound.click();
+					onselect?.(code);
+				}
 			});
 
 			resizeObserver = new ResizeObserver(() => {
@@ -949,7 +965,7 @@
 		position: absolute;
 		inset: 0;
 		overflow: hidden;
-		background: var(--map-paper);
+		background: var(--map-ocean);
 	}
 	.map-labels {
 		position: absolute;

@@ -285,7 +285,7 @@ function polygonLabelPoint(rings) {
 }
 
 function marineLabelRows(collection) {
-	const MIN_ZOOM = { ocean: 0, sea: 2, bay: 1.8, gulf: 1.8, channel: 2.8, strait: 2.8 };
+	const MIN_ZOOM = { ocean: 0.2, sea: 3.2, bay: 3.4, gulf: 3.4, channel: 4, strait: 4.2 };
 	const chosen = new Map();
 	for (const feature of collection.features) {
 		const props = feature.properties;

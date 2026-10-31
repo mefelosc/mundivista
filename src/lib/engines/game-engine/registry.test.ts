@@ -14,9 +14,9 @@ function codesIn(round: GameRound): string[] {
 }
 
 describe('registro de jogos', () => {
-	it('tem sete jogos com slugs únicos', () => {
-		expect(games).toHaveLength(7);
-		expect(new Set(games.map((g) => g.slug)).size).toBe(7);
+	it('tem nove jogos com slugs únicos', () => {
+		expect(games).toHaveLength(9);
+		expect(new Set(games.map((g) => g.slug)).size).toBe(9);
 	});
 
 	for (const game of games) {
@@ -79,6 +79,27 @@ describe('registro de jogos', () => {
 				);
 				expect(new Set(round.options?.map((option) => option.value)).size).toBe(4);
 			}
+		}
+	});
+
+	it('jogo de bandeiras usa flags e respostas distintas', () => {
+		const rounds = buildRounds('flags', 12);
+		for (const round of rounds) {
+			expect(round.flag).toMatch(/^[a-z]{2}$/);
+			expect(round.options).toHaveLength(4);
+			expect(round.options?.map((option) => option.value)).toContain(
+				round.rule.type === 'code' ? round.rule.code : ''
+			);
+		}
+	});
+
+	it('jogo de economia cita valores, anos e fonte', () => {
+		const rounds = buildRounds('economy-quiz', 15);
+		expect(rounds).toHaveLength(8);
+		for (const round of rounds) {
+			expect(round.options).toHaveLength(4);
+			expect(round.explanation).toMatch(/\d{4}/);
+			expect(round.source?.url.startsWith('https://')).toBe(true);
 		}
 	});
 

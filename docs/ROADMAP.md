@@ -35,9 +35,9 @@ interface central e dados verificáveis.
   compartilhamento; soberania de territórios dependentes visível.
 - Dossiê `/country/[code]` com séries, comparação, timeline, organizações e fontes.
 - 32 indicadores do Banco Mundial com ano, série, cobertura e fonte; página `/sobre`.
-- 7 jogos, motor desacoplado, progresso local, onboarding, modo lista e desafio diário.
+- 9 jogos, motor desacoplado, progresso local, onboarding, modo lista e desafio diário.
 - Landing editorial, busca ⌘K, i18n do shell PT/EN.
-- 65 testes, `svelte-check` 0 erros, build estático, axe sem violações sérias, smoke test.
+- 73 testes, `svelte-check` 0 erros, build estático, axe sem violações sérias, smoke test.
 - Worker do MapLibre corrigido com `?worker&url` (não remover).
 
 ---
@@ -119,7 +119,7 @@ acessível a um clique.
 - [x] Animações: fly-to, pulso de acerto/erro, count-up de pontos, stagger no resultado.
 - [x] Onboarding de uma tela por mecânica.
 - [x] Modo lista acessível para jogos de mapa.
-- [x] Novos jogos: **Silhuetas** e **Cadeia de Fronteiras**.
+- [x] Novos jogos: **Silhuetas**, **Cadeia de Fronteiras**, **Bandeiras** e **Economia em Números**.
 - [x] Desafio diário com seed determinístico e compartilhamento sem spoiler.
 - [x] Dificuldade exibida por jogo.
 - [ ] Dificuldade selecionável, vidas e timer opcional. Hints já existem e são sempre

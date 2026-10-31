@@ -1,7 +1,7 @@
 # Handoff — como continuar em uma nova sessão
 
 **Estado:** P0 e P1 do roadmap executados em 2026-10-31. O projeto está em
-`~/projects/foss/mundivista`, com 65 testes, `svelte-check` sem erros, build estático,
+`~/projects/foss/mundivista`, com 73 testes, `svelte-check` sem erros, build estático,
 axe sem violações sérias e smoke test em Firefox.
 
 ---
@@ -49,7 +49,7 @@ Prioridades abertas (ver ROADMAP §3):
 cd ~/projects/foss/mundivista
 npm run dev        # dev
 npm run check      # svelte-check (deve dar 0)
-npm test           # 65 testes
+npm test           # 73 testes
 npm run build      # build estático em build/
 npm run preview    # preview do build (porta 4173)
 npm run data:build # regenera dados com cache
@@ -105,7 +105,8 @@ docs/{ROADMAP,INSPIRATION,HANDOFF}.md
 - **Disputados:** lista curada (KOS, PSX, SAH, FLK, KAS, IOT), hachura e nota; Israel não
   é hachurado só porque o Natural Earth marca TYPE=Disputed.
 - **Dados:** 32 indicadores, séries 2016–2025, cidades, litoral e silhuetas no pipeline.
-- **Jogos:** 7 jogos; novos Silhuetas e Cadeia de Fronteiras; progresso persistente.
+- **Jogos:** 9 jogos; novos Silhuetas, Cadeia de Fronteiras, Bandeiras e Economia em Números; progresso persistente.
+- **Som:** `src/lib/sound.svelte.ts` sintetiza clique/acerto/erro/fim com WebAudio; botão de mudo no TopBar.
 - **Busca:** command palette carregada sob demanda no TopBar, disponível em todas as rotas.
 
 ---

@@ -37,6 +37,8 @@ export interface GameRound {
 	options?: { value: string; label: string }[];
 	/** Contorno SVG viewBox 0 0 100 100 (jogo de silhuetas). */
 	silhouette?: string;
+	/** Bandeira ISO2 (jogo de bandeiras). */
+	flag?: string;
 	explanation: string;
 	source?: GameSource;
 	camera?: { center: [number, number]; zoom: number };

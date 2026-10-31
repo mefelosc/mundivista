@@ -433,6 +433,80 @@ function buildBorders(seed?: number): GameRound[] {
 	});
 }
 
+
+const flagPool = sovereign.filter((c) => c.iso2);
+
+function buildFlags(seed?: number): GameRound[] {
+	const rng = createRng(seed);
+	const targets = sample(flagPool, 8, rng);
+	return targets.map((country, i) => {
+		const others = sample(flagPool.filter((c) => c.code !== country.code), 3, rng);
+		const options = shuffle([country, ...others], rng).map((c) => ({ value: c.code, label: c.name }));
+		return {
+			id: `flag-${i}-${country.code}`,
+			prompt: 'Qual país usa esta bandeira?',
+			hint: 'Bandeira oficial do país.',
+			interaction: 'choice',
+			answerKind: 'code',
+			rule: { type: 'code', code: country.code },
+			flag: country.iso2,
+			options,
+			explanation: `${country.name} — ${country.continent ?? 'localização não classificada'}. ${country.capital ? `Capital: ${capitalOf(country)}.` : ''}`,
+			source: { name: 'mledoze/countries + flag-icons', url: 'https://github.com/mledoze/countries' }
+		};
+	});
+}
+
+const ECONOMY_INDICATORS: IndicatorKey[] = [
+	'gdpPerCapita',
+	'gdpGrowth',
+	'inflation',
+	'unemployment',
+	'lifeExpectancy',
+	'co2PerCapita',
+	'forestShare',
+	'debtShare'
+];
+
+function buildEconomy(seed?: number): GameRound[] {
+	const rng = createRng(seed);
+	const keys = shuffle(ECONOMY_INDICATORS, rng);
+	return keys.map((key, i) => {
+		const meta = indicatorMeta[key];
+		const pool = sovereign.filter((country) => country.indicators[key]);
+		let group = sample(pool, 4, rng);
+		for (let attempt = 0; attempt < 6; attempt++) {
+			const values = new Set(group.map((country) => country.indicators[key]!.v));
+			if (values.size === group.length) break;
+			group = sample(pool, 4, rng);
+		}
+		const sorted = [...group].sort((a, b) => {
+			const av = a.indicators[key]!.v;
+			const bv = b.indicators[key]!.v;
+			return meta.dir === 'higher' ? bv - av : av - bv;
+		});
+		const target = sorted[0];
+		const options = shuffle(group, rng).map((c) => ({ value: c.code, label: c.name }));
+		return {
+			id: `economy-${i}-${key}`,
+			prompt: `Qual destes países tem o ${meta.dir === 'higher' ? 'maior' : 'menor'} ${meta.name.toLowerCase()}?`,
+			hint: 'Compare os valores do Banco Mundial. O ano de referência acompanha cada resposta.',
+			interaction: 'choice',
+			answerKind: 'code',
+			rule: { type: 'code', code: target.code },
+			options,
+			camera: cameraFor(group.map((c) => c.code)),
+			explanation: sorted
+				.map((c) => {
+					const value = c.indicators[key]!;
+					return `${c.name}: ${formatIndicatorLong(key, value)} (${value.y})`;
+				})
+				.join(' · '),
+			source: { name: meta.source, url: meta.sourceUrl }
+		};
+	});
+}
+
 export const games: GameDefinition[] = [
 	{
 		slug: 'country-finder',
@@ -538,6 +612,36 @@ export const games: GameDefinition[] = [
 		mechanic: 'Múltipla escolha',
 		icon: 'border',
 		build: buildBorders
+	},
+	{
+		slug: 'flags',
+		difficulty: 'Fácil',
+		title: 'Bandeiras',
+		tagline: 'Reconheça o país pela bandeira',
+		description:
+			'Um clássico: a bandeira aparece, quatro países disputam a resposta. Sem dicas de continente na primeira rodada.',
+		category: 'Geografia',
+		interaction: 'choice',
+		rounds: 8,
+		minutes: 3,
+		mechanic: 'Múltipla escolha',
+		icon: 'flag',
+		build: buildFlags
+	},
+	{
+		slug: 'economy-quiz',
+		difficulty: 'Médio',
+		title: 'Economia em Números',
+		tagline: 'Quem é maior? Quem é menor?',
+		description:
+			'PIB per capita, inflação, desemprego, expectativa de vida e mais. Quatro países, um indicador e uma resposta por rodada.',
+		category: 'Dados',
+		interaction: 'choice',
+		rounds: 8,
+		minutes: 5,
+		mechanic: 'Múltipla escolha',
+		icon: 'coins',
+		build: buildEconomy
 	}
 ];
 

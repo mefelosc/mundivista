@@ -80,6 +80,7 @@
 		--positive: #3f7355;
 		--negative: #a4413a;
 		--map-paper: #e9e0ce;
+		--map-ocean: #dfe9ee;
 		--map-land: #e2d6bf;
 		--map-stroke: #8d7d61;
 		--map-text: #2a241b;
@@ -117,6 +118,7 @@
 		--positive: #74b992;
 		--negative: #d97a70;
 		--map-paper: #12100d;
+		--map-ocean: #12100d;
 		--map-land: #1d1a15;
 		--map-stroke: #6d6250;
 		--map-text: #e8ddc9;

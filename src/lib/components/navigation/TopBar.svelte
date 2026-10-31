@@ -6,6 +6,7 @@
 	import Icon from '#lib/components/ui/Icon.svelte';
 	import ThemeToggle from '#lib/components/ui/ThemeToggle.svelte';
 	import { localeFromUrl, t } from '#lib/i18n';
+	import { sound } from '#lib/sound.svelte';
 
 	interface Props {
 		compact?: boolean;
@@ -67,6 +68,16 @@
 			<span class="search-label">{t('nav.search', locale).split(',')[0]}</span>
 			<span class="sr-only">{t('nav.search', locale)}</span>
 			<kbd aria-hidden="true">⌘K</kbd>
+		</button>
+		<button
+			class="sound-toggle"
+			type="button"
+			onclick={() => sound.toggle()}
+			aria-label={sound.enabled ? 'Desativar sons' : 'Ativar sons'}
+			aria-pressed={sound.enabled}
+			title={sound.enabled ? 'Sons ativados' : 'Sons desativados'}
+		>
+			<Icon name={sound.enabled ? 'volume' : 'volumeOff'} size={15} />
 		</button>
 		<span class="theme-full"><ThemeToggle /></span>
 		<span class="theme-compact"><ThemeToggle compact /></span>
@@ -196,6 +207,23 @@
 	}
 	.theme-compact {
 		display: none;
+	}
+	.sound-toggle {
+		display: grid;
+		place-items: center;
+		width: 2rem;
+		height: 2rem;
+		border: 1px solid var(--line);
+		background: var(--surface-1);
+		color: var(--text-3);
+		border-radius: 0.15rem;
+	}
+	.sound-toggle:hover {
+		color: var(--text-1);
+		border-color: var(--line-strong);
+	}
+	.sound-toggle[aria-pressed='false'] {
+		color: var(--text-4);
 	}
 	.sr-only {
 		position: absolute;

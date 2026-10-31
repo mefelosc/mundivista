@@ -21,6 +21,7 @@
 	} from '#lib/engines/scoring-engine';
 	import { getLayer } from '#lib/configurations/map-layers';
 	import { theme } from '#lib/theme.svelte';
+	import { sound } from '#lib/sound.svelte';
 	import {
 		clearProgress,
 		dailyKey,
@@ -239,6 +240,8 @@
 				nextStatus[answer.value] = 'wrong';
 			}
 		}
+		if (validation.correct) sound.correct();
+		else sound.wrong();
 		status = nextStatus;
 		feedback = {
 			correct: validation.correct,
@@ -304,6 +307,7 @@
 			best = total;
 			setBest(game.slug, total);
 		}
+		sound.finish();
 		if (daily) {
 			setDailyResult({
 				slug: game.slug,
@@ -476,6 +480,11 @@
 						<svg viewBox="0 0 100 100" role="img">
 							<path d={current.silhouette} />
 						</svg>
+					</div>
+				{/if}
+				{#if current.flag}
+					<div class="flag-prompt">
+						<span class={`fi fi-${current.flag}`} role="img" aria-label="Bandeira a identificar"></span>
 					</div>
 				{/if}
 				<div class="options" role="group" aria-label="Alternativas">
@@ -1027,6 +1036,21 @@
 	.confirm button:disabled,
 	.submit-order:disabled {
 		opacity: 0.35;
+	}
+	.flag-prompt {
+		margin-top: 0.7rem;
+		padding: 1rem;
+		border: 1px solid var(--line);
+		background: var(--surface-1);
+		display: grid;
+		place-items: center;
+	}
+	.flag-prompt .fi {
+		width: 9rem;
+		height: 6rem;
+		background-size: cover;
+		border: 1px solid var(--line-strong);
+		box-shadow: 0 8px 20px -16px rgb(0 0 0 / 0.4);
 	}
 	.silhouette {
 		margin-top: 0.7rem;
