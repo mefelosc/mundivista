@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
+	import workerUrl from '#lib/map/worker.ts?worker&url';
 	import type {
 		ExpressionSpecification,
 		GeoJSONSource,
@@ -14,7 +14,13 @@
 	import { cityPoints } from '#lib/data/cities';
 	import { capitalInPortuguese } from '#lib/data/capitals-pt';
 	import { buildChoropleth, withNoData } from '#lib/engines/map-engine/choropleth';
-	import { createMapStyle, MAP_LAYER, mapPalette } from '#lib/engines/map-engine/style';
+	import {
+		createMapStyle,
+		EQUAL_EARTH_PROJECTION,
+		MAP_LAYER,
+		mapPalette,
+		type MapProjection
+	} from '#lib/engines/map-engine/style';
 	import { theme } from '#lib/theme.svelte';
 	import type { ResolvedLayer } from '#lib/configurations/map-layers';
 
@@ -26,7 +32,7 @@
 		status?: Record<string, 'correct' | 'wrong'>;
 		interactive?: boolean;
 		showLabels?: boolean;
-		projection?: 'mercator' | 'globe';
+		projection?: MapProjection;
 		terrain?: boolean;
 		onselect?: (code: string) => void;
 		onhover?: (code: string | null) => void;
@@ -61,8 +67,38 @@
 	let activeFill: string = MAP_LAYER.fillA;
 	let scaleLabel = $state('');
 	let scaleWidth = $state(90);
-	let projectionLabel = $state('Globo');
+
 	let pitch = $state(0);
+
+	const EQUAL_EARTH_DEFINITION =
+		'+proj=eqearth +lon_0=0 +x_0=0 +y_0=0 +R=6371008.8 +units=m +no_defs';
+	let equalEarthRegistered = false;
+
+	const projectionLabel = $derived(projection === 'flat' ? '2D · Equal Earth' : 'Globo');
+
+	function registerEqualEarth(
+		maplibregl: typeof import('maplibre-gl'),
+		proj4: (from: string, to: string) => {
+			forward(position: number[]): number[];
+			inverse(position: number[]): number[] | null;
+		}
+	) {
+		if (equalEarthRegistered) return;
+		const converter = proj4('EPSG:4326', EQUAL_EARTH_DEFINITION);
+		const edge = converter.forward([180, 0])[0];
+		try {
+			maplibregl.addProjection({
+				name: EQUAL_EARTH_PROJECTION,
+				definition: EQUAL_EARTH_DEFINITION,
+				projection: converter as never,
+				tileMatrixSet: { origin: [-edge, edge], extentAtZoom0: edge * 2 }
+			});
+		} catch (error) {
+			// Dois mounts em sequência podem disputar o registro; o segundo já o encontra pronto.
+			if (!(error instanceof Error) || !error.message.includes('already exists')) throw error;
+		}
+		equalEarthRegistered = true;
+	}
 
 	let labelEntries: {
 		el: HTMLElement;
@@ -230,7 +266,7 @@
 	}
 
 	function updateHillshadeVisibility() {
-		const visible = terrain || layer.id === 'physical';
+		const visible = projection === 'globe' && (terrain || layer.id === 'physical');
 		setVisibility(MAP_LAYER.hillshade, visible);
 	}
 
@@ -560,18 +596,26 @@
 			const maplibregl = await import('maplibre-gl');
 			maplibregl.setWorkerUrl(workerUrl);
 			const isMobile = window.innerWidth < 720;
+			const isFlat = projection === 'flat';
+			if (isFlat) {
+				const proj4 = (await import('proj4')).default;
+				if (!container) return;
+				registerEqualEarth(maplibregl, proj4);
+			}
+			if (!container) return;
+			const flatZoom = Math.max(-0.5, Math.log2(Math.max(320, container.clientWidth) / 512) - 0.04);
 			map = new maplibregl.Map({
 				container,
-				style: createMapStyle(theme.resolved) as StyleSpecification,
-				center: [0, 16],
-				zoom: isMobile ? 1.2 : 1.8,
-				minZoom: -0.6,
-				maxZoom: 7.4,
+				style: createMapStyle(theme.resolved, projection) as StyleSpecification,
+				center: isFlat ? [0, 0] : [0, 16],
+				zoom: isFlat ? flatZoom : isMobile ? 1.2 : 1.8,
+				minZoom: isFlat ? -0.8 : -0.6,
+				maxZoom: isFlat ? 7 : 7.4,
 				attributionControl: false,
 				renderWorldCopies: true,
 				dragRotate: false,
 				pitchWithRotate: false,
-				maxPitch: terrain ? 65 : 0
+				maxPitch: projection === 'globe' && terrain ? 65 : 0
 			});
 
 			map.touchZoomRotate.disableRotation();
@@ -644,7 +688,6 @@
 				buildLabels();
 				updateScale();
 				updateLabels();
-				applyProjection();
 				applyTerrain();
 				map?.resize();
 				onready?.();
@@ -693,18 +736,14 @@
 		}
 	}
 
-	function applyProjection() {
-		if (!map) return;
-		map.setProjection({ type: projection });
-		projectionLabel = projection === 'globe' ? 'Globo' : 'Mercator';
-		if (projection === 'globe' && map.getZoom() < 1.7) {
-			map.easeTo({ zoom: 1.8, duration: 800, essential: true });
-		}
-		scheduleLabels();
-	}
-
 	function applyTerrain() {
 		if (!map) return;
+		if (projection === 'flat') {
+			map.setTerrain(null);
+			map.setMaxPitch(0);
+			updateHillshadeVisibility();
+			return;
+		}
 		if (terrain) {
 			map.setMaxPitch(65);
 			map.setTerrain({ source: 'terrain-dem', exaggeration: 1.6 });
@@ -783,12 +822,6 @@
 
 	$effect(() => {
 		void ready;
-		void projection;
-		if (ready) applyProjection();
-	});
-
-	$effect(() => {
-		void ready;
 		void terrain;
 		if (ready) applyTerrain();
 	});
@@ -799,7 +832,12 @@
 
 	export function resetView() {
 		const isMobile = typeof window !== 'undefined' && window.innerWidth < 720;
-		map?.flyTo({ center: [0, 16], zoom: isMobile ? 1.2 : 1.8, duration: 760, essential: true });
+		if (projection === 'flat') {
+			const flatZoom = Math.max(-0.5, Math.log2(Math.max(320, container.clientWidth) / 512) - 0.04);
+			map?.flyTo({ center: [0, 0], zoom: flatZoom, duration: 700, essential: true });
+		} else {
+			map?.flyTo({ center: [0, 16], zoom: isMobile ? 1.2 : 1.8, duration: 760, essential: true });
+		}
 	}
 
 	export function zoomBy(delta: number) {

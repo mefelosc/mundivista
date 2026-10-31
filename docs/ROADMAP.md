@@ -28,7 +28,8 @@ interface central e dados verificáveis.
 - Mapa 1:50m com 241 territórios, seleção, hover, rótulos com colisão, graticula,
   rios/lagos, litoral, cidades, capitais e relevo sombreado opcional.
 - 6 camadas: político, físico, demografia, economia, geopolítica, história.
-- Globo 3D como projeção padrão (Mercator removido da interface), relevo 3D, tema claro/escuro/sistema, crossfade de camada.
+- Globo 3D e 2D em Equal Earth (via projeção customizada + proj4), relevo 3D no globo,
+  tema claro/escuro/sistema, crossfade de camada.
 - Coropléticos por quantis, feature-state, destaque de blocos e de vizinhos sob demanda no card.
 - Card com “at a glance”, abas, mediana/percentil, sparkline, mini-mapa e compartilhamento.
 - Dossiê `/country/[code]` com séries, comparação, timeline, organizações e fontes.
@@ -71,8 +72,9 @@ comparáveis em `docs/screenshots/` (desktop/mobile, claro/escuro).
 - [x] Crossfade de camada com duas camadas de fill e transição de 340 ms.
 - [x] Rótulos DOM com cache de medida, prioridade, colisão e teto de 82.
 - [x] Escala gráfica, rosa dos ventos, coordenadas e projeção.
-- [x] Globo como padrão para evitar a distorção do Mercator. Equal Earth não é suportada
-      nativamente pelo MapLibre 6; documentado em vez de simular uma projeção.
+- [x] Globo como padrão e **2D em Equal Earth** por `addProjection` + proj4 (main e worker),
+      com área proporcional e sem a distorção do Mercator. Relevo fica restrito ao globo,
+      porque o DEM é servido em Mercator.
 
 **Aceite:** alternância claro/escuro/3D sem reload; seleção perceptivelmente imediata;
 sem flash de camada. Medição formal de 60 fps em hardware intermediário segue pendente.

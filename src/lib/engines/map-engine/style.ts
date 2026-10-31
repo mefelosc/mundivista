@@ -71,7 +71,14 @@ export function mapPalette(theme: ResolvedTheme): MapPalette {
 			};
 }
 
-export function createMapStyle(theme: ResolvedTheme = 'light'): StyleSpecification {
+export type MapProjection = 'globe' | 'flat';
+
+export const EQUAL_EARTH_PROJECTION = 'mundivista:equal-earth';
+
+export function createMapStyle(
+	theme: ResolvedTheme = 'light',
+	projection: MapProjection = 'globe'
+): StyleSpecification {
 	const p = mapPalette(theme);
 	const dark = theme === 'dark';
 	const layers: LayerSpecification[] = [
@@ -305,6 +312,9 @@ export function createMapStyle(theme: ResolvedTheme = 'light'): StyleSpecificati
 	return {
 		version: 8,
 		name: `Mundivista — atlas ${theme}`,
+		projection: {
+			type: projection === 'flat' ? EQUAL_EARTH_PROJECTION : 'globe'
+		} as never,
 		sources: {
 			countries: {
 				type: 'geojson',

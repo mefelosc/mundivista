@@ -17,6 +17,8 @@ const shots = [
 	{ name: 'landing-dark', url: '/', theme: 'dark', viewport: { width: 1440, height: 900 } },
 	{ name: 'over', url: '/sobre', theme: 'light', viewport: { width: 1440, height: 900 } },
 	{ name: 'explore', url: '/explore', theme: 'light', viewport: { width: 1440, height: 900 } },
+	{ name: 'explore-2d', url: '/explore?projection=flat', theme: 'light', viewport: { width: 1440, height: 900 } },
+	{ name: 'explore-2d-dark', url: '/explore?projection=flat&country=BRA&layer=population', theme: 'dark', viewport: { width: 1440, height: 900 } },
 	{ name: 'explore-history', url: '/explore?layer=history&year=1991', theme: 'light', viewport: { width: 1440, height: 900 } },
 	{ name: 'explore-globe', url: '/explore?globe=1', theme: 'dark', viewport: { width: 1440, height: 900 } },
 	{ name: 'explore-terrain', url: '/explore?terrain=1&layer=physical', theme: 'light', viewport: { width: 1440, height: 900 } },

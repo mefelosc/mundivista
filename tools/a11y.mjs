@@ -9,6 +9,7 @@ const pages = [
 	['/', 'light'],
 	['/explore', 'light'],
 	['/explore?country=BRA&layer=economy', 'dark'],
+	['/explore?projection=flat', 'light'],
 	['/country/BRA', 'light'],
 	['/play', 'dark'],
 	['/sobre', 'light']

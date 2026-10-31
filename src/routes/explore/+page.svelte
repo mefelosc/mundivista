@@ -22,13 +22,14 @@
 	let selected = $state<string | null>(null);
 	let bloc = $state<string | null>(null);
 	let hovered = $state<string | null>(null);
-	let mapRef: MapCanvas | null = null;
-	let view = $state({ lat: 0, lng: 0, zoom: 1.3 });
+	let mapRef = $state<MapCanvas | null>(null);
+	let view = $state({ lat: 0, lng: 0, zoom: 1.8 });
 	let terrain = $state(false);
 	let mobileLegend = $state(false);
 	let hintDismissed = $state(false);
 	let historyYear = $state<number | null>(null);
 	let highlightNeighbors = $state(false);
+	let projection = $state<'globe' | 'flat'>('globe');
 	let urlsReady = false;
 
 	const layer = $derived(getLayer(layerId, theme.resolved));
@@ -51,6 +52,7 @@
 		const requestedCountry = params.get('country');
 		if (requestedCountry && getCountry(requestedCountry)) selected = requestedCountry;
 		if (params.get('terrain') === '1') terrain = true;
+		if (params.get('projection') === 'flat' || params.get('view') === '2d') projection = 'flat';
 		const requestedYear = Number(params.get('year'));
 		if (requestedYear >= 1945 && requestedYear <= 2026) historyYear = requestedYear;
 		urlsReady = true;
@@ -62,6 +64,7 @@
 		params.set('layer', layerId);
 		if (selected) params.set('country', selected);
 		if (terrain) params.set('terrain', '1');
+		if (projection === 'flat') params.set('projection', 'flat');
 		if (layerId === 'history' && historyYear) params.set('year', String(historyYear));
 		const next = params.toString();
 		if (page.url.searchParams.toString() === next) return;
@@ -81,6 +84,8 @@
 		}
 		if (params.get('terrain') === '1' && !terrain) toggleTerrain();
 		if (params.get('terrain') !== '1' && terrain) terrain = false;
+		const requestedProjection = params.get('projection') === 'flat' || params.get('view') === '2d' ? 'flat' : 'globe';
+		if (requestedProjection !== projection) setProjection(requestedProjection);
 		const requestedYear = Number(params.get('year'));
 		if (requestedYear >= 1945 && requestedYear <= 2026 && requestedYear !== historyYear) {
 			historyYear = requestedYear;
@@ -124,7 +129,13 @@
 		highlightNeighbors = false;
 	}
 
+	function setProjection(next: 'globe' | 'flat') {
+		projection = next;
+		if (next === 'flat') terrain = false;
+	}
+
 	function toggleTerrain() {
+		if (projection === 'flat') return;
 		terrain = !terrain;
 	}
 
@@ -135,7 +146,9 @@
 			if (selected) selected = null;
 			return;
 		}
-		if (event.key === 't') {
+		if (event.key === 'g') {
+			setProjection(projection === 'globe' ? 'flat' : 'globe');
+		} else if (event.key === 't') {
 			toggleTerrain();
 		} else if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
 			const ids = ['political', 'physical', 'population', 'economy', 'geopolitics', 'history'] as LayerId[];
@@ -158,19 +171,22 @@
 </svelte:head>
 
 <div class="explore" id="conteudo">
-	<MapCanvas
-		bind:this={mapRef}
-		{layer}
-		{selected}
-		{highlight}
-		{terrain}
-		onselect={select}
-		onhover={(code) => (hovered = code)}
-		onview={(v) => (view = v)}
-		onready={() => {
-			if (selected) select(selected);
-		}}
-	/>
+	{#key projection}
+		<MapCanvas
+			bind:this={mapRef}
+			{projection}
+			{layer}
+			{selected}
+			{highlight}
+			{terrain}
+			onselect={select}
+			onhover={(code) => (hovered = code)}
+			onview={(v) => (view = v)}
+			onready={() => {
+				if (selected) select(selected);
+			}}
+		/>
+	{/key}
 
 	<TopBar />
 
@@ -230,15 +246,31 @@
 			<span class="zoom">z{view.zoom.toFixed(1)}</span>
 		</div>
 		<div class="switch-row">
-			<span class="projection-badge" title="Projeção Globo, sem a distorção de área do mapa plano">
-				<Icon name="globe3d" size={13} /> Globo
-			</span>
+			<div class="segmented" role="group" aria-label="Projeção do mapa">
+				<button
+					type="button"
+					class:active={projection === 'globe'}
+					onclick={() => setProjection('globe')}
+					title="Globo 3D"
+				>
+					<Icon name="globe3d" size={13} /> Globo
+				</button>
+				<button
+					type="button"
+					class:active={projection === 'flat'}
+					onclick={() => setProjection('flat')}
+					title="Mapa 2D em Equal Earth, com áreas proporcionais"
+				>
+					<Icon name="compass" size={13} /> 2D
+				</button>
+			</div>
 			<button
 				type="button"
 				class="terrain-toggle"
 				class:active={terrain}
 				onclick={toggleTerrain}
-				title="Relevo 3D com modelo digital de elevação"
+				disabled={projection === 'flat'}
+				title={projection === 'flat' ? 'Relevo disponível no globo: o DEM é Mercator' : 'Relevo 3D com modelo digital de elevação'}
 				aria-pressed={terrain}
 			>
 				<Icon name="peak" size={13} /> Relevo
@@ -281,7 +313,7 @@
 		<span>·</span>
 		<span>{indicatorKeys.length} indicadores</span>
 		<span>·</span>
-		<span>Globo</span>
+		<span>{projection === 'flat' ? '2D · Equal Earth' : 'Globo'}</span>
 		<span>·</span>
 		<span>Natural Earth 1:50m</span>
 		{#if terrain}
@@ -412,16 +444,12 @@
 		align-items: stretch;
 		gap: 0.3rem;
 	}
-	.projection-badge {
+	.segmented {
 		display: inline-flex;
-		align-items: center;
-		gap: 0.28rem;
 		border: 1px solid var(--line);
 		background: var(--surface-2);
-		color: var(--text-3);
-		padding: 0.35rem 0.5rem;
-		font-size: 0.66rem;
 	}
+	.segmented button,
 	.terrain-toggle {
 		display: inline-flex;
 		align-items: center;
@@ -433,16 +461,25 @@
 		font-size: 0.6rem;
 		transition: background 0.15s ease, color 0.15s ease;
 	}
+	.segmented button + button {
+		border-left: 1px solid var(--line);
+	}
 	.terrain-toggle {
 		border: 1px solid var(--line);
 		background: var(--surface-2);
 	}
-	.terrain-toggle:hover {
+	.segmented button:hover,
+	.terrain-toggle:hover:not(:disabled) {
 		color: var(--text-1);
 	}
+	.segmented button.active,
 	.terrain-toggle.active {
 		background: color-mix(in oklab, var(--accent-1) 16%, var(--surface-2));
 		color: var(--accent-2);
+	}
+	.terrain-toggle:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
 	}
 	.mobile-legend-toggle {
 		display: none;

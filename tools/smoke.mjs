@@ -72,13 +72,28 @@ await check('tema muda e persiste no documento', async () => {
 });
 
 await check('globo é padrão e relevo ativa sem reload', async () => {
-	const badge = await page.locator('.projection-badge').innerText();
-	if (!badge.includes('Globo')) throw new Error(`badge=${badge}`);
+	const badge = await page.locator('.instruments .projection').innerText();
+	if (!/globo/i.test(badge)) throw new Error(`badge=${badge}`);
 	await page.locator('button[title="Relevo 3D com modelo digital de elevação"]').click();
 	await page.waitForTimeout(1400);
 	if (!page.url().includes('terrain=1')) throw new Error(`relevo: url=${page.url()}`);
 	const pitch = await page.locator('.map-canvas').getAttribute('data-pitch');
 	if (Number(pitch) < 30) throw new Error(`pitch=${pitch}`);
+});
+
+await check('2D Equal Earth alterna sem reload e desativa relevo', async () => {
+	await page.locator('.segmented button[title^="Mapa 2D"]').click();
+	await page.waitForTimeout(2800);
+	const label = await page.locator('.instruments .projection').innerText();
+	if (!/EQUAL EARTH/i.test(label)) throw new Error(`projeção=${label}`);
+	if (!page.url().includes('projection=flat')) throw new Error(`url=${page.url()}`);
+	if (!(await page.locator('button[title^="Relevo disponível"]').isDisabled())) {
+		throw new Error('relevo deveria estar desativado no 2D');
+	}
+	if (await page.locator('.map-failed').count()) throw new Error('mapa falhou no 2D');
+	await page.locator('.segmented button[title="Globo 3D"]').click();
+	await page.waitForTimeout(2500);
+	if (page.url().includes('projection=flat')) throw new Error(`voltou: url=${page.url()}`);
 });
 
 await check('jogo de silhuetas inicia e aceita tecla 1', async () => {

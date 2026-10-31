@@ -47,7 +47,8 @@ O `smoke`, `a11y` e `shots` esperam um preview em `http://localhost:4173`.
   e história.
 - Coropléticos por quantis, crossfade de camada, seleção por diferença de `feature-state`,
   hover em `requestAnimationFrame` com bbox de 4–6 px.
-- Globo 3D como projeção padrão (sem o mapa plano Mercator); relevo 3D opcional com DEM público (AWS Terrain Tiles),
+- Globo 3D e **2D em Equal Earth** (área preservada, sem Mercator), alternáveis no canto
+  inferior direito; relevo 3D opcional no globo, com DEM público (AWS Terrain Tiles),
   hillshade e atribuição visível.
 - Rótulos DOM com cache de medida, colisão, prioridade e teto de 82; microestados ganham
   pontos de capital clicáveis.
@@ -126,7 +127,8 @@ O motor de jogos não importa o mapa. O mapa é um renderizador entre outros pos
 ## Limitações conhecidas
 
 - Natural Earth 1:50m: fronteiras generalizadas; microestados usam pontos de capital.
-- O relevo sombreado e o modo 3D dependem de tiles públicos carregados pela rede.
+- O relevo sombreado e o modo 3D dependem de tiles públicos carregados pela rede e ficam
+  disponíveis no globo; o modo 2D Equal Earth é plano e não usa DEM.
 - Blocos históricos e a linha do tempo usam os polígonos atuais; não são fronteiras do período.
 - Bathymetria, fluxos comerciais e biomas/clima ainda não estão implementados.
 - Indicadores em dólares correntes não são comparáveis entre anos sem ajuste; o ano é sempre exibido.

@@ -91,7 +91,8 @@ docs/{ROADMAP,INSPIRATION,HANDOFF}.md
 ## Decisões desta sessão
 
 - **Identidade:** direção B (Atlas Editorial); o escuro é o atlas à noite.
-- **Mapa:** projeção Globo como padrão (Mercator removido da interface); relevo 3D com AWS Terrarium; crossfade por duas camadas de fill.
+- **Mapa:** Globo como padrão e 2D em Equal Earth (`addProjection` + proj4 no main e no
+  worker); relevo 3D apenas no globo (DEM em Mercator); crossfade por duas camadas de fill.
 - **Microestados:** pontos de capital clicáveis (`cities` com `micro: true`).
 - **História:** timeline 1945–2026 com eventos curados e recorte de blocos; usa polígonos
   atuais e diz isso. CShapes não foi integrado.
@@ -109,6 +110,11 @@ docs/{ROADMAP,INSPIRATION,HANDOFF}.md
 - Rotas dinâmicas com `prerender = true` precisam de `entries` (jogo e dossiê já têm).
 - `page.url.searchParams` não pode ser lido durante prerender; o TopBar usa
   `typeof window` para escolher o locale.
+- A projeção customizada precisa existir no estilo antes das sources carregarem. Trocar
+  Globo ↔ 2D remonta o `MapCanvas` via `{#key projection}`; não use `setProjection`
+  depois do load.
+- O worker em `src/lib/map/worker.ts` importa o worker do MapLibre e registra o handler
+  do proj4. Sem ele, o GeoJSON é desenhado na posição errada em Equal Earth.
 - `npm run preview` precisa ser reiniciado após build; se a porta estiver ocupada,
   `fuser -k 4173/tcp`.
 - Firefox do Playwright está em `~/.cache/ms-playwright/firefox-1555/firefox/firefox`;
