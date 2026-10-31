@@ -96,6 +96,11 @@ docs/{ROADMAP,INSPIRATION,HANDOFF}.md
 - **Mapa:** abre no mapa base **2D em Equal Earth** (`addProjection` + proj4 no main e no
   worker), sem camada temática; globo 3D e relevo ficam como opções no globo (DEM em
   Mercator). Crossfade por duas camadas de fill.
+- **Mar, fora do mundo e wrap:** o oceano é o polígono `world-ocean` (o fundo do MapLibre é
+  transparente). Fora da linha do mundo, o CSS mostra uma mesa de carta com ondas no 2D e um
+  campo de estrelas no globo. A praça da projeção planar cobre **três mundos**; as fontes são
+  duplicadas em -360°/0°/+360° e a câmera salta 360° no `moveend`, então o pan leste–oeste é
+  infinito e invisível. O zoom exibido é o zoom da API menos `FLAT_ZOOM_OFFSET` (log₂ 3).
 - **Camadas:** a camada `standard` (Padrão) é o estado inicial e não entra na lista de seis
   camadas temáticas; clicar de novo na camada ativa volta a ela.
 - **Cards/dossiê:** o card virou ficha em blocos (identidade, métricas, abas curtas,
@@ -142,6 +147,17 @@ docs/{ROADMAP,INSPIRATION,HANDOFF}.md
 - A projeção customizada precisa existir no estilo antes das sources carregarem. Trocar
   Globo ↔ 2D remonta o `MapCanvas` via `{#key projection}`; não use `setProjection`
   depois do load.
+- A projeção planar **não repete o mundo**: `renderWorldCopies` é ignorado pelo MapLibre.
+  Não remova as cópias ±360° (`wrapCollection`) nem o salto de 360° no `moveend`; sem elas o
+  pan para no antimeridiano.
+- O `+over` no `definitions` do proj4 é obrigatório. Sem ele, proj4 normaliza longitudes e as
+  cópias em ±360° colapsam sobre o mundo original (borda e faixas duplicadas).
+- A praça de três mundos muda a escala do zoom: `FLAT_ZOOM_OFFSET` precisa entrar em rótulos,
+  escala gráfica, `focusCountry`, `flyTo`, `resetView` e no zoom exibido.
+- Os cantos da praça ficam fora do oval do mundo. O `inverse` da projeção é limitado aos polos
+  para o MapLibre não lançar "inverse has no answer" ao arrastar sobre o vazio.
+- Rótulos DOM do mapa não devem capturar `pointer-events`: se capturarem, arrastar a partir de
+  um nome de país deixa de mover o mapa.
 - O worker em `src/lib/map/worker.ts` importa o worker do MapLibre e registra o handler
   do proj4. Sem ele, o GeoJSON é desenhado na posição errada em Equal Earth.
 - `npm run preview` precisa ser reiniciado após build; se a porta estiver ocupada,

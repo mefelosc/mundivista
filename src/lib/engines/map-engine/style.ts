@@ -2,6 +2,7 @@ import type { LayerSpecification, StyleSpecification } from 'maplibre-gl';
 import { worldUrl } from '#lib/data/world';
 import type { ResolvedTheme } from '#lib/theme.svelte';
 import { graticuleGeoJSON } from './graticule';
+import { FLAT_ZOOM_OFFSET, oceanCollection, wrapCollection } from './wrap';
 
 export const MAP_LAYER = {
 	fillA: 'countries-fill-a',
@@ -28,6 +29,7 @@ export const MAP_LAYER = {
 	micro: 'microstate-dots',
 	hits: 'country-hit-points',
 	hillshade: 'terrain-hillshade',
+	ocean: 'world-ocean',
 	graticuleMinor: 'graticule-minor',
 	graticuleMajor: 'graticule-major'
 } as const;
@@ -86,11 +88,20 @@ export function createMapStyle(
 ): StyleSpecification {
 	const p = mapPalette(theme);
 	const dark = theme === 'dark';
+	const flat = projection === 'flat';
+	const zoomOffset = flat ? FLAT_ZOOM_OFFSET : 0;
 	const layers: LayerSpecification[] = [
 		{
+			// Transparente: fora do mundo aparece o espaço (globo) ou a mesa (2D).
 			id: 'background',
 			type: 'background',
-			paint: { 'background-color': p.ocean }
+			paint: { 'background-color': 'rgba(0, 0, 0, 0)' }
+		},
+		{
+			id: MAP_LAYER.ocean,
+			type: 'fill',
+			source: 'world-ocean',
+			paint: { 'fill-color': p.ocean, 'fill-antialias': true }
 		},
 		{
 			id: MAP_LAYER.graticuleMinor,
@@ -331,7 +342,7 @@ export function createMapStyle(
 			type: 'circle',
 			source: 'cities',
 			layout: { visibility: 'none' },
-			minzoom: 3.2,
+			minzoom: 3.2 + zoomOffset,
 			paint: {
 				'circle-color': p.clay,
 				'circle-radius': ['interpolate', ['linear'], ['zoom'], 3.2, 1.2, 6, 2.6],
@@ -345,7 +356,7 @@ export function createMapStyle(
 			type: 'circle',
 			source: 'cities',
 			filter: ['==', ['get', 'micro'], true],
-			minzoom: 1.4,
+			minzoom: 1.4 + zoomOffset,
 			paint: {
 				'circle-color': p.accent,
 				'circle-radius': ['interpolate', ['linear'], ['zoom'], 1.4, 2, 5, 3.4],
@@ -399,9 +410,13 @@ export function createMapStyle(
 				maxzoom: 12,
 				attribution: 'Elevação: AWS Terrain Tiles (SRTM, GMTED, NED e outras fontes públicas)'
 			},
+			'world-ocean': {
+				type: 'geojson',
+				data: oceanCollection(flat)
+			},
 			graticule: {
 				type: 'geojson',
-				data: graticuleGeoJSON()
+				data: flat ? wrapCollection(graticuleGeoJSON()) : graticuleGeoJSON()
 			}
 		},
 		layers,

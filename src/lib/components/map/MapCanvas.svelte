@@ -8,10 +8,11 @@
 		MapMouseEvent,
 		StyleSpecification
 	} from 'maplibre-gl';
+	import type { FeatureCollection } from 'geojson';
 	import { countries, getCountry } from '#lib/data/countries';
 	import { physicalLabels } from '#lib/data/physical-labels';
 	import { marineLabels } from '#lib/data/marine-labels';
-	import { physicalUrl } from '#lib/data/world';
+	import { physicalUrl, worldUrl } from '#lib/data/world';
 	import { cityPoints } from '#lib/data/cities';
 	import { capitalInPortuguese } from '#lib/data/capitals-pt';
 	import { buildChoropleth, withNoData } from '#lib/engines/map-engine/choropleth';
@@ -22,6 +23,12 @@
 		mapPalette,
 		type MapProjection
 	} from '#lib/engines/map-engine/style';
+	import {
+		FLAT_ZOOM_OFFSET,
+		nearestLng,
+		WORLD_COPIES,
+		wrapCollection
+	} from '#lib/engines/map-engine/wrap';
 	import { theme } from '#lib/theme.svelte';
 	import { sound } from '#lib/sound.svelte';
 	import type { ResolvedLayer } from '#lib/configurations/map-layers';
@@ -86,7 +93,7 @@
 	let wrapping = false;
 
 	const EQUAL_EARTH_DEFINITION =
-		'+proj=eqearth +lon_0=0 +x_0=0 +y_0=0 +R=6371008.8 +units=m +no_defs';
+		'+proj=eqearth +lon_0=0 +x_0=0 +y_0=0 +R=6371008.8 +over +units=m +no_defs';
 	let equalEarthRegistered = false;
 
 	const projectionLabel = $derived(projection === 'flat' ? '2D · Equal Earth' : 'Globo 3D');
@@ -101,12 +108,31 @@
 		if (equalEarthRegistered) return;
 		const converter = proj4('EPSG:4326', EQUAL_EARTH_DEFINITION);
 		const edge = converter.forward([180, 0])[0];
+		const poleY = Math.abs(converter.forward([0, 90])[1]);
+		// A praça da projeção tem cantos vazios (fora do oval do mundo). Sem
+		// isto, o MapLibre tenta inverter esses cantos ao arrastar o mapa e
+		// lança "inverse has no answer". Limitamos y aos polos: o ponteiro no
+		// vazio vira o polo mais próximo em vez de quebrar o gesto.
+		const projection = {
+			forward: (position: number[]) => converter.forward(position),
+			inverse: (position: number[]) => {
+				const y = Math.max(-poleY, Math.min(poleY, position[1]));
+				const out = converter.inverse([position[0], y]);
+				return out && Number.isFinite(out[0]) && Number.isFinite(out[1]) ? out : [0, 0];
+			}
+		};
+		// A praça da projeção cobre três mundos (-540°..540°). As cópias em
+		// ±360° ficam dentro dela e o MapLibre as desenha; a câmera salta 360°
+		// no antimeridiano para o pan ser infinito.
 		try {
 			maplibregl.addProjection({
 				name: EQUAL_EARTH_PROJECTION,
 				definition: EQUAL_EARTH_DEFINITION,
-				projection: converter as never,
-				tileMatrixSet: { origin: [-edge, edge], extentAtZoom0: edge * 2 }
+				projection: projection as never,
+				tileMatrixSet: {
+					origin: [-edge * WORLD_COPIES, edge],
+					extentAtZoom0: edge * 2 * WORLD_COPIES
+				}
 			});
 		} catch (error) {
 			// Dois mounts em sequência podem disputar o registro; o segundo já o encontra pronto.
@@ -292,12 +318,23 @@
 	}
 
 	/* ---------- unidades administrativas do país selecionado ---------- */
+	let wrappedSubdivisionsSource: typeof subdivisions = null;
+	let wrappedSubdivisions: typeof subdivisions = null;
+
 	function applySubdivisions() {
 		if (!map || !ready) return;
 		const source = map.getSource('subdivisions') as GeoJSONSource | undefined;
-		source?.setData(
-			subdivisions ?? ({ type: 'FeatureCollection', features: [] } as never)
-		);
+		if (projection === 'flat' && subdivisions?.features.length) {
+			if (wrappedSubdivisionsSource !== subdivisions) {
+				wrappedSubdivisionsSource = subdivisions;
+				wrappedSubdivisions = wrapCollection(subdivisions) as typeof subdivisions;
+			}
+			source?.setData(wrappedSubdivisions ?? subdivisions);
+		} else {
+			source?.setData(
+				subdivisions ?? ({ type: 'FeatureCollection', features: [] } as never)
+			);
+		}
 		applyActiveSubdivision();
 
 		const visible = !!layer.showSubdivisions && !!subdivisions?.features.length;
@@ -328,35 +365,48 @@
 	/* ---------- bandeira do território no feedback ---------- */
 	function loadFlagBounds(code: string) {
 		if (!map || !ready) return;
-		const features = map.querySourceFeatures('countries', {
+		const features = map.queryRenderedFeatures({
+			layers: [MAP_LAYER.fillA, MAP_LAYER.fillB],
 			filter: ['==', ['get', 'code'], code]
 		});
-		let minLng = Infinity;
-		let maxLng = -Infinity;
-		let minLat = Infinity;
-		let maxLat = -Infinity;
-		const visit = (coordinates: unknown) => {
-			if (!Array.isArray(coordinates)) return;
-			if (typeof coordinates[0] === 'number' && typeof coordinates[1] === 'number') {
-				const lng = coordinates[0] as number;
-				const lat = coordinates[1] as number;
-				if (lng < minLng) minLng = lng;
-				if (lng > maxLng) maxLng = lng;
-				if (lat < minLat) minLat = lat;
-				if (lat > maxLat) maxLat = lat;
-				return;
-			}
-			for (const child of coordinates) visit(child);
-		};
+		const centerLng = map.getCenter().lng;
+		let best: { minLng: number; maxLng: number; minLat: number; maxLat: number } | null = null;
+		let bestDistance = Infinity;
+
 		for (const feature of features) {
+			let minLng = Infinity;
+			let maxLng = -Infinity;
+			let minLat = Infinity;
+			let maxLat = -Infinity;
+			const visit = (coordinates: unknown) => {
+				if (!Array.isArray(coordinates)) return;
+				if (typeof coordinates[0] === 'number' && typeof coordinates[1] === 'number') {
+					const lng = coordinates[0] as number;
+					const lat = coordinates[1] as number;
+					if (lng < minLng) minLng = lng;
+					if (lng > maxLng) maxLng = lng;
+					if (lat < minLat) minLat = lat;
+					if (lat > maxLat) maxLat = lat;
+					return;
+				}
+				for (const child of coordinates) visit(child);
+			};
 			visit((feature.geometry as unknown as { coordinates?: unknown }).coordinates);
+			if (!Number.isFinite(minLng)) continue;
+			const distance = Math.abs(nearestLng((minLng + maxLng) / 2, centerLng) - centerLng);
+			if (distance < bestDistance) {
+				bestDistance = distance;
+				const mid = (minLng + maxLng) / 2;
+				const shift = nearestLng(mid, centerLng) - mid;
+				best = { minLng: minLng + shift, maxLng: maxLng + shift, minLat, maxLat };
+			}
 		}
-		if (!Number.isFinite(minLng)) {
+
+		if (!best) {
 			flagBounds = null;
 			return;
 		}
-		if (minLng > 0 && maxLng > 180) maxLng -= 360;
-		flagBounds = { minLng, maxLng, minLat, maxLat };
+		flagBounds = best;
 		updateFlagOverlay();
 	}
 
@@ -408,7 +458,7 @@
 		if (!map || !ready) return;
 		const p = mapPalette(theme.resolved);
 		const dark = theme.resolved === 'dark';
-		map.setPaintProperty('background', 'background-color', p.ocean);
+		map.setPaintProperty(MAP_LAYER.ocean, 'fill-color', p.ocean);
 		map.setPaintProperty(MAP_LAYER.graticuleMinor, 'line-color', p.graticule);
 		map.setPaintProperty(MAP_LAYER.graticuleMajor, 'line-color', p.graticule);
 		map.setPaintProperty(MAP_LAYER.graticuleMinor, 'line-opacity', dark ? 0.05 : 0.07);
@@ -486,20 +536,10 @@
 		labelsEl.replaceChildren();
 		labelEntries = [];
 
-		const make = (text: string, kind: 'country' | 'capital' | 'physical' | 'city' | 'marine' | 'unit', code?: string) => {
-			const el = document.createElement(kind === 'country' ? 'button' : 'span');
-			if (kind === 'country') {
-				(el as HTMLButtonElement).type = 'button';
-				(el as HTMLButtonElement).tabIndex = -1;
-				el.setAttribute('aria-label', text);
-				el.addEventListener('click', (event) => {
-					event.stopPropagation();
-					if (code) {
-						sound.click();
-						onselect?.(code);
-					}
-				});
-			}
+		const make = (text: string, kind: 'country' | 'capital' | 'physical' | 'city' | 'marine' | 'unit') => {
+			// Rótulos são apenas pintura: se capturarem o ponteiro, arrastar o
+			// mapa a partir de um nome de país deixa de funcionar.
+			const el = document.createElement('span');
 			el.className = labelClass(kind);
 			el.textContent = text;
 			el.style.display = 'none';
@@ -509,7 +549,7 @@
 
 		for (const country of countries) {
 			labelEntries.push({
-				el: make(country.name, 'country', country.code),
+				el: make(country.name, 'country'),
 				kind: 'country',
 				code: country.code,
 				lat: country.label[1],
@@ -624,13 +664,14 @@
 			return;
 		}
 
-		const zoom = map.getZoom();
+		const zoom = map.getZoom() - (projection === 'flat' ? FLAT_ZOOM_OFFSET : 0);
 		const width = container.clientWidth;
 		const height = container.clientHeight;
 		const focusSet = focus ? new Set(focus) : null;
 		const placed: { x: number; y: number; w: number; h: number }[] = [];
 		let visibleCount = 0;
 		const globe = projection === 'globe';
+		const centerLng = map.getCenter().lng;
 		const capitalLayers = layer.id === 'political' || layer.id === 'geopolitics' || layer.id === 'history';
 
 		for (const entry of labelEntries) {
@@ -683,7 +724,8 @@
 				continue;
 			}
 
-			const point = map.project([entry.lng, entry.lat]);
+			const lng = globe ? entry.lng : nearestLng(entry.lng, centerLng);
+			const point = map.project([lng, entry.lat]);
 			if (point.x < -60 || point.x > width + 60 || point.y < -30 || point.y > height + 30) {
 				entry.el.style.display = 'none';
 				continue;
@@ -749,8 +791,10 @@
 	function updateScale() {
 		if (!map) return;
 		const center = map.getCenter();
-		const zoom = map.getZoom();
-		const metersPerPixel = (156543.03392 * Math.cos((center.lat * Math.PI) / 180)) / Math.pow(2, zoom);
+		const zoom = map.getZoom() - (projection === 'flat' ? FLAT_ZOOM_OFFSET : 0);
+		// 512 px por mundo no zoom 0; na projeção planar a praça tem três mundos.
+		const metersPerPixel =
+			(40075016.686 / (512 * Math.pow(2, zoom))) * Math.cos((center.lat * Math.PI) / 180);
 		const target = metersPerPixel * 96;
 		const pow = Math.pow(10, Math.floor(Math.log10(target)));
 		const nice = [1, 2, 5, 10].map((m) => m * pow).find((v) => v >= target * 0.62) ?? pow * 10;
@@ -818,14 +862,24 @@
 				registerEqualEarth(maplibregl, proj4);
 			}
 			if (!container) return;
-			const flatZoom = Math.max(-0.5, Math.log2(Math.max(320, container.clientWidth) / 512) - 0.04);
+			const flatZoom =
+				Math.max(-0.5, Math.log2(Math.max(320, container.clientWidth) / 512) - 0.04) +
+				FLAT_ZOOM_OFFSET;
+			// A projeção planar não repete o mundo sozinha: entregamos as cópias
+			// já no estilo para o pan leste–oeste ser contínuo desde o primeiro frame.
+			const style = createMapStyle(theme.resolved, projection) as StyleSpecification;
+			if (isFlat) {
+				const world = await fetch(worldUrl).then((res) => res.json());
+				(style.sources.countries as { data: unknown }).data = wrapCollection(world);
+			}
+			if (!container) return;
 			map = new maplibregl.Map({
 				container,
-				style: createMapStyle(theme.resolved, projection) as StyleSpecification,
+				style,
 				center: isFlat ? [0, 0] : [0, 16],
 				zoom: isFlat ? flatZoom : isMobile ? 1.2 : 1.8,
-				minZoom: isFlat ? -0.8 : -0.6,
-				maxZoom: isFlat ? 7 : 7.4,
+				minZoom: isFlat ? Math.max(-1.2, flatZoom - 0.6) : -0.6,
+				maxZoom: isFlat ? 7 + FLAT_ZOOM_OFFSET : 7.4,
 				attributionControl: false,
 				renderWorldCopies: true,
 				dragRotate: false,
@@ -846,9 +900,11 @@
 				try {
 					const physical = await fetch(physicalUrl).then((res) => res.json());
 					if (!map) return;
-					map.addSource('lakes', { type: 'geojson', data: physical.lakes });
-					map.addSource('rivers', { type: 'geojson', data: physical.rivers });
-					map.addSource('coastline', { type: 'geojson', data: physical.coastline });
+					const wrap = <T extends FeatureCollection>(collection: T): T =>
+						isFlat ? wrapCollection(collection) : collection;
+					map.addSource('lakes', { type: 'geojson', data: wrap(physical.lakes) });
+					map.addSource('rivers', { type: 'geojson', data: wrap(physical.rivers) });
+					map.addSource('coastline', { type: 'geojson', data: wrap(physical.coastline) });
 					const p = mapPalette(theme.resolved);
 					map.addLayer(
 						{
@@ -885,20 +941,21 @@
 						},
 						MAP_LAYER.border
 					);
-					(map.getSource('cities') as GeoJSONSource | undefined)?.setData({
-						type: 'FeatureCollection',
-						features: cityPoints
-					});
-					(map.getSource('country-hits') as GeoJSONSource | undefined)?.setData({
-						type: 'FeatureCollection',
-						features: countries
-							.filter((country) => (country.areaKm2 ?? Infinity) < 250_000)
-							.map((country) => ({
-								type: 'Feature',
-								properties: { code: country.code },
-								geometry: { type: 'Point', coordinates: country.label }
-							}))
-					});
+					(map.getSource('cities') as GeoJSONSource | undefined)?.setData(
+						isFlat
+							? wrapCollection({ type: 'FeatureCollection', features: cityPoints })
+							: { type: 'FeatureCollection', features: cityPoints }
+					);
+					const hits = countries
+						.filter((country) => (country.areaKm2 ?? Infinity) < 250_000)
+						.map((country) => ({
+							type: 'Feature' as const,
+							properties: { code: country.code },
+							geometry: { type: 'Point' as const, coordinates: country.label }
+						}));
+					(map.getSource('country-hits') as GeoJSONSource | undefined)?.setData(
+						isFlat ? wrapCollection({ type: 'FeatureCollection', features: hits }) : { type: 'FeatureCollection', features: hits }
+					);
 				} catch (err) {
 					console.warn('Não foi possível carregar rios, lagos e cidades', err);
 				}
@@ -919,13 +976,18 @@
 			});
 
 			map.on('move', () => {
+				if (!map) return;
 				scheduleLabels();
 				updateFlagOverlay();
 				updateScale();
-				pitch = map!.getPitch();
+				pitch = map.getPitch();
 				if (onview) {
-					const center = map!.getCenter();
-					onview({ lat: center.lat, lng: center.lng, zoom: map!.getZoom() });
+					const center = map.getCenter();
+					onview({
+						lat: center.lat,
+						lng: center.lng,
+						zoom: map.getZoom() - (projection === 'flat' ? FLAT_ZOOM_OFFSET : 0)
+					});
 				}
 			});
 			map.on('zoom', () => {
@@ -938,11 +1000,20 @@
 			});
 			map.on('moveend', () => {
 				if (!map || projection !== 'flat' || wrapping) return;
+				// As fontes têm cópias em ±360°; ao terminar o gesto, reancoramos
+				// a câmera no mundo central. O salto de 360° é invisível.
 				const center = map.getCenter();
-				if (Math.abs(Math.abs(center.lng) - 180) > 0.01) return;
+				let next: number | null = null;
+				if (center.lng > 180) next = center.lng - 360;
+				else if (center.lng < -180) next = center.lng + 360;
+				if (next === null) return;
 				wrapping = true;
-				map.jumpTo({ center: [center.lng > 0 ? center.lng - 360 : center.lng + 360, center.lat] });
-				requestAnimationFrame(() => (wrapping = false));
+				// Fora do ciclo do gesto: o MapLibre ainda está fechando o
+				// drag/inércia quando moveend dispara.
+				setTimeout(() => {
+					map?.jumpTo({ center: [next, center.lat] });
+					requestAnimationFrame(() => (wrapping = false));
+				}, 0);
 			});
 
 			map.on('mousemove', (event: MapMouseEvent) => {
@@ -1103,14 +1174,23 @@
 	});
 
 	export function flyTo(center: [number, number], zoom = 3, duration = 900) {
-		map?.flyTo({ center, zoom, duration, essential: true, curve: 1.35, speed: 0.9 });
+		map?.flyTo({
+			center,
+			zoom: zoom + (projection === 'flat' ? FLAT_ZOOM_OFFSET : 0),
+			duration,
+			essential: true,
+			curve: 1.35,
+			speed: 0.9
+		});
 	}
 
 	export function focusCountry(center: [number, number], areaKm2: number | null) {
 		if (!map) return;
 		const mobile = typeof window !== 'undefined' && window.innerWidth <= 900;
 		const area = Math.max(areaKm2 ?? 100_000, 1);
-		const zoom = Math.min(5.8, Math.max(2.6, 4.8 - Math.log10(area / 50_000) * 0.65));
+		const zoom =
+			Math.min(5.8, Math.max(2.6, 4.8 - Math.log10(area / 50_000) * 0.65)) +
+			(projection === 'flat' ? FLAT_ZOOM_OFFSET : 0);
 		const padding = mobile
 			? { bottom: Math.min(430, Math.round(window.innerHeight * 0.55)) }
 			: { right: Math.min(560, Math.round(window.innerWidth * 0.4)) };
@@ -1128,7 +1208,9 @@
 	export function resetView() {
 		const isMobile = typeof window !== 'undefined' && window.innerWidth < 720;
 		if (projection === 'flat') {
-			const flatZoom = Math.max(-0.5, Math.log2(Math.max(320, container.clientWidth) / 512) - 0.04);
+			const flatZoom =
+				Math.max(-0.5, Math.log2(Math.max(320, container.clientWidth) / 512) - 0.04) +
+				FLAT_ZOOM_OFFSET;
 			map?.flyTo({ center: [0, 0], zoom: flatZoom, duration: 700, essential: true });
 		} else {
 			map?.flyTo({ center: [0, 16], zoom: isMobile ? 1.2 : 1.8, duration: 760, essential: true });
@@ -1147,11 +1229,21 @@
 	export function getView() {
 		if (!map) return null;
 		const center = map.getCenter();
-		return { lat: center.lat, lng: center.lng, zoom: map.getZoom() };
+		return {
+			lat: center.lat,
+			lng: center.lng,
+			zoom: map.getZoom() - (projection === 'flat' ? FLAT_ZOOM_OFFSET : 0)
+		};
 	}
 </script>
 
-<div class={`map-canvas ${className}`} bind:this={container} data-pitch={Math.round(pitch)}>
+<div
+	class={`map-canvas ${className}`}
+	bind:this={container}
+	data-pitch={Math.round(pitch)}
+	data-projection={projection}
+>
+	<div class="map-space" aria-hidden="true"></div>
 	<div class="map-labels" bind:this={labelsEl} aria-hidden="true"></div>
 	{#if flagBox}
 		<span
@@ -1193,7 +1285,73 @@
 		position: absolute;
 		inset: 0;
 		overflow: hidden;
-		background: var(--map-ocean);
+		background: var(--map-void);
+		isolation: isolate;
+	}
+	.map-space {
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+		pointer-events: none;
+		background-color: var(--map-void);
+	}
+	.map-canvas[data-projection='flat'] .map-space {
+		background-image:
+			var(--map-void-wave),
+			var(--map-void-wave),
+			linear-gradient(var(--map-void-line) 1px, transparent 1px),
+			linear-gradient(90deg, var(--map-void-line) 1px, transparent 1px),
+			radial-gradient(
+				130% 100% at 50% 44%,
+				transparent 38%,
+				color-mix(in oklab, var(--surface-0) 42%, transparent) 100%
+			);
+		background-size:
+			200px 64px,
+			400px 128px,
+			52px 52px,
+			52px 52px,
+			100% 100%;
+		background-position:
+			0 0,
+			100px 32px,
+			center,
+			center,
+			center;
+	}
+	.map-canvas[data-projection='globe'] .map-space {
+		background-color: #050907;
+		background-image:
+			radial-gradient(1.2px 1.2px at 18% 24%, rgba(240, 248, 242, 0.9) 45%, transparent 100%),
+			radial-gradient(1px 1px at 72% 14%, rgba(226, 238, 230, 0.75) 45%, transparent 100%),
+			radial-gradient(1.4px 1.4px at 44% 68%, rgba(240, 248, 242, 0.7) 45%, transparent 100%),
+			radial-gradient(1px 1px at 88% 62%, rgba(226, 238, 230, 0.8) 45%, transparent 100%),
+			radial-gradient(1px 1px at 8% 82%, rgba(226, 238, 230, 0.6) 45%, transparent 100%),
+			radial-gradient(1.6px 1.6px at 58% 38%, rgba(240, 248, 242, 0.55) 45%, transparent 100%),
+			radial-gradient(
+				70% 60% at 66% 26%,
+				color-mix(in oklab, var(--accent-1) 14%, transparent),
+				transparent 68%
+			),
+			radial-gradient(90% 80% at 30% 78%, rgba(60, 90, 80, 0.28), transparent 70%);
+		background-size:
+			260px 260px,
+			340px 340px,
+			300px 300px,
+			420px 420px,
+			380px 380px,
+			500px 500px,
+			100% 100%,
+			100% 100%;
+		background-position:
+			0 0,
+			40px 90px,
+			160px 20px,
+			220px 140px,
+			90px 200px,
+			300px 60px,
+			center,
+			center;
 	}
 	.map-labels {
 		position: absolute;
@@ -1231,7 +1389,7 @@
 		position: absolute;
 		top: 0;
 		left: 0;
-		pointer-events: auto;
+		pointer-events: none;
 		background: none;
 		border: 0;
 		padding: 2px 4px;

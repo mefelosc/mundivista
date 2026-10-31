@@ -48,6 +48,9 @@ O `smoke`, `a11y` e `shots` esperam um preview em `http://localhost:4173`.
 - Abre no **mapa base 2D em Equal Earth** (área preservada), sem camada temática ativa. As
   seis camadas — político, físico, demografia, economia, geopolítica e história — são
   escolhidas no filtro de camadas; clicar de novo na camada ativa volta ao mapa padrão.
+- Pan **horizontal infinito** no 2D: arrastar para leste ou oeste dá a volta no mundo; cima e
+  baixo param nos polos. O mar é um polígono do mundo — azul só dentro da linha do mapa;
+  fora dela, mesa de carta no 2D e espaço estrelado no globo 3D.
 - Globo 3D e relevo opcionais, alternáveis no canto inferior direito.
 - HUD com filtro de camadas recolhível (com memória), legenda contextual recolhível e um
   único grupo de controles com coordenadas, zoom, projeção e relevo. Alvos de toque maiores

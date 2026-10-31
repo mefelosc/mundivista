@@ -57,6 +57,24 @@ await check('clique no mapa abre card e contorna o país', async () => {
 	if ((await toggle.getAttribute('aria-pressed')) !== 'true') throw new Error('destaque não ativou');
 });
 
+await check('pan horizontal do 2D dá a volta no mundo', async () => {
+	await page.goto(`${BASE}/explore`, { waitUntil: 'networkidle' });
+	await page.waitForTimeout(2600);
+	for (let i = 0; i < 4; i += 1) {
+		await page.mouse.move(1200, 450);
+		await page.mouse.down();
+		await page.mouse.move(200, 450, { steps: 18 });
+		await page.mouse.up();
+		await page.waitForTimeout(1100);
+	}
+	await page.mouse.move(8, 120);
+	await page.waitForTimeout(500);
+	const readout = await page.locator('.readout-main').innerText();
+	if (!/·/.test(readout)) throw new Error(`leitura inválida: ${readout}`);
+	const visibleLabels = await page.locator('.map-label:visible').count();
+	if (visibleLabels < 10) throw new Error(`rótulos visíveis=${visibleLabels}`);
+});
+
 await check('nomes de oceanos aparecem no mapa', async () => {
 	await page.goto(`${BASE}/explore?projection=flat`, { waitUntil: 'networkidle' });
 	await page.waitForTimeout(3000);
