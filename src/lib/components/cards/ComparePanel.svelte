@@ -352,7 +352,7 @@
 		align-items: center;
 		gap: 0.4rem;
 		font-family: var(--font-mono);
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 		color: var(--text-4);
 	}
 	.row-meta em {
@@ -394,7 +394,7 @@
 		justify-content: space-between;
 		margin-top: 0.18rem;
 		font-family: var(--font-mono);
-		font-size: 0.62rem;
+		font-size: 0.68rem;
 		color: var(--text-4);
 	}
 	.trend-wrap {

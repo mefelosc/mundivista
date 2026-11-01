@@ -351,7 +351,7 @@
 		stroke-linecap: round;
 		stroke-dasharray: 1;
 		stroke-dashoffset: 1;
-		animation: line-draw 0.7s var(--ease-out-soft) forwards;
+		animation: line-draw 0.5s var(--ease-out-soft) forwards;
 	}
 	@keyframes line-draw {
 		to {

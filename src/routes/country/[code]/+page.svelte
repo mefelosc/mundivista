@@ -862,8 +862,8 @@
 		padding: 0.55rem 0.68rem;
 		border-bottom: 2px solid transparent;
 		font-family: var(--font-mono);
-		font-size: 0.7rem;
-		letter-spacing: 0.04em;
+		font-size: 0.76rem;
+		letter-spacing: 0.03em;
 		color: var(--text-2);
 		text-decoration: none;
 		white-space: nowrap;

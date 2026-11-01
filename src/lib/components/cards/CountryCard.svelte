@@ -183,7 +183,7 @@
 	const disputed = $derived(localizedDisputed(disputedInfo(country.code), locale.value));
 	const sovereign = $derived(sovereignCountry(country));
 	const dependency = $derived(localizeDependency(country, locale.value));
-	const accent = $derived(layer.palette?.[layer.palette.length - 1] ?? 'var(--accent-1)');
+	const accent = $derived('var(--accent-1)');
 
 	const units = $derived(subdivisions?.features.map((feature) => feature.properties) ?? []);
 	const shownUnits = $derived(units.slice(0, unitLimit));
