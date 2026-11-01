@@ -17,8 +17,11 @@
 	import { membershipAt } from '#lib/data/timeline';
 	import { theme } from '#lib/theme.svelte';
 	import { layerById } from '#lib/configurations/map-layers';
+	import { locale } from '#lib/locale.svelte';
 	import type { LayerId } from '#lib/types';
 
+	const isEn = $derived(locale.value === 'en');
+	const tr = (pt: string, en: string) => (isEn ? en : pt);
 	let layerId = $state<LayerId>('standard');
 	let selected = $state<string | null>(null);
 	let bloc = $state<string | null>(null);
@@ -286,12 +289,12 @@
 
 	{#if !country && !hintDismissed}
 		<div class="hint animate-fade-up">
-			<button type="button" class="hint-close" onclick={dismissHint} aria-label="Fechar dica">
+			<button type="button" class="hint-close" onclick={dismissHint} aria-label={tr('Fechar dica', 'Dismiss hint')}>
 				<Icon name="close" size={12} />
 			</button>
-			<span class="eyebrow">Exploração livre</span>
-			<p>Clique em um país para abrir o dossiê. Escolha uma camada no filtro para sobrepor dados ao mapa.</p>
-			<p class="keys"><kbd>←</kbd><kbd>→</kbd> camadas · <kbd>g</kbd> 2D/globo · <kbd>t</kbd> relevo · <kbd>⌘K</kbd> busca</p>
+			<span class="eyebrow">{tr('Exploração livre', 'Free exploration')}</span>
+			<p>{tr('Clique em um país para abrir o dossiê. Escolha uma camada no filtro para sobrepor dados ao mapa.', 'Click a country to open its dossier. Choose a layer in the filter to overlay data on the map.')}</p>
+			<p class="keys"><kbd>←</kbd><kbd>→</kbd> {tr('camadas', 'layers')} · <kbd>g</kbd> 2D/globe · <kbd>t</kbd> {tr('relevo', 'relief')} · <kbd>⌘K</kbd> {tr('busca', 'search')}</p>
 		</div>
 	{/if}
 
@@ -306,12 +309,12 @@
 				<span class="readout-meta">z{view.zoom.toFixed(1)}</span>
 			</div>
 			<div class="switch-row">
-				<div class="segmented" role="group" aria-label="Projeção do mapa">
+				<div class="segmented" role="group" aria-label={tr('Projeção do mapa', 'Map projection')}>
 					<button
 						type="button"
 						class:active={projection === 'flat'}
 						onclick={() => setProjection('flat')}
-						title="Mapa 2D em Equal Earth, com áreas proporcionais (padrão)"
+						title={tr('Mapa 2D em Equal Earth, com áreas proporcionais (padrão)', '2D Equal Earth map with proportional areas (default)')}
 					>
 						<Icon name="compass" size={14} /> 2D
 					</button>
@@ -319,9 +322,9 @@
 						type="button"
 						class:active={projection === 'globe'}
 						onclick={() => setProjection('globe')}
-						title="Globo 3D, com relevo opcional"
+						title={tr('Globo 3D, com relevo opcional', '3D globe with optional relief')}
 					>
-						<Icon name="globe3d" size={14} /> Globo
+						<Icon name="globe3d" size={14} /> {tr('Globo', 'Globe')}
 					</button>
 				</div>
 				<button
@@ -330,10 +333,10 @@
 					class:active={terrain}
 					onclick={toggleTerrain}
 					disabled={projection === 'flat'}
-					title={projection === 'flat' ? 'Relevo disponível no globo 3D: o DEM é Mercator' : 'Relevo 3D com modelo digital de elevação'}
+					title={projection === 'flat' ? tr('Relevo disponível no globo 3D: o DEM é Mercator', 'Relief available on the 3D globe: the DEM is Mercator') : tr('Relevo 3D com modelo digital de elevação', '3D relief with a digital elevation model')}
 					aria-pressed={terrain}
 				>
-					<Icon name="peak" size={14} /> Relevo
+					<Icon name="peak" size={14} /> {tr('Relevo', 'Relief')}
 				</button>
 				<button
 					type="button"
@@ -342,22 +345,22 @@
 					onclick={() => (mobileLegend = !mobileLegend)}
 					aria-pressed={mobileLegend}
 				>
-					<Icon name="layers" size={14} /> Legenda
+					<Icon name="layers" size={14} /> {tr('Legenda', 'Legend')}
 				</button>
 			</div>
 			<div class="buttons">
-				<button type="button" onclick={() => mapRef?.zoomBy(0.6)} aria-label="Aproximar" title="Aproximar">
+				<button type="button" onclick={() => mapRef?.zoomBy(0.6)} aria-label={tr('Aproximar', 'Zoom in')} title={tr('Aproximar', 'Zoom in')}>
 					<Icon name="plus" size={17} />
 				</button>
-				<button type="button" onclick={() => mapRef?.zoomBy(-0.6)} aria-label="Afastar" title="Afastar">
+				<button type="button" onclick={() => mapRef?.zoomBy(-0.6)} aria-label={tr('Afastar', 'Zoom out')} title={tr('Afastar', 'Zoom out')}>
 					<Icon name="minus" size={17} />
 				</button>
-				<button type="button" onclick={() => mapRef?.resetView()} aria-label="Voltar ao mundo" title="Voltar ao mundo">
+				<button type="button" onclick={() => mapRef?.resetView()} aria-label={tr('Voltar ao mundo', 'Back to the world')} title={tr('Voltar ao mundo', 'Back to the world')}>
 					<Icon name="reset" size={16} />
 				</button>
 			</div>
 		</div>
-		<a class="sources" href="/sobre">Fontes e métodos</a>
+		<a class="sources" href="/sobre">{tr('Fontes e métodos', 'Sources and methods')}</a>
 	</div>
 
 	{#if mobileLegend}
@@ -374,7 +377,7 @@
 		<span>·</span>
 		<span>{indicatorKeys.length} indicadores</span>
 		<span>·</span>
-		<span>{projection === 'flat' ? '2D · Equal Earth' : 'Globo 3D'}</span>
+		<span>{projection === 'flat' ? '2D · Equal Earth' : tr('Globo 3D', '3D Globe')}</span>
 		<span>·</span>
 		<span>Natural Earth 1:50m</span>
 		{#if terrain}

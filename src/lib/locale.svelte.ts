@@ -1,4 +1,5 @@
 import type { Locale } from './i18n';
+import { setFormatLocale } from './format';
 
 const browser = typeof window !== 'undefined';
 
@@ -12,6 +13,7 @@ export const locale = {
 	},
 	set(value: Locale) {
 		current = value;
+		setFormatLocale(value);
 		if (browser) {
 			localStorage.setItem(STORAGE_KEY, value);
 			document.documentElement.lang = value === 'en' ? 'en' : 'pt-BR';

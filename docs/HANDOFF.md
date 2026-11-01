@@ -96,6 +96,11 @@ docs/{ROADMAP,INSPIRATION,HANDOFF}.md
 - **Mapa:** abre no mapa base **2D em Equal Earth** (`addProjection` + proj4 no main e no
   worker), sem camada temática; globo 3D e relevo ficam como opções no globo (DEM em
   Mercator). Crossfade por duas camadas de fill.
+- **Gráficos:** `MetricChart` usa SVG acessível (role slider, setas), eixos HTML fixos,
+  variantes linha/área/barras, linha de mediana mundial e animação de desenho; o gráfico
+  é remontado por `{#key}` ao trocar indicador para reiniciar a animação.
+- **Comparação:** `ComparePanel` calcula barras normalizadas e radar de percentis; para
+  desemprego/CO₂ o exterior do radar representa melhor desempenho. O painel é full width.
 - **Mar, fora do mundo e wrap:** o oceano é o polígono `world-ocean` e o fundo do MapLibre é
   transparente. No 2D o CSS por trás do canvas usa a mesma cor do mar, então a borda do mundo
   não aparece e o pan parece uma câmera contínua; no globo 3D o CSS é um campo de estrelas.
@@ -105,11 +110,12 @@ docs/{ROADMAP,INSPIRATION,HANDOFF}.md
   da API menos `FLAT_ZOOM_OFFSET` (log₂ 3).
 - **Camadas:** a camada `standard` (Padrão) é o estado inicial e não entra na lista de seis
   camadas temáticas; clicar de novo na camada ativa volta a ela.
-- **Cards/dossiê:** o card virou uma **ficha contínua sem abas**: hero com bandeira/brilho,
-  ledger de métricas, índice fixo de seções e todas as seções na mesma rolagem (identidade,
-  vizinhos, demografia, economia, físico, geopolítica, história) + CTA fixo para o dossiê.
-  O dossiê ganhou capa editorial com silhueta, mapa de localização no hero, ledger, nav fixa,
-  cards animados e comparação na lateral.
+- **Cards/dossiê:** o card virou uma **ficha contínua com abas-índice** (hero com bandeira,
+  ledger de métricas, visão geral com gráfico em destaque, ficha, vizinhos, demografia,
+  economia, físico, geopolítica e história), CTA fixo para o dossiê e ícones por seção.
+  O dossiê ganhou capa editorial com silhueta, mapa no hero, ledger, nav fixa, comparação
+  em painel largo (barras + radar de percentis), gráficos com eixos/mediana/tooltip e
+  “Explore também”. Economia inclui empresas e comércio exterior curados.
 - **Portal/Play/HUD:** portal em tela cheia com mapa-múndi de fundo e quatro entradas
   grandes; Play como sala de jogos em cards; configurações com idioma, tema, som e texto;
   `focusCountry` centraliza o país ao lado do card e a bandeira cobre o território no acerto.

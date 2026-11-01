@@ -9,14 +9,16 @@
 @import 'maplibre-gl/dist/maplibre-gl.css';
 
 /*
- * Direção visual: Atlas Editorial.
- * Papel quente, tinta, vinho e ocre; réguas finas, numeração e tipografia serifada
- * de display. O modo escuro é o mesmo atlas à noite — não uma inversão automática.
+ * Direção visual: Atlas moderno.
+ * Superfícies claras, tinta profunda, verde sinal e ametista; display sans de
+ * peso alto, cartões arredondados, sombras suaves e HUD em vidro. O modo escuro
+ * é o mesmo atlas à noite — não uma inversão automática.
  */
 
 @theme {
 	--font-sans: 'Instrument Sans Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-	--font-display: 'Newsreader Variable', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+	--font-display: 'Instrument Sans Variable', ui-sans-serif, system-ui, sans-serif;
+	--font-serif: 'Newsreader Variable', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
 	--font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
 
 	--color-ink-950: var(--surface-0);
@@ -46,7 +48,13 @@
 	--color-positive-400: var(--positive);
 	--color-negative-400: var(--negative);
 
-	--radius-panel: 0.2rem;
+	--radius-sm: 0.5rem;
+	--radius-md: 0.85rem;
+	--radius-lg: 1.25rem;
+	--radius-pill: 999px;
+	--radius-panel: var(--radius-md);
+	--shadow-soft: 0 18px 40px -30px rgb(0 0 0 / 0.42);
+	--shadow-float: 0 28px 70px -34px rgb(0 0 0 / 0.55);
 
 	--ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -54,35 +62,35 @@
 @layer base {
 	:root {
 		color-scheme: light;
-		--header-h: 3.5rem;
-		--rail-w: 11rem;
-		--sheet-w: clamp(30rem, 36vw, 34rem);
+		--header-h: 4.25rem;
+		--rail-w: 12rem;
+		--sheet-w: clamp(32rem, 40vw, 38rem);
 
 		/* Papel e tinta — modo claro (padrão) */
-		--surface-0: #f3f6f2;
-		--surface-1: #edf2ed;
-		--surface-2: #fbfcf9;
-		--surface-3: #e3eae4;
-		--surface-4: #d7e1d8;
-		--surface-5: #c9d6cc;
-		--text-1: #17241d;
-		--text-2: #32443a;
-		--text-3: #46584e;
-		--text-4: #5f7166;
-		--line: rgba(23, 36, 29, 0.13);
-		--line-strong: rgba(23, 36, 29, 0.24);
-		--line-emphasis: rgba(23, 36, 29, 0.42);
-		--accent-0: #2b5f49;
-		--accent-1: #3a7458;
-		--accent-2: #7a4963;
-		--water-0: #4f8490;
-		--water-1: #32646f;
-		--wine: #7a4963;
-		--wine-soft: #a26f87;
-		--clay: #7d6a86;
-		--forest: #4d7359;
-		--positive: #3a7458;
-		--negative: #ab4e46;
+		--surface-0: #f1f5ef;
+		--surface-1: #ffffff;
+		--surface-2: #ffffff;
+		--surface-3: #e8efe8;
+		--surface-4: #dce7dd;
+		--surface-5: #ccdacd;
+		--text-1: #0c1710;
+		--text-2: #25382c;
+		--text-3: #41564a;
+		--text-4: #5a6c60;
+		--line: rgba(12, 23, 16, 0.12);
+		--line-strong: rgba(12, 23, 16, 0.22);
+		--line-emphasis: rgba(12, 23, 16, 0.4);
+		--accent-0: #0c5c3d;
+		--accent-1: #0f7a4e;
+		--accent-2: #5b3fc4;
+		--water-0: #2f7f99;
+		--water-1: #1f647d;
+		--wine: #7457e8;
+		--wine-soft: #9c86f2;
+		--clay: #7457e8;
+		--forest: #15925f;
+		--positive: #0f7a4e;
+		--negative: #c2453d;
 		--map-paper: #eef3ee;
 		--map-ocean: #dfeaef;
 		--map-land: #e4e9dd;
@@ -98,30 +106,30 @@
 
 	[data-theme='dark'] {
 		color-scheme: dark;
-		--surface-0: #0f1411;
-		--surface-1: #141a16;
-		--surface-2: #19211c;
-		--surface-3: #202a23;
-		--surface-4: #29352c;
-		--surface-5: #344238;
-		--text-1: #edf3ee;
-		--text-2: #cfdad2;
-		--text-3: #a8b8ad;
-		--text-4: #83958a;
-		--line: rgba(237, 243, 238, 0.13);
-		--line-strong: rgba(237, 243, 238, 0.24);
-		--line-emphasis: rgba(237, 243, 238, 0.42);
-		--accent-0: #7fbb9d;
-		--accent-1: #95cfae;
-		--accent-2: #d0a2b5;
-		--water-0: #79aab5;
-		--water-1: #a4cbd3;
-		--wine: #c98fa5;
-		--wine-soft: #dba7b9;
-		--clay: #b19bc0;
-		--forest: #8bb99a;
-		--positive: #78b894;
-		--negative: #d97a70;
+		--surface-0: #070c09;
+		--surface-1: #0d1510;
+		--surface-2: #121c16;
+		--surface-3: #19261f;
+		--surface-4: #22332a;
+		--surface-5: #2c4034;
+		--text-1: #f0f7f2;
+		--text-2: #c9d8ce;
+		--text-3: #a0b3a6;
+		--text-4: #7f9487;
+		--line: rgba(240, 247, 242, 0.12);
+		--line-strong: rgba(240, 247, 242, 0.22);
+		--line-emphasis: rgba(240, 247, 242, 0.4);
+		--accent-0: #7af0bb;
+		--accent-1: #3ddc97;
+		--accent-2: #b79bff;
+		--water-0: #64bdd4;
+		--water-1: #8ad5e6;
+		--wine: #b79bff;
+		--wine-soft: #cbb8ff;
+		--clay: #b79bff;
+		--forest: #3ddc97;
+		--positive: #3ddc97;
+		--negative: #ff8078;
 		--map-paper: #0f1411;
 		--map-ocean: #101820;
 		--map-land: #1a221c;
@@ -136,7 +144,7 @@
 	}
 
 	html {
-		font-size: 16px;
+		font-size: 17px;
 		background: var(--surface-0);
 	}
 
@@ -215,18 +223,16 @@
 }
 
 @utility panel {
-	background: var(--surface-2);
+	background: color-mix(in oklab, var(--surface-2) 92%, transparent);
 	border: 1px solid var(--line);
-	border-radius: var(--radius-panel);
-	box-shadow:
-		0 1px 0 0 color-mix(in oklab, #fff 30%, transparent) inset,
-		0 18px 36px -28px rgb(0 0 0 / 0.55);
+	border-radius: var(--radius-lg);
+	box-shadow: var(--shadow-soft);
+	backdrop-filter: blur(18px);
 }
 
 [data-theme='dark'] .panel {
-	box-shadow:
-		0 1px 0 0 color-mix(in oklab, #fff 3%, transparent) inset,
-		0 18px 36px -26px rgb(0 0 0 / 0.8);
+	background: color-mix(in oklab, var(--surface-2) 88%, transparent);
+	box-shadow: var(--shadow-float);
 }
 
 @utility hairline {
@@ -240,9 +246,10 @@
 
 @utility eyebrow {
 	font-family: var(--font-mono);
-	font-size: 0.625rem;
-	line-height: 1;
-	letter-spacing: 0.16em;
+	font-size: 0.76rem;
+	font-weight: 600;
+	line-height: 1.1;
+	letter-spacing: 0.13em;
 	text-transform: uppercase;
 	color: var(--text-4);
 }
@@ -250,7 +257,8 @@
 @utility display {
 	font-family: var(--font-display);
 	font-optical-sizing: auto;
-	letter-spacing: -0.02em;
+	letter-spacing: -0.04em;
+	font-weight: 700;
 }
 
 @utility rule {
@@ -276,11 +284,11 @@
 	border: 1px solid var(--line-strong);
 	background: var(--surface-2);
 	color: var(--text-2);
-	border-radius: 0.15rem;
-	padding: 0.42rem 0.7rem;
-	font-size: 0.75rem;
-	font-weight: 500;
-	line-height: 1.1;
+	border-radius: var(--radius-pill);
+	padding: 0.58rem 0.95rem;
+	font-size: 0.9rem;
+	font-weight: 600;
+	line-height: 1.15;
 	text-decoration: none;
 	transition:
 		background var(--motion-feedback) ease,
@@ -297,12 +305,12 @@
 	align-items: center;
 	gap: 0.3rem;
 	border: 1px solid var(--line);
-	border-radius: 0.12rem;
-	padding: 0.18rem 0.42rem;
-	font-family: var(--font-mono);
-	font-size: 0.56rem;
-	letter-spacing: 0.06em;
-	text-transform: uppercase;
+	border-radius: var(--radius-pill);
+	padding: 0.3rem 0.65rem;
+	font-family: var(--font-sans);
+	font-size: 0.74rem;
+	font-weight: 600;
+	letter-spacing: 0.01em;
 	color: var(--text-3);
 	background: transparent;
 }

@@ -85,12 +85,15 @@
 		<nav class="choices" aria-label={t('nav.home', text)}>
 			{#each choices as choice (choice.href)}
 				<a class="choice" href={choice.href}>
-					<span class="index">{choice.index}</span>
+					<span class="choice-top">
+						<span class="index">{choice.index}</span>
+						<span class="choice-icon"><Icon name={choice.icon} size={24} /></span>
+						<span class="arrow"><Icon name="arrowUpRight" size={20} /></span>
+					</span>
 					<span class="body">
 						<span class="label">{choice.label}</span>
 						<span class="desc">{choice.desc}</span>
 					</span>
-					<span class="arrow"><Icon name="arrowUpRight" size={20} /></span>
 				</a>
 			{/each}
 		</nav>
@@ -208,32 +211,53 @@
 	.choices {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
+		gap: 0.75rem;
 		margin-top: clamp(1.8rem, 5vh, 3.2rem);
-		border-top: 1px solid var(--line-strong);
 	}
 	.choice {
-		display: grid;
-		grid-template-columns: 2.4rem 1fr 2.8rem;
-		align-items: center;
-		gap: 0.8rem;
-		padding: clamp(0.9rem, 2.2vh, 1.35rem) 1rem;
-		border-bottom: 1px solid var(--line);
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+		gap: 1.1rem;
+		padding: clamp(1.1rem, 2.4vh, 1.6rem);
+		border: 1px solid var(--line);
+		border-radius: var(--radius-lg);
+		background:
+			linear-gradient(145deg, color-mix(in oklab, var(--surface-2) 94%, transparent), var(--surface-1));
+		box-shadow: var(--shadow-soft);
 		text-decoration: none;
 		color: var(--text-1);
-		transition: background 0.18s ease, padding 0.18s ease;
-	}
-	.choice:nth-child(odd) {
-		border-right: 1px solid var(--line);
+		transition: transform 0.25s var(--ease-out-soft), border-color 0.2s ease, background 0.2s ease;
 	}
 	.choice:hover,
 	.choice:focus-visible {
-		background: color-mix(in oklab, var(--accent-1) 7%, transparent);
-		padding-left: 1.4rem;
+		transform: translateY(-4px);
+		border-color: color-mix(in oklab, var(--accent-1) 45%, var(--line));
+		background:
+			linear-gradient(145deg, color-mix(in oklab, var(--accent-1) 8%, var(--surface-2)), var(--surface-1));
+	}
+	.choice-top {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
 	}
 	.choice .index {
 		font-family: var(--font-mono);
-		font-size: 0.66rem;
-		color: var(--accent-1);
+		font-size: 0.72rem;
+		font-weight: 600;
+		color: var(--accent-0);
+	}
+	.choice-icon {
+		display: grid;
+		place-items: center;
+		width: 3rem;
+		height: 3rem;
+		border-radius: 0.85rem;
+		background: color-mix(in oklab, var(--accent-1) 12%, var(--surface-2));
+		color: var(--accent-0);
+	}
+	.choice .arrow {
+		margin-left: auto;
 	}
 	.body {
 		display: flex;
@@ -243,22 +267,22 @@
 	}
 	.label {
 		font-family: var(--font-display);
-		font-size: clamp(1.7rem, 3.2vw, 2.7rem);
-		font-weight: 600;
-		line-height: 0.95;
-		letter-spacing: -0.03em;
+		font-size: clamp(2.1rem, 3.8vw, 3.3rem);
+		font-weight: 700;
+		line-height: 0.92;
+		letter-spacing: -0.055em;
 		text-transform: uppercase;
 	}
 	.desc {
-		font-size: 0.8rem;
-		line-height: 1.4;
+		font-size: 0.92rem;
+		line-height: 1.5;
 		color: var(--text-3);
 	}
 	.arrow {
 		display: grid;
 		place-items: center;
-		width: 2.6rem;
-		height: 2.6rem;
+		width: 2.75rem;
+		height: 2.75rem;
 		border: 1px solid var(--line-strong);
 		border-radius: 50%;
 		color: var(--text-3);
@@ -297,7 +321,7 @@
 	.stats dd {
 		margin: 0;
 		font-family: var(--font-display);
-		font-size: 1.5rem;
+		font-size: 2rem;
 		font-weight: 600;
 		line-height: 1;
 		color: var(--text-1);
@@ -333,26 +357,20 @@
 			padding-top: calc(var(--header-h) + 1.6rem);
 		}
 		h1 {
-			font-size: clamp(3.2rem, 16vw, 4.8rem);
+			font-size: clamp(3.2rem, 15vw, 4.8rem);
 		}
 		.choices {
 			grid-template-columns: 1fr;
 		}
-		.choice:nth-child(odd) {
-			border-right: 0;
-		}
 		.choice {
-			grid-template-columns: 2rem 1fr 2.4rem;
-			padding: 0.95rem 0.4rem;
-		}
-		.choice:hover {
-			padding-left: 0.6rem;
+			padding: 1rem;
+			gap: 0.8rem;
 		}
 		.label {
-			font-size: clamp(1.6rem, 8vw, 2.1rem);
+			font-size: clamp(1.8rem, 8vw, 2.3rem);
 		}
 		.desc {
-			font-size: 0.74rem;
+			font-size: 0.84rem;
 		}
 		.portal-foot {
 			flex-direction: column;

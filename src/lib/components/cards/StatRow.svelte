@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Sparkline from './Sparkline.svelte';
+	import { locale } from '#lib/locale.svelte';
 
 	interface Props {
 		label: string;
@@ -31,6 +32,7 @@
 		format,
 		delta = 'percent'
 	}: Props = $props();
+	const isEn = $derived(locale.value === 'en');
 </script>
 
 {#if variant === 'fact'}
@@ -55,7 +57,7 @@
 				<span style:width={`${Math.max(2, Math.min(100, percentile * 100))}%`} style:background={accent}></span>
 			</div>
 			<div class="metric-meta">
-				<span class="pct">percentil {Math.round(percentile * 100)}</span>
+				<span class="pct">{isEn ? 'percentile' : 'percentil'} {Math.round(percentile * 100)}</span>
 				{#if !compact && comparison}<span class="comparison">{comparison}</span>{/if}
 			</div>
 		{:else if !compact && comparison}

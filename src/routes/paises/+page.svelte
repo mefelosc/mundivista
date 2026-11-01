@@ -5,8 +5,11 @@
 	import { formatCompact } from '#lib/format';
 	import { locale } from '#lib/locale.svelte';
 	import { t } from '#lib/i18n';
+	import { localizeContinent, localizeSubregion } from '#lib/i18n-data';
 
 	const text = $derived(locale.value);
+	const isEn = $derived(text === 'en');
+	const tr = (pt: string, en: string) => (isEn ? en : pt);
 	let query = $state('');
 	let continent = $state('Todos');
 
@@ -36,8 +39,8 @@
 </script>
 
 <svelte:head>
-	<title>Países — Mundivista</title>
-	<meta name="description" content="Índice de países e territórios do atlas, com dossiês e acesso ao mapa." />
+	<title>{tr('Países', 'Countries')} — Mundivista</title>
+	<meta name="description" content={tr('Índice de países e territórios do atlas, com dossiês e acesso ao mapa.', 'Index of countries and territories in the atlas, with dossiers and map access.')} />
 </svelte:head>
 
 <TopBar />
@@ -45,31 +48,31 @@
 <main id="conteudo">
 	<header class="hero">
 		<div>
-			<span class="eyebrow">Atlas · índice</span>
-			<h1>Países</h1>
-			<p>Encontre um território, abra o dossiê ou veja no mapa.</p>
+			<span class="eyebrow">{tr('Atlas · índice', 'Atlas · index')}</span>
+			<h1>{tr('Países', 'Countries')}</h1>
+			<p>{tr('Encontre um território, abra o dossiê ou veja no mapa.', 'Find a territory, open its dossier or view it on the map.')}</p>
 		</div>
 		<div class="count">
 			<strong>{countries.length}</strong>
-			<span>territórios</span>
+			<span>{tr('territórios', 'territories')}</span>
 		</div>
 	</header>
 
 	<div class="tools">
 		<label class="search">
 			<Icon name="search" size={16} />
-			<input bind:value={query} type="search" placeholder="Buscar país ou código…" aria-label="Buscar país" />
+			<input bind:value={query} type="search" placeholder={tr('Buscar país ou código…', 'Search country or code…')} aria-label={tr('Buscar país', 'Search country')} />
 		</label>
-		<div class="filters" role="group" aria-label="Filtrar por continente">
+		<div class="filters" role="group" aria-label={tr('Filtrar por continente', 'Filter by continent')}>
 			{#each continents as item (item)}
 				<button type="button" class:active={continent === item} onclick={() => (continent = item)}>
-					{item}
+					{item === 'Todos' ? tr('Todos', 'All') : localizeContinent(item, text)}
 				</button>
 			{/each}
 		</div>
 	</div>
 
-	<p class="result-count">{list.length} resultados</p>
+	<p class="result-count">{list.length} {tr('resultados', 'results')}</p>
 
 	<ul class="countries">
 		{#each list as country (country.code)}
@@ -83,20 +86,20 @@
 						{/if}
 					</span>
 					<span class="identity">
-						<strong>{country.name}</strong>
-						<span>{country.continent ?? '—'}{country.subregion && country.subregion !== country.continent ? ` · ${country.subregion}` : ''}</span>
+						<strong>{isEn ? country.nameEn : country.name}</strong>
+						<span>{localizeContinent(country.continent, text) || '—'}{country.subregion && country.subregion !== country.continent ? ` · ${localizeSubregion(country.subregion, text)}` : ''}</span>
 					</span>
 					<span class="pop">
-						<em>População</em>
+						<em>{tr('População', 'Population')}</em>
 						<span>{country.indicators.population ? formatCompact(country.indicators.population.v) : '—'}</span>
 					</span>
-					<span class="map-link" title="Ver no mapa">
+					<span class="map-link" title={tr('Ver no mapa', 'View on map')}>
 						<Icon name="globe" size={15} />
 					</span>
 				</a>
 			</li>
 		{:else}
-			<li class="empty">Nenhum país encontrado para “{query}”.</li>
+			<li class="empty">{tr('Nenhum país encontrado para', 'No country found for')} “{query}”.</li>
 		{/each}
 	</ul>
 </main>
@@ -125,14 +128,14 @@
 		margin: 0.3rem 0 0.2rem;
 		font-family: var(--font-display);
 		font-size: clamp(3rem, 7vw, 5.5rem);
-		font-weight: 600;
+		font-weight: 700;
 		line-height: 0.9;
-		letter-spacing: -0.045em;
+		letter-spacing: -0.055em;
 		text-transform: uppercase;
 	}
 	.hero p {
 		margin: 0;
-		font-size: 0.92rem;
+		font-size: 1rem;
 		color: var(--text-3);
 	}
 	.count {
@@ -144,13 +147,13 @@
 	}
 	.count strong {
 		font-family: var(--font-display);
-		font-size: 2.2rem;
-		font-weight: 600;
+		font-size: 2.6rem;
+		font-weight: 700;
 		line-height: 1;
 		color: var(--text-1);
 	}
 	.count span {
-		font-size: 0.64rem;
+		font-size: 0.72rem;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
 	}
@@ -164,7 +167,7 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-		min-width: 18rem;
+		min-width: 20rem;
 		border: 1px solid var(--line);
 		border-radius: 0.2rem;
 		background: var(--surface-1);
@@ -173,11 +176,11 @@
 	}
 	.search input {
 		width: 100%;
-		height: 2.5rem;
+		height: 3rem;
 		border: 0;
 		background: transparent;
 		color: var(--text-1);
-		font-size: 0.82rem;
+		font-size: 0.96rem;
 		outline: none;
 	}
 	.filters {
@@ -187,11 +190,12 @@
 	}
 	.filters button {
 		border: 1px solid var(--line);
-		border-radius: 0.2rem;
+		border-radius: var(--radius-pill);
 		background: var(--surface-1);
 		color: var(--text-3);
-		padding: 0.48rem 0.6rem;
-		font-size: 0.7rem;
+		padding: 0.55rem 0.85rem;
+		font-size: 0.84rem;
+		font-weight: 600;
 	}
 	.filters button:hover {
 		color: var(--text-1);
@@ -205,7 +209,7 @@
 	.result-count {
 		margin: 0.2rem 0 0.7rem;
 		font-family: var(--font-mono);
-		font-size: 0.6rem;
+		font-size: 0.72rem;
 		color: var(--text-4);
 	}
 	.countries {
@@ -214,30 +218,32 @@
 		padding: 0;
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: 0.4rem;
+		gap: 0.5rem;
 	}
 	.country {
 		display: grid;
-		grid-template-columns: 2.5rem 1fr auto 2rem;
+		grid-template-columns: 3rem 1fr auto 2.4rem;
 		align-items: center;
-		gap: 0.7rem;
-		padding: 0.55rem 0.65rem;
+		gap: 0.8rem;
+		padding: 0.8rem 0.85rem;
 		border: 1px solid var(--line);
-		border-radius: 0.2rem;
+		border-radius: var(--radius-md);
 		background: var(--surface-1);
 		color: inherit;
 		text-decoration: none;
-		transition: border-color 0.15s ease, background 0.15s ease;
+		box-shadow: 0 1px 0 color-mix(in oklab, #fff 40%, transparent) inset;
+		transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
 	}
 	.country:hover {
 		border-color: var(--line-strong);
 		background: var(--surface-2);
+		transform: translateY(-1px);
 	}
 	.flag :global(.fi),
 	.flag {
 		display: block;
-		width: 2.5rem;
-		height: 1.65rem;
+		width: 2.8rem;
+		height: 1.9rem;
 		background-size: cover;
 		border: 1px solid var(--line-strong);
 	}
@@ -255,14 +261,14 @@
 		min-width: 0;
 	}
 	.identity strong {
-		font-size: 0.84rem;
+		font-size: 1rem;
 		font-weight: 600;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
 	.identity span {
-		font-size: 0.64rem;
+		font-size: 0.78rem;
 		color: var(--text-4);
 		white-space: nowrap;
 		overflow: hidden;
@@ -273,7 +279,7 @@
 		flex-direction: column;
 		align-items: flex-end;
 		font-family: var(--font-mono);
-		font-size: 0.7rem;
+		font-size: 0.82rem;
 		color: var(--text-2);
 	}
 	.pop em {
@@ -284,9 +290,10 @@
 	.map-link {
 		display: grid;
 		place-items: center;
-		width: 1.8rem;
-		height: 1.8rem;
+		width: 2.2rem;
+		height: 2.2rem;
 		border: 1px solid var(--line);
+		border-radius: 0.55rem;
 		color: var(--text-3);
 	}
 	.country:hover .map-link {

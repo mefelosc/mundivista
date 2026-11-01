@@ -12,6 +12,39 @@
 	import { organizations } from '#lib/data/organizations';
 	import { snippets } from '#lib/data/snippets';
 	import { games } from '#lib/engines/game-engine/registry';
+	import { locale } from '#lib/locale.svelte';
+	import { indicatorName, indicatorUnit } from '#lib/i18n-data';
+	import { historicalSourceEn } from '#lib/i18n-data';
+	import { localizedGame } from '#lib/i18n-data-en';
+
+	const isEn = $derived(locale.value === 'en');
+	const tr = (pt: string, en: string) => (isEn ? en : pt);
+
+	const sourceCopyEn: Record<string, { name?: string; license?: string; note?: string }> = {
+		'https://www.naturalearthdata.com/downloads/110m-cultural-vectors/': {
+			name: 'Natural Earth — Admin 0 Countries (1:50m)',
+			license: 'Public domain',
+			note: 'Generalised boundaries. Microstates may not be represented. Disputed borders do not express a political position.'
+		},
+		'https://github.com/mledoze/countries': {
+			name: 'mledoze/countries (base for REST Countries)',
+			note: 'Capital, currency, area, languages and neighbouring countries.'
+		},
+		'https://www.naturalearthdata.com/downloads/50m-physical-vectors/': {
+			name: 'Natural Earth — Seas and oceans (1:50m)',
+			license: 'Public domain',
+			note: 'Portuguese names and label position calculated inside each marine polygon.'
+		},
+		'https://www.naturalearthdata.com/downloads/': {
+			name: 'Natural Earth — Rivers, lakes and coastline',
+			license: 'Public domain',
+			note: 'Rivers and lakes at 1:110m; coastline at 1:50m. Shaded relief and 3D use a public digital model loaded on demand.'
+		},
+		'https://data.worldbank.org': {
+			name: 'World Bank Open Data',
+			note: 'Most recent series per country within the window. Historical Natural Earth codes are normalised; territories without a series appear as not available.'
+		}
+	};
 
 	const sources = [
 		manifest.sources.boundaries,
@@ -54,6 +87,45 @@
 		}
 	];
 
+	const extraSourcesEn = [
+		{ name: 'Natural Earth — major cities (1:110m)', url: 'https://www.naturalearthdata.com/downloads/110m-cultural-vectors/', license: 'Public domain', note: 'Population points for the demography layer. City points, not urban footprints.' },
+		{ name: 'Natural Earth — coastline (1:50m)', url: 'https://www.naturalearthdata.com/downloads/50m-physical-vectors/', license: 'Public domain', note: 'Coastline hierarchy for the political and physical maps.' },
+		{ name: 'Natural Earth — administrative units (1:10m)', url: 'https://www.naturalearthdata.com/downloads/10m-cultural-vectors/', license: 'Public domain', note: 'First-level states, provinces and districts shown when a country is selected in the political layer. Simplified geometry; the available level varies by country.' },
+		{ name: 'Mundivista curation — complementary facts', url: 'https://www.britannica.com/place/Somaliland', license: 'Sources cited in the dossier', note: 'Capital, area, currency and languages of Somaliland, and the currency of Micronesia. Used only where mledoze/World Bank do not cover the territory; the origin appears in the dossier metadata.' },
+		{ name: 'AWS Terrain Tiles (Mapzen/Tilezen)', url: 'https://registry.opendata.aws/terrain-tiles/', license: 'Public data; see project terms', note: 'Digital elevation model (Terrarium) for shaded relief and 3D mode. Loaded on demand over the network; not part of the build.' }
+	];
+
+	function sourceFor(source: { name: string; url: string; license: string; note?: string | null }) {
+		return isEn ? { ...source, ...(sourceCopyEn[source.url] ?? {}) } : source;
+	}
+
+	const formatLabelEn: Record<string, string> = {
+		int: 'integer',
+		dec1: '1 decimal',
+		dec2: '2 decimals',
+		usd: 'current US$',
+		'usd-pc': 'US$ per person'
+	};
+
+	const limitsPt = [
+		'Escala 1:50m do Natural Earth: fronteiras generalizadas. Microestados aparecem como pontos de capital, com área de clique ampliada.',
+		'O relevo sombreado e o modo 3D usam tiles públicos de elevação carregados pela rede; sem conexão, o mapa permanece plano.',
+		'Indicadores econômicos em dólares correntes não são comparáveis entre anos sem ajuste; por isso o ano aparece sempre.',
+		'Blocos históricos e a linha do tempo usam os polígonos atuais. É uma aproximação didática, não um mapa histórico exato.',
+		'“Independência” é um marco político discutível em vários casos; adotamos o ano indicado na fonte e registramos a ressalva.',
+		'Composição de organizações como BRICS e OPEP muda com frequência; o recorte temporal está indicado em cada card.',
+		'Séries do Banco Mundial podem ter lacunas e revisões. O app não interpola valores.'
+	];
+	const limitsEn = [
+		'Natural Earth 1:50m scale: generalised borders. Microstates appear as capital points with a larger click area.',
+		'Shaded relief and 3D mode use public elevation tiles loaded over the network; without a connection the map stays flat.',
+		'Economic indicators in current dollars are not comparable across years without adjustment; that is why the year is always shown.',
+		'Historical blocs and the timeline use current polygons. This is a teaching approximation, not an exact historical map.',
+		'“Independence” is a debatable political milestone in several cases; we adopt the year stated by the source and record the caveat.',
+		'The composition of organisations such as BRICS and OPEC changes frequently; the snapshot is shown on each card.',
+		'World Bank series may have gaps and revisions. The app does not interpolate values.'
+	];
+
 	const formatLabel: Record<string, string> = {
 		int: 'inteiro',
 		dec1: '1 decimal',
@@ -64,10 +136,10 @@
 </script>
 
 <svelte:head>
-	<title>Fontes e métodos — Mundivista</title>
+	<title>{tr('Fontes e métodos', 'Sources and methods')} — Mundivista</title>
 	<meta
 		name="description"
-		content="De onde vêm os dados da Mundivista, como os indicadores são tratados, licenças e limitações do mapa."
+		content={tr('De onde vêm os dados da Mundivista, como os indicadores são tratados, licenças e limitações do mapa.', 'Where Mundivista data comes from, how indicators are handled, and the map’s licences and limitations.')}
 	/>
 </svelte:head>
 
@@ -76,45 +148,44 @@
 <main id="conteudo">
 	<header class="hero">
 		<div>
-			<span class="eyebrow">Transparência · método</span>
-			<h1>Fontes e métodos</h1>
+			<span class="eyebrow">{tr('Transparência · método', 'Transparency · method')}</span>
+			<h1>{tr('Fontes e métodos', 'Sources and methods')}</h1>
 			<p class="lede">
-				A plataforma não estima, não completa lacunas e não mistura períodos sem avisar.
-				Cada número na interface carrega ano de referência e origem.
+				{tr('A plataforma não estima, não completa lacunas e não mistura períodos sem avisar. Cada número na interface carrega ano de referência e origem.', 'The platform does not estimate, fill gaps or mix periods without warning. Every number in the interface carries its reference year and origin.')}
 			</p>
 		</div>
 		<div class="stamp">
-			<span>Extração</span>
+			<span>{tr('Extração', 'Retrieved')}</span>
 			<strong>{retrievedAt}</strong>
-			<span>{indicatorKeys.length} indicadores · {organizations.length} organizações</span>
+			<span>{indicatorKeys.length} {tr('indicadores', 'indicators')} · {organizations.length} {tr('organizações', 'organisations')}</span>
 		</div>
 	</header>
 
 	<section>
 		<header class="section-head">
 			<span class="index">01</span>
-			<h2>Princípios</h2>
+			<h2>{tr('Princípios', 'Principles')}</h2>
 		</header>
 		<div class="principles">
 			<article>
 				<span>01</span>
-				<h3>Nada de dado inventado</h3>
-				<p>Indicadores ausentes aparecem como “não disponível”. Nunca preenchemos lacunas com estimativas próprias.</p>
+				<h3>{tr('Nada de dado inventado', 'No invented data')}</h3>
+				<p>{tr('Indicadores ausentes aparecem como “não disponível”. Nunca preenchemos lacunas com estimativas próprias.', 'Missing indicators appear as “not available”. We never fill gaps with our own estimates.')}</p>
 			</article>
 			<article>
 				<span>02</span>
-				<h3>Ano sempre visível</h3>
-				<p>Usamos a observação mais recente de cada país dentro da janela 2016–2025. O ano acompanha o valor.</p>
+				<h3>{tr('Ano sempre visível', 'Year always visible')}</h3>
+				<p>{tr('Usamos a observação mais recente de cada país dentro da janela 2016–2025. O ano acompanha o valor.', 'We use the most recent observation for each country within 2016–2025. The year accompanies the value.')}</p>
 			</article>
 			<article>
 				<span>03</span>
-				<h3>Fronteiras com contexto</h3>
-				<p>O recorte é o do Natural Earth. Territórios com estatuto disputado recebem hachura e nota, sem atribuição de soberania.</p>
+				<h3>{tr('Fronteiras com contexto', 'Borders with context')}</h3>
+				<p>{tr('O recorte é o do Natural Earth. Territórios com estatuto disputado recebem hachura e nota, sem atribuição de soberania.', 'The boundaries are Natural Earth’s. Territories with disputed status receive hatching and a note, without assigning sovereignty.')}</p>
 			</article>
 			<article>
 				<span>04</span>
-				<h3>Licenças respeitadas</h3>
-				<p>Cada base tem licença e link de origem. Uso comercial futuro deve revisar as condições de cada fonte.</p>
+				<h3>{tr('Licenças respeitadas', 'Licences respected')}</h3>
+				<p>{tr('Cada base tem licença e link de origem. Uso comercial futuro deve revisar as condições de cada fonte.', 'Each dataset carries a licence and source link. Future commercial use should review each source’s terms.')}</p>
 			</article>
 		</div>
 	</section>
@@ -122,20 +193,21 @@
 	<section>
 		<header class="section-head">
 			<span class="index">02</span>
-			<h2>Bases usadas</h2>
+			<h2>{tr('Bases usadas', 'Datasets')}</h2>
 		</header>
 		<div class="source-list">
 			{#each sources as source (source.url)}
-				<a href={source.url} target="_blank" rel="noopener noreferrer">
+				{@const copy = sourceFor(source)}
+				<a href={copy.url} target="_blank" rel="noopener noreferrer">
 					<div>
-						<strong>{source.name}</strong>
-						<p>{source.note ?? ''}</p>
+						<strong>{copy.name}</strong>
+						<p>{copy.note ?? ''}</p>
 					</div>
-					<span class="license">{source.license}</span>
+					<span class="license">{copy.license}</span>
 					<Icon name="external" size={13} />
 				</a>
 			{/each}
-			{#each extraSources as source (source.url)}
+			{#each isEn ? extraSourcesEn : extraSources as source (source.url)}
 				<a href={source.url} target="_blank" rel="noopener noreferrer">
 					<div>
 						<strong>{source.name}</strong>
@@ -145,12 +217,12 @@
 					<Icon name="external" size={13} />
 				</a>
 			{/each}
-			<a href={historicalSource.url} target="_blank" rel="noopener noreferrer">
+			<a href={(isEn ? historicalSourceEn : historicalSource).url} target="_blank" rel="noopener noreferrer">
 				<div>
-					<strong>{historicalSource.name}</strong>
-					<p>{historicalSource.note}</p>
+					<strong>{(isEn ? historicalSourceEn : historicalSource).name}</strong>
+					<p>{(isEn ? historicalSourceEn : historicalSource).note}</p>
 				</div>
-				<span class="license">Uso editorial</span>
+				<span class="license">{tr('Uso editorial', 'Editorial use')}</span>
 				<Icon name="external" size={13} />
 			</a>
 		</div>
@@ -159,36 +231,34 @@
 	<section>
 		<header class="section-head">
 			<span class="index">03</span>
-			<h2>Indicadores</h2>
+			<h2>{tr('Indicadores', 'Indicators')}</h2>
 		</header>
 		<p class="section-note">
-			Cobertura = países com polígono no mapa que têm valor para o indicador. A série é
-			consultada de 2016 a 2025; usamos a observação mais recente de cada país. A série
-			completa alimenta as sparklines dos dossiês.
+			{tr('Cobertura = países com polígono no mapa que têm valor para o indicador. A série é consultada de 2016 a 2025; usamos a observação mais recente de cada país. A série completa alimenta os gráficos dos dossiês.', 'Coverage = countries with a map polygon that have a value for the indicator. The series is queried from 2016 to 2025; we use the most recent observation for each country. The full series feeds the dossier charts.')}
 		</p>
 		<div class="table-wrap">
 			<table>
 				<thead>
 					<tr>
-						<th>Indicador</th>
-						<th>Código</th>
-						<th>Unidade</th>
-						<th>Formato</th>
-						<th>Cobertura</th>
-						<th>Fonte</th>
+						<th>{tr('Indicador', 'Indicator')}</th>
+						<th>{tr('Código', 'Code')}</th>
+						<th>{tr('Unidade', 'Unit')}</th>
+						<th>{tr('Formato', 'Format')}</th>
+						<th>{tr('Cobertura', 'Coverage')}</th>
+						<th>{tr('Fonte', 'Source')}</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each indicatorKeys as key (key)}
 						<tr>
-							<td>{indicatorMeta[key].name}</td>
+							<td>{indicatorName(key, locale.value)}</td>
 							<td class="mono">{indicatorMeta[key].code}</td>
-							<td>{indicatorMeta[key].unit}</td>
-							<td>{formatLabel[indicatorMeta[key].format] ?? indicatorMeta[key].format}</td>
+							<td>{indicatorUnit(key, locale.value)}</td>
+							<td>{isEn ? formatLabelEn[indicatorMeta[key].format] ?? indicatorMeta[key].format : formatLabel[indicatorMeta[key].format] ?? indicatorMeta[key].format}</td>
 							<td class="num">{indicatorCoverage[key]}</td>
 							<td>
 								<a href={indicatorMeta[key].sourceUrl} target="_blank" rel="noopener noreferrer">
-									Banco Mundial <Icon name="external" size={10} />
+									{tr('Banco Mundial', 'World Bank')} <Icon name="external" size={10} />
 								</a>
 							</td>
 						</tr>
@@ -197,32 +267,30 @@
 			</table>
 		</div>
 		<p class="footnote">
-			{indicatorKeys.length} séries do World Bank Open Data (CC BY 4.0). Indicadores de
-			governança usam os Worldwide Governance Indicators (WGI), também publicados pelo Banco
-			Mundial. Dívida pública tem cobertura menor e é exibida apenas quando há observação.
+			{indicatorKeys.length} {tr('séries do World Bank Open Data (CC BY 4.0). Indicadores de governança usam os Worldwide Governance Indicators (WGI), também publicados pelo Banco Mundial. Dívida pública tem cobertura menor e é exibida apenas quando há observação.', 'series from World Bank Open Data (CC BY 4.0). Governance indicators use the Worldwide Governance Indicators (WGI), also published by the World Bank. Public debt has lower coverage and is shown only when an observation exists.')}
 		</p>
 	</section>
 
 	<section>
 		<header class="section-head">
 			<span class="index">04</span>
-			<h2>Pipeline reproduzível</h2>
+			<h2>{tr('Pipeline reproduzível', 'Reproducible pipeline')}</h2>
 		</header>
 		<div class="pipeline">
 			<div>
-				<span class="eyebrow">Gerar</span>
+				<span class="eyebrow">{tr('Gerar', 'Build')}</span>
 				<code>npm run data:build</code>
-				<p>Usa o cache local de Natural Earth, mledoze e World Bank.</p>
+				<p>{tr('Usa o cache local de Natural Earth, mledoze e World Bank.', 'Uses the local Natural Earth, mledoze and World Bank cache.')}</p>
 			</div>
 			<div>
-				<span class="eyebrow">Atualizar</span>
+				<span class="eyebrow">{tr('Atualizar', 'Refresh')}</span>
 				<code>npm run data:refresh</code>
-				<p>Baixa tudo de novo e reescreve <code>src/lib/data/generated/</code>.</p>
+				<p>{tr('Baixa tudo de novo e reescreve', 'Downloads everything again and rewrites')} <code>src/lib/data/generated/</code>.</p>
 			</div>
 			<div>
-				<span class="eyebrow">Validar</span>
+				<span class="eyebrow">{tr('Validar', 'Validate')}</span>
 				<code>npm test && npm run check</code>
-				<p>Testes cobrem motores, integridade dos dados e jogos.</p>
+				<p>{tr('Testes cobrem motores, integridade dos dados e jogos.', 'Tests cover engines, data integrity and games.')}</p>
 			</div>
 		</div>
 	</section>
@@ -230,52 +298,46 @@
 	<section>
 		<header class="section-head">
 			<span class="index">05</span>
-			<h2>Limitações conhecidas</h2>
+			<h2>{tr('Limitações conhecidas', 'Known limitations')}</h2>
 		</header>
 		<ul class="limits">
-			<li>Escala 1:50m do Natural Earth: fronteiras generalizadas. Microestados aparecem como pontos de capital, com área de clique ampliada.</li>
-			<li>O relevo sombreado e o modo 3D usam tiles públicos de elevação carregados pela rede; sem conexão, o mapa permanece plano.</li>
-			<li>Indicadores econômicos em dólares correntes não são comparáveis entre anos sem ajuste; por isso o ano aparece sempre.</li>
-			<li>Blocos históricos e a linha do tempo usam os polígonos atuais. É uma aproximação didática, não um mapa histórico exato.</li>
-			<li>“Independência” é um marco político discutível em vários casos; adotamos o ano indicado na fonte e registramos a ressalva.</li>
-			<li>Composição de organizações como BRICS e OPEP muda com frequência; o recorte temporal está indicado em cada card.</li>
-			<li>Séries do Banco Mundial podem ter lacunas e revisões. O app não interpola valores.</li>
+			{#each isEn ? limitsEn : limitsPt as item}
+				<li>{item}</li>
+			{/each}
 		</ul>
 	</section>
 
 	<section>
 		<header class="section-head">
 			<span class="index">06</span>
-			<h2>Conteúdo editorial e jogos</h2>
+			<h2>{tr('Conteúdo editorial e jogos', 'Editorial content and games')}</h2>
 		</header>
 		<p class="section-note">
-			{organizations.length} organizações, {snippets.length} leituras curtas e {games.length} jogos.
-			Cada explicação de rodada cita a fonte usada na validação. O motor de jogos não importa o
-			mapa: recebe rodadas, valida respostas e devolve pontuação.
+			{organizations.length} {tr('organizações', 'organisations')}, {snippets.length} {tr('leituras curtas', 'quick reads')} {tr('e', 'and')} {games.length} {tr('jogos', 'games')}. {tr('Cada explicação de rodada cita a fonte usada na validação. O motor de jogos não importa o mapa: recebe rodadas, valida respostas e devolve pontuação.', 'Each round explanation cites the source used in validation. The game engine does not import the map: it receives rounds, validates answers and returns a score.')}
 		</p>
 		<div class="editorial-grid">
 			<a href="/play">
 				<Icon name="gamepad" size={18} />
-				<strong>Jogos</strong>
-				<span>Regras, fontes e recordes locais</span>
+				<strong>{tr('Jogos', 'Games')}</strong>
+				<span>{tr('Regras, fontes e recordes locais', 'Rules, sources and local records')}</span>
 			</a>
 			<a href="/country/BRA">
 				<Icon name="dossier" size={18} />
-				<strong>Dossiês</strong>
-				<span>Exemplo: Brasil, com séries e comparações</span>
+				<strong>{tr('Dossiês', 'Dossiers')}</strong>
+				<span>{tr('Exemplo: Brasil, com séries e comparações', 'Example: Brazil, with series and comparisons')}</span>
 			</a>
 			<a href="/explore">
 				<Icon name="globe" size={18} />
-				<strong>Atlas</strong>
-				<span>Seis camadas e metadados no mapa</span>
+				<strong>{tr('Atlas', 'Atlas')}</strong>
+				<span>{tr('Seis camadas e metadados no mapa', 'Six layers and metadata on the map')}</span>
 			</a>
 		</div>
 	</section>
 
 	<footer>
-		<a href="/explore">← Voltar ao mapa</a>
+		<a href="/explore">← {tr('Voltar ao mapa', 'Back to the map')}</a>
 		<span>{retrievedAt}</span>
-		<a href="/play">Jogar →</a>
+		<a href="/play">{tr('Jogar', 'Play')} →</a>
 	</footer>
 </main>
 

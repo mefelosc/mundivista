@@ -3,36 +3,43 @@
 	import type { ResolvedLayer } from '#lib/configurations/map-layers';
 	import { organizationById } from '#lib/data/organizations';
 	import { retrievedAt } from '#lib/data/countries';
+	import { locale } from '#lib/locale.svelte';
+	import { localizedLayer } from '#lib/i18n-layers';
+	import { localizedOrganization } from '#lib/i18n-data-en';
 
 	interface Props {
 		layer: ResolvedLayer;
 		bloc?: string | null;
 	}
 	let { layer, bloc = null }: Props = $props();
+	const isEn = $derived(locale.value === 'en');
+	const tr = (pt: string, en: string) => (isEn ? en : pt);
+	const display = $derived(localizedLayer(layer, locale.value) as typeof layer);
 
 	let collapsed = $state(false);
 
 	const org = $derived(bloc ? organizationById.get(bloc) : null);
+	const displayOrg = $derived(org ? localizedOrganization(org, locale.value) : null);
 	const gradient = $derived(
 		layer.palette ? `linear-gradient(90deg, ${layer.palette.join(', ')})` : ''
 	);
 </script>
 
-<section class="legend" class:collapsed aria-label="Legenda do mapa">
+<section class="legend" class:collapsed aria-label={tr('Legenda do mapa', 'Map legend')}>
 	<div class="head">
 		<div class="titles">
-			<span class="eyebrow">{layer.index} · Camada</span>
-			<strong>{layer.label}</strong>
+			<span class="eyebrow">{display.index} · {tr('Camada', 'Layer')}</span>
+			<strong>{display.label}</strong>
 		</div>
 		{#if org}
-			<span class="bloc-on"><i></i>{org.short}</span>
+			<span class="bloc-on"><i></i>{displayOrg?.short}</span>
 		{/if}
 		<button
 			type="button"
 			class="legend-toggle"
 			aria-expanded={!collapsed}
-			aria-label={collapsed ? 'Expandir legenda' : 'Recolher legenda'}
-			title={collapsed ? 'Expandir legenda' : 'Recolher legenda'}
+			aria-label={collapsed ? tr('Expandir legenda', 'Expand legend') : tr('Recolher legenda', 'Collapse legend')}
+			title={collapsed ? tr('Expandir legenda', 'Expand legend') : tr('Recolher legenda', 'Collapse legend')}
 			onclick={() => (collapsed = !collapsed)}
 		>
 			<Icon name="chevronDown" size={14} />
@@ -40,21 +47,21 @@
 	</div>
 
 	{#if !collapsed}
-		<p class="desc">{layer.description}</p>
+		<p class="desc">{display.description}</p>
 
-		{#if layer.legend.type === 'gradient'}
+		{#if display.legend.type === 'gradient'}
 			<div class="gradient" style:background={gradient}></div>
 			<div class="ticks" aria-hidden="true">
 				{#each Array.from({ length: 9 }) as _, i (i)}<span></span>{/each}
 			</div>
 			<div class="scale">
-				<span>{layer.legend.low}</span>
-				<span>{layer.legend.high}</span>
+				<span>{display.legend.low}</span>
+				<span>{display.legend.high}</span>
 			</div>
-			<span class="unit">{layer.legend.unit}</span>
-		{:else if layer.legend.type === 'categorical'}
+			<span class="unit">{display.legend.unit}</span>
+		{:else if display.legend.type === 'categorical'}
 			<ul class="items">
-				{#each layer.legend.items as item (item.label)}
+				{#each display.legend.items as item (item.label)}
 					<li><i style:background={item.color}></i>{item.label}</li>
 				{/each}
 			</ul>
@@ -63,19 +70,19 @@
 		{#if layer.showDisputed}
 			<div class="hint-row">
 				<span class="hatch" aria-hidden="true"></span>
-				Estatuto disputado, sem atribuição de soberania.
+				{tr('Estatuto disputado, sem atribuição de soberania.', 'Disputed status, without assigning sovereignty.')}
 			</div>
 		{/if}
 
 		{#if layer.showSubdivisions}
 			<div class="hint-row">
 				<span class="unit-swatch" aria-hidden="true"></span>
-				Selecione um país para ver suas unidades e estados.
+				{tr('Selecione um país para ver suas unidades e estados.', 'Select a country to see its units and states.')}
 			</div>
 		{/if}
 
-		{#if layer.legend.note}
-			<p class="note">{layer.legend.note}</p>
+		{#if display.legend.note}
+			<p class="note">{display.legend.note}</p>
 		{/if}
 
 		<footer>

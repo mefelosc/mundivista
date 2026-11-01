@@ -30,6 +30,7 @@
 		wrapCollection
 	} from '#lib/engines/map-engine/wrap';
 	import { theme } from '#lib/theme.svelte';
+	import { locale } from '#lib/locale.svelte';
 	import { sound } from '#lib/sound.svelte';
 	import type { ResolvedLayer } from '#lib/configurations/map-layers';
 	import type { SubdivisionCollection } from '#lib/data/subdivisions';
@@ -97,7 +98,10 @@
 		'+proj=eqearth +lon_0=0 +x_0=0 +y_0=0 +R=6371008.8 +over +units=m +no_defs';
 	let equalEarthRegistered = false;
 
-	const projectionLabel = $derived(projection === 'flat' ? '2D · Equal Earth' : 'Globo 3D');
+	const isEn = $derived(locale.value === 'en');
+	const projectionLabel = $derived(
+		projection === 'flat' ? '2D · Equal Earth' : isEn ? '3D Globe' : 'Globo 3D'
+	);
 
 	function registerEqualEarth(
 		maplibregl: typeof import('maplibre-gl'),
@@ -550,7 +554,7 @@
 
 		for (const country of countries) {
 			labelEntries.push({
-				el: make(country.name, 'country'),
+				el: make(isEn ? country.nameEn : country.name, 'country'),
 				kind: 'country',
 				code: country.code,
 				lat: country.label[1],
@@ -566,13 +570,13 @@
 									? 2.3
 									: 3.2,
 				priority: country.labelRank * 10 + (country.areaKm2 ? 0 : 5),
-				text: country.name
+				text: isEn ? country.nameEn : country.name
 			});
 		}
 
 		for (const country of countries) {
 			if (!country.capitalLatLng) continue;
-			const name = capitalInPortuguese(country.code, country.capital);
+			const name = isEn ? country.capital : capitalInPortuguese(country.code, country.capital);
 			if (!name) continue;
 			labelEntries.push({
 				el: make(name, 'capital'),
@@ -897,7 +901,7 @@
 
 			map.touchZoomRotate.disableRotation();
 			map.keyboard.disableRotation();
-			map.getCanvas().setAttribute('aria-label', 'Mapa-múndi interativo');
+			map.getCanvas().setAttribute('aria-label', isEn ? 'Interactive world map' : 'Mapa-múndi interativo');
 			map.getCanvas().setAttribute('role', 'application');
 
 			map.on('error', (event) => {
@@ -1142,6 +1146,11 @@
 	});
 
 	$effect(() => {
+		void locale.value;
+		if (ready) buildLabels();
+	});
+
+	$effect(() => {
 		if (!interactive) setHovered(null);
 	});
 
@@ -1213,7 +1222,7 @@
 			(projection === 'flat' ? FLAT_ZOOM_OFFSET : 0);
 		const padding = mobile
 			? { bottom: Math.min(430, Math.round(window.innerHeight * 0.55)) }
-			: { right: Math.min(620, Math.max(500, Math.round(window.innerWidth * 0.44))) };
+			: { right: Math.min(700, Math.max(540, Math.round(window.innerWidth * 0.47))) };
 		map.flyTo({
 			center,
 			zoom,

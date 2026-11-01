@@ -8,6 +8,7 @@
 	import { locale } from '#lib/locale.svelte';
 	import { t } from '#lib/i18n';
 	import { indicatorKeys } from '#lib/data/countries';
+	import { localizedGame } from '#lib/i18n-data-en';
 	import {
 		bestScores,
 		dailySeed,
@@ -19,6 +20,7 @@
 	} from '#lib/progress';
 
 	const text = $derived(locale.value);
+	const localizedGames = $derived(games.map((game) => localizedGame(game, text)));
 	const categories = ['Todos', ...new Set(games.map((g) => g.category))];
 	const CATEGORY_EN: Record<string, string> = {
 		Geografia: 'Geography',
@@ -38,7 +40,9 @@
 		text === 'en' ? (DIFFICULTY_EN[difficulty] ?? difficulty) : difficulty;
 	let activeCategory = $state('Todos');
 	const filtered = $derived(
-		activeCategory === 'Todos' ? games : games.filter((g) => g.category === activeCategory)
+		activeCategory === 'Todos'
+			? localizedGames
+			: localizedGames.filter((g) => g.category === activeCategory)
 	);
 
 	const counts = $derived(
@@ -54,12 +58,13 @@
 	let last = $state<{ slug: string; savedAt: number; daily: boolean } | null>(null);
 	let lastState = $state<SavedGame | null>(null);
 	let dailyGame = $state(games[0]);
+	const displayDaily = $derived(localizedGame(dailyGame, text));
 	let dailyResult = $state<DailyResult | null>(null);
 	let today = $state('');
 	let copied = $state(false);
 
 	onMount(() => {
-		today = new Date().toLocaleDateString('pt-BR');
+		today = new Date().toLocaleDateString(text === 'en' ? 'en-US' : 'pt-BR');
 		bests = bestScores();
 		last = lastPlayed();
 		if (last) lastState = loadProgress(last.slug);
@@ -139,8 +144,8 @@
 		<div class="daily-art"><GameCover slug={dailyGame.slug} icon={dailyGame.icon} /></div>
 		<div class="daily-copy">
 			<span class="eyebrow">{t('play.daily', text)}{today ? ` · ${today}` : ''}</span>
-			<h2>{dailyGame.title}</h2>
-			<p>{dailyGame.tagline}. {t('play.dailyHint', text)}</p>
+			<h2>{displayDaily.title}</h2>
+			<p>{displayDaily.tagline}. {t('play.dailyHint', text)}</p>
 			<div class="daily-meta">
 				<span class="chip">{categoryLabel(dailyGame.category)}</span>
 				<span class="chip">{difficultyLabel(dailyGame.difficulty)}</span>
@@ -227,7 +232,7 @@
 				<h2>{t('play.records', text)}</h2>
 			</header>
 			<div class="record-list">
-				{#each games as game (game.slug)}
+				{#each localizedGames as game (game.slug)}
 					{#if bestFor(game.slug) !== null}
 						<a href={`/game/${game.slug}`}>
 							<span>{game.title}</span>
@@ -324,10 +329,11 @@
 		align-items: center;
 		gap: 1.2rem;
 		margin: 1rem 0 0;
-		padding: 0.7rem 0.85rem;
+		padding: 0.85rem 1rem;
 		border: 1px solid var(--line-strong);
-		border-radius: 0.25rem;
-		background: var(--surface-1);
+		border-radius: var(--radius-lg);
+		background: var(--surface-2);
+		box-shadow: var(--shadow-soft);
 	}
 	.resume-label {
 		min-width: 12rem;
@@ -357,13 +363,14 @@
 	}
 	.daily {
 		display: grid;
-		grid-template-columns: 10rem minmax(0, 1fr) auto;
+		grid-template-columns: 12rem minmax(0, 1fr) auto;
 		align-items: stretch;
 		gap: 1.2rem;
 		margin: 1.1rem 0 1.5rem;
 		border: 1px solid color-mix(in oklab, var(--cat) 35%, var(--line));
 		border-left: 4px solid var(--cat);
-		border-radius: 0.3rem;
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-soft);
 		background:
 			linear-gradient(90deg, color-mix(in oklab, var(--cat) 10%, transparent), transparent 65%),
 			var(--surface-1);
@@ -383,13 +390,14 @@
 	.daily-copy h2 {
 		margin: 0.3rem 0 0.25rem;
 		font-family: var(--font-display);
-		font-size: 1.7rem;
-		font-weight: 600;
+		font-size: 2rem;
+		font-weight: 700;
+		letter-spacing: -0.04em;
 	}
 	.daily-copy p {
 		margin: 0;
 		max-width: 36rem;
-		font-size: 0.82rem;
+		font-size: 0.94rem;
 		line-height: 1.5;
 		color: var(--text-3);
 	}
@@ -454,34 +462,36 @@
 	}
 	.filters button {
 		display: inline-flex;
-		align-items: baseline;
-		gap: 0.35rem;
-		border: 0;
-		border-bottom: 2px solid transparent;
-		background: transparent;
+		align-items: center;
+		gap: 0.4rem;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-pill);
+		background: var(--surface-1);
 		color: var(--text-3);
-		padding: 0.6rem 0.6rem;
-		font-size: 0.8rem;
-		margin-bottom: -1px;
+		padding: 0.5rem 0.8rem;
+		font-size: 0.86rem;
+		font-weight: 600;
 	}
 	.filters button span {
 		font-family: var(--font-mono);
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 		color: var(--text-4);
 	}
 	.filters button:hover {
 		color: var(--text-1);
+		border-color: var(--line-strong);
 	}
 	.filters button.active {
-		color: var(--text-1);
-		border-bottom-color: var(--cat);
+		color: var(--accent-0);
+		border-color: color-mix(in oklab, var(--cat) 55%, var(--line));
+		background: color-mix(in oklab, var(--cat) 12%, var(--surface-1));
 	}
 	.filters button.active span {
 		color: var(--cat);
 	}
 	.toolbar-count {
 		font-family: var(--font-mono);
-		font-size: 0.6rem;
+		font-size: 0.72rem;
 		color: var(--text-4);
 		white-space: nowrap;
 	}
@@ -496,11 +506,12 @@
 		flex-direction: column;
 		border: 1px solid var(--line);
 		border-top: 3px solid var(--cat);
-		border-radius: 0.3rem;
+		border-radius: var(--radius-lg);
 		background: var(--surface-1);
 		text-decoration: none;
 		color: inherit;
 		overflow: hidden;
+		box-shadow: var(--shadow-soft);
 		transition: border-color 0.2s ease, background 0.2s ease, transform 0.22s var(--ease-out-soft);
 		animation: fade-up 0.4s var(--ease-out-soft) both;
 		animation-delay: calc(var(--index) * 45ms);
@@ -508,10 +519,11 @@
 	.game:hover {
 		border-color: color-mix(in oklab, var(--cat) 55%, var(--line));
 		background: var(--surface-2);
-		transform: translateY(-3px);
+		transform: translateY(-5px);
+		box-shadow: var(--shadow-float);
 	}
 	.cover-wrap {
-		height: 108px;
+		height: 150px;
 		overflow: hidden;
 	}
 	.cover-wrap :global(.cover) {
@@ -561,15 +573,15 @@
 	.game h2 {
 		margin: 0.65rem 0.85rem 0;
 		font-family: var(--font-display);
-		font-size: 1.45rem;
-		font-weight: 600;
+		font-size: 1.75rem;
+		font-weight: 700;
 		line-height: 1.05;
 		letter-spacing: -0.02em;
 	}
 	.tagline {
 		margin: 0.18rem 0.85rem 0.9rem;
-		font-size: 0.78rem;
-		line-height: 1.4;
+		font-size: 0.9rem;
+		line-height: 1.45;
 		color: var(--cat);
 	}
 	.bottom {
@@ -604,15 +616,15 @@
 	.play-cta {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.25rem;
+		gap: 0.3rem;
 		margin-left: auto;
-		padding: 0.3rem 0.5rem;
+		padding: 0.4rem 0.7rem;
 		border: 1px solid color-mix(in oklab, var(--cat) 45%, transparent);
-		border-radius: 0.15rem;
+		border-radius: var(--radius-pill);
 		background: color-mix(in oklab, var(--cat) 10%, transparent);
 		color: var(--cat);
-		font-size: 0.66rem;
-		font-weight: 600;
+		font-size: 0.78rem;
+		font-weight: 700;
 	}
 	.game:hover .play-cta {
 		background: color-mix(in oklab, var(--cat) 18%, transparent);
@@ -686,7 +698,7 @@
 	}
 	.note p {
 		margin: 0;
-		font-size: 0.68rem;
+		font-size: 0.8rem;
 		line-height: 1.5;
 	}
 	@media (max-width: 1000px) {

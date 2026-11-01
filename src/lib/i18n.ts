@@ -1,8 +1,8 @@
 /**
  * Estrutura de mensagens PT/EN.
  *
- * O shell, o portal e a biblioteca de jogos são traduzidos. O conteúdo
- * editorial dos dossiês e dos jogos permanece em português nesta versão.
+ * Shell, portal, atlas, dossiês, card do país e páginas de dados são
+ * traduzidos. O conteúdo interno dos jogos permanece em português.
  */
 
 export type Locale = 'pt' | 'en';
@@ -37,7 +37,7 @@ export const messages = {
 		'settings.textLarge': 'Grande',
 		'settings.sources': 'Fontes e métodos',
 		'settings.close': 'Fechar configurações',
-		'settings.note': 'O conteúdo editorial dos dossiês e jogos segue em português nesta versão.',
+		'settings.note': 'O conteúdo dos jogos e alguns textos editoriais de método seguem em português nesta versão.',
 		'landing.eyebrow': 'Atlas interativo · edição 2026',
 		'landing.titleA': 'Escolha',
 		'landing.titleB': 'seu caminho',
@@ -100,7 +100,7 @@ export const messages = {
 		'settings.textLarge': 'Large',
 		'settings.sources': 'Sources and methods',
 		'settings.close': 'Close settings',
-		'settings.note': 'Editorial content in dossiers and games remains in Portuguese in this version.',
+		'settings.note': 'Game content and some editorial method texts remain in Portuguese in this version.',
 		'landing.eyebrow': 'Interactive atlas · 2026 edition',
 		'landing.titleA': 'Choose',
 		'landing.titleB': 'your path',

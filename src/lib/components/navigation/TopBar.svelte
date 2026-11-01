@@ -74,10 +74,10 @@
 
 	<nav aria-label="Navegação principal">
 		<a href="/explore" class:active={isExplore} aria-current={isExplore ? 'page' : undefined}>
-			<span class="num">01</span>{t('nav.explore', text)}
+			{t('nav.explore', text)}
 		</a>
 		<a href="/play" class:active={isPlay} aria-current={isPlay ? 'page' : undefined}>
-			<span class="num">02</span>{t('nav.play', text)}
+			{t('nav.play', text)}
 		</a>
 	</nav>
 
@@ -203,24 +203,14 @@
 		height: var(--header-h);
 		display: flex;
 		align-items: center;
-		gap: 2rem;
-		padding: 0 1rem 0 1.1rem;
+		gap: 1.6rem;
+		padding: 0 1.1rem 0 1.25rem;
 		border-bottom: 1px solid var(--line);
-		background: color-mix(in oklab, var(--surface-0) 96%, transparent);
-	}
-	.topbar::after {
-		content: '';
-		position: absolute;
-		left: 0;
-		right: 0;
-		bottom: -4px;
-		height: 4px;
-		background-image: repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 9px);
-		pointer-events: none;
-		opacity: 0.7;
+		background: color-mix(in oklab, var(--surface-0) 82%, transparent);
+		backdrop-filter: blur(20px) saturate(1.3);
 	}
 	.compact {
-		background: color-mix(in oklab, var(--surface-0) 88%, transparent);
+		background: color-mix(in oklab, var(--surface-0) 74%, transparent);
 	}
 	.brand {
 		display: flex;
@@ -254,41 +244,31 @@
 	nav {
 		display: flex;
 		align-items: center;
-		gap: 0.15rem;
+		gap: 0.25rem;
+		padding: 0.25rem;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-pill);
+		background: color-mix(in oklab, var(--surface-1) 60%, transparent);
 	}
 	nav a {
 		position: relative;
 		display: inline-flex;
-		align-items: baseline;
-		gap: 0.32rem;
-		padding: 0.45rem 0.65rem;
+		align-items: center;
+		padding: 0.5rem 0.95rem;
+		border-radius: var(--radius-pill);
 		color: var(--text-3);
-		font-size: 0.84rem;
-		font-weight: 500;
+		font-size: 0.92rem;
+		font-weight: 600;
 		text-decoration: none;
-		transition: color 0.16s ease;
+		transition: color 0.16s ease, background 0.16s ease;
 	}
-	nav .num {
-		font-family: var(--font-mono);
-		font-size: 0.5rem;
-		letter-spacing: 0.08em;
-		color: var(--text-4);
-	}
-	nav a:hover,
-	nav a.active {
+	nav a:hover {
 		color: var(--text-1);
+		background: color-mix(in oklab, var(--surface-3) 60%, transparent);
 	}
-	nav a.active .num {
-		color: var(--accent-1);
-	}
-	nav a.active::after {
-		content: '';
-		position: absolute;
-		left: 0.65rem;
-		right: 0.65rem;
-		bottom: 0.08rem;
-		height: 2px;
-		background: var(--accent-1);
+	nav a.active {
+		color: var(--accent-0);
+		background: color-mix(in oklab, var(--accent-1) 14%, var(--surface-2));
 	}
 	.actions {
 		margin-left: auto;
@@ -299,14 +279,14 @@
 	.search {
 		display: flex;
 		align-items: center;
-		gap: 0.45rem;
+		gap: 0.5rem;
 		border: 1px solid var(--line);
-		background: var(--surface-1);
+		background: color-mix(in oklab, var(--surface-1) 70%, transparent);
 		color: var(--text-3);
-		border-radius: 0.2rem;
-		padding: 0.42rem 0.5rem 0.42rem 0.6rem;
-		font-size: 0.78rem;
-		transition: border-color 0.16s ease, color 0.16s ease;
+		border-radius: var(--radius-pill);
+		padding: 0.6rem 0.7rem 0.6rem 0.85rem;
+		font-size: 0.86rem;
+		transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease;
 	}
 	.search:hover {
 		border-color: var(--line-strong);
@@ -340,19 +320,24 @@
 	.cta {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.4rem;
-		border: 1px solid color-mix(in oklab, var(--accent-1) 55%, transparent);
-		color: var(--accent-0);
-		background: color-mix(in oklab, var(--accent-1) 10%, var(--surface-2));
-		border-radius: 0.2rem;
-		padding: 0.48rem 0.7rem;
-		font-size: 0.78rem;
-		font-weight: 600;
+		gap: 0.45rem;
+		border: 1px solid var(--accent-0);
+		color: #fff;
+		background: var(--accent-0);
+		border-radius: var(--radius-pill);
+		padding: 0.62rem 1rem;
+		font-size: 0.9rem;
+		font-weight: 700;
 		text-decoration: none;
-		transition: background 0.16s ease;
+		box-shadow: 0 8px 20px -14px color-mix(in oklab, var(--accent-1) 80%, transparent);
+		transition: transform 0.16s ease, background 0.16s ease;
+	}
+	:global([data-theme='dark']) .cta {
+		color: #06120c;
 	}
 	.cta:hover {
-		background: color-mix(in oklab, var(--accent-1) 18%, var(--surface-2));
+		background: var(--accent-1);
+		transform: translateY(-1px);
 	}
 	.cta :global(svg) {
 		transition: transform 0.2s var(--ease-out-soft);
@@ -376,8 +361,8 @@
 		padding: 0.95rem 1rem 1rem;
 		background: var(--surface-2);
 		border: 1px solid var(--line-strong);
-		border-radius: 0.3rem;
-		box-shadow: 0 28px 60px -30px rgb(0 0 0 / 0.55);
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-float);
 	}
 	.settings-panel header {
 		display: flex;
@@ -416,7 +401,7 @@
 		border-bottom: 1px solid var(--line);
 	}
 	.setting-label {
-		font-size: 0.78rem;
+		font-size: 0.86rem;
 		color: var(--text-3);
 	}
 	.segmented {
@@ -430,8 +415,8 @@
 		border: 0;
 		background: transparent;
 		color: var(--text-3);
-		padding: 0.35rem 0.55rem;
-		font-size: 0.7rem;
+		padding: 0.45rem 0.7rem;
+		font-size: 0.8rem;
 	}
 	.segmented button + button {
 		border-left: 1px solid var(--line);
@@ -489,13 +474,12 @@
 			padding: 0 0.7rem;
 		}
 		.wordmark {
-			font-size: 1.05rem;
+			font-size: 1.15rem;
 		}
 		nav a {
 			padding: 0.4rem 0.45rem;
 			font-size: 0.78rem;
 		}
-		nav .num,
 		.search-label,
 		kbd,
 		.cta span {

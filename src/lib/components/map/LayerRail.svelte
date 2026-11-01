@@ -4,6 +4,9 @@
 	import { mapLayers, standardLayer } from '#lib/configurations/map-layers';
 	import { organizations } from '#lib/data/organizations';
 	import type { LayerId } from '#lib/types';
+	import { locale } from '#lib/locale.svelte';
+	import { localizedLayer } from '#lib/i18n-layers';
+	import { localizedOrganization } from '#lib/i18n-data-en';
 
 	interface Props {
 		active: LayerId;
@@ -14,11 +17,19 @@
 
 	let { active, onchange, bloc = null, onbloc }: Props = $props();
 
+	const isEn = $derived(locale.value === 'en');
+	const tr = (pt: string, en: string) => (isEn ? en : pt);
 	const allLayers = $derived([standardLayer, ...mapLayers]);
-	const activeLayer = $derived(allLayers.find((l) => l.id === active) ?? standardLayer);
+	const displayLayers = $derived(allLayers.map((layer) => localizedLayer(layer, locale.value)));
+	const activeLayer = $derived(displayLayers.find((l) => l.id === active) ?? displayLayers[0]);
+	const displayStandard = $derived(displayLayers[0]);
 	const total = String(mapLayers.length).padStart(2, '0');
 	const availableBlocs = $derived(
-		activeLayer.blocs ? organizations.filter((o) => activeLayer.blocs!.includes(o.id)) : []
+		activeLayer.blocs
+			? organizations
+					.filter((o) => activeLayer.blocs!.includes(o.id))
+					.map((org) => localizedOrganization(org, locale.value))
+			: []
 	);
 
 	let collapsed = $state(false);
@@ -33,18 +44,18 @@
 	}
 </script>
 
-<aside class="rail" class:collapsed aria-label="Camadas do mapa">
+<aside class="rail" class:collapsed aria-label={tr('Camadas do mapa', 'Map layers')}>
 	<div class="head">
 		{#if !collapsed}
-			<span class="eyebrow">Camadas</span>
+			<span class="eyebrow">{tr('Camadas', 'Layers')}</span>
 			<span class="index">{activeLayer.index}/{total}</span>
 		{/if}
 		<button
 			type="button"
 			class="rail-toggle"
 			aria-expanded={!collapsed}
-			aria-label={collapsed ? 'Expandir camadas' : 'Recolher camadas'}
-			title={collapsed ? 'Expandir camadas' : 'Recolher camadas'}
+			aria-label={collapsed ? tr('Expandir camadas', 'Expand layers') : tr('Recolher camadas', 'Collapse layers')}
+			title={collapsed ? tr('Expandir camadas', 'Expand layers') : tr('Recolher camadas', 'Collapse layers')}
 			onclick={toggleCollapsed}
 		>
 			<Icon name="chevronRight" size={14} />
@@ -57,21 +68,21 @@
 			aria-selected={active === standardLayer.id}
 			class:active={active === standardLayer.id}
 			class="base"
-			title={`${standardLayer.label} · ${standardLayer.description}`}
+			title={`${displayStandard.label} · ${displayStandard.description}`}
 			onclick={() => onchange(standardLayer.id)}
 		>
-			<span class="num">{standardLayer.index}</span>
-			<Icon name={standardLayer.icon} size={17} />
-			<span class="label">{standardLayer.short}</span>
+			<span class="num">{displayStandard.index}</span>
+			<Icon name={displayStandard.icon} size={17} />
+			<span class="label">{displayStandard.short}</span>
 		</button>
 		<span class="divider" aria-hidden="true"></span>
-		{#each mapLayers as layer (layer.id)}
+		{#each displayLayers.slice(1) as layer (layer.id)}
 			<button
 				type="button"
 				role="tab"
 				aria-selected={active === layer.id}
 				class:active={active === layer.id}
-				title={`${layer.label} · ${layer.description}${active === layer.id ? ' · clique de novo para voltar ao mapa padrão' : ''}`}
+				title={`${layer.label} · ${layer.description}${active === layer.id ? tr(' · clique de novo para voltar ao mapa padrão', ' · click again to return to the standard map') : ''}`}
 				onclick={() => onchange(layer.id)}
 			>
 				<span class="num">{layer.index}</span>
@@ -82,8 +93,8 @@
 	</div>
 
 	{#if availableBlocs.length && onbloc && !collapsed}
-		<div class="blocs" aria-label="Blocos">
-			<span class="eyebrow">Blocos</span>
+		<div class="blocs" aria-label={tr('Blocos', 'Blocs')}>
+			<span class="eyebrow">{tr('Blocos', 'Blocs')}</span>
 			<div class="chips">
 				{#each availableBlocs as org (org.id)}
 					<button
@@ -125,12 +136,12 @@
 		padding: 0 0.1rem 0 0.2rem;
 	}
 	.head .eyebrow {
-		font-size: 0.64rem;
+		font-size: 0.74rem;
 	}
 	.index {
 		margin-left: auto;
 		font-family: var(--font-mono);
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 		color: var(--text-4);
 	}
 	.rail-toggle {
@@ -173,13 +184,13 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-		min-height: 2.4rem;
+		min-height: 2.7rem;
 		border: 0;
 		background: transparent;
 		color: var(--text-3);
-		border-radius: 0.16rem;
-		padding: 0.5rem 0.48rem;
-		font-size: 0.86rem;
+		border-radius: var(--radius-sm);
+		padding: 0.55rem 0.55rem;
+		font-size: 0.92rem;
 		font-weight: 500;
 		text-align: left;
 		white-space: nowrap;
@@ -187,7 +198,7 @@
 	}
 	.layers .num {
 		font-family: var(--font-mono);
-		font-size: 0.64rem;
+		font-size: 0.7rem;
 		color: var(--text-4);
 		width: 1.1rem;
 		flex-shrink: 0;
@@ -241,7 +252,7 @@
 		border-radius: 0.25rem;
 	}
 	.blocs .eyebrow {
-		font-size: 0.64rem;
+		font-size: 0.72rem;
 	}
 	.chips {
 		display: flex;
@@ -252,10 +263,10 @@
 		border: 1px solid var(--line);
 		background: transparent;
 		color: var(--text-3);
-		border-radius: 0.15rem;
-		padding: 0.22rem 0.38rem;
+		border-radius: var(--radius-pill);
+		padding: 0.28rem 0.5rem;
 		font-family: var(--font-mono);
-		font-size: 0.64rem;
+		font-size: 0.72rem;
 		letter-spacing: 0.04em;
 		transition: all 0.15s ease;
 	}

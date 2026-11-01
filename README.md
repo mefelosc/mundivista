@@ -58,10 +58,18 @@ O `smoke`, `a11y` e `shots` esperam um preview em `http://localhost:4173`.
 - Na camada política, clicar em um país carrega sob demanda suas **unidades administrativas
   de primeiro nível** (estados, províncias, distritos): contornos e nomes sobre o mapa e
   lista navegável no card, com foco no mapa ao escolher uma unidade.
-- O card do país é uma **ficha contínua, sem abas**: índice fixo de seções, todas as
-  informações na mesma rolagem, números maiores e CTA fixo para o dossiê.
+- O card do país é uma **ficha contínua com abas-índice**: visão geral com gráfico em
+  destaque, ficha, vizinhos, demografia, economia, físico, geopolítica e história na
+  mesma rolagem, com números maiores, ícones e CTA fixo para o dossiê.
 - O **dossiê** abre com capa editorial: silhueta do país, mapa de localização no hero,
-  ledger de métricas, navegação fixa e cards com animações de entrada.
+  ledger de métricas, navegação fixa, gráficos interativos (linha/área/barras com eixos,
+  mediana mundial e tooltip) e cards com animações.
+- **Comparação** em painel largo: barras divergentes por indicador e radar de percentis,
+  com seletor de país, hover sincronizado e animação de entrada.
+- **Economia** com maiores empresas (amostra curada e explícita), comércio exterior,
+  produtos/parceiros e links para OEC/CompaniesMarketCap.
+- i18n cobre shell, portal, Explore, card, dossiê, Países, Play e Sobre em PT/EN; o
+  conteúdo interno dos jogos ainda está em português.
 - Coropléticos por quantis, crossfade de camada, seleção por diferença de `feature-state`,
   hover em `requestAnimationFrame` com bbox de 4–6 px.
 - Rótulos DOM com cache de medida, colisão, prioridade e teto de 82; microestados ganham

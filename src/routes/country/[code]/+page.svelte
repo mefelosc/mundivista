@@ -4,6 +4,10 @@
 	import Icon from '#lib/components/ui/Icon.svelte';
 	import LocatorMap from '#lib/components/cards/LocatorMap.svelte';
 	import StatRow from '#lib/components/cards/StatRow.svelte';
+	import IndicatorGroup from '#lib/components/cards/IndicatorGroup.svelte';
+	import TradePanel from '#lib/components/cards/TradePanel.svelte';
+	import CompaniesPanel from '#lib/components/cards/CompaniesPanel.svelte';
+	import ComparePanel from '#lib/components/cards/ComparePanel.svelte';
 	import {
 		countries,
 		getCountry,
@@ -19,26 +23,57 @@
 	import { disputedInfo } from '#lib/data/disputed';
 	import { organizationsForCountry } from '#lib/data/organizations';
 	import { snippetsByCountry } from '#lib/data/snippets';
+	import { deltaModeFor } from '#lib/data/indicator-icons';
 	import { silhouetteFor } from '#lib/data/silhouettes';
-	import { formatArea, formatCompact, formatIndicatorValue } from '#lib/format';
+	import { locale } from '#lib/locale.svelte';
+	import {
+		historicalSourceEn,
+		indicatorName,
+		indicatorUnit,
+		localizeContinent,
+		localizeDependency,
+		localizeLanguage,
+		localizeSubregion,
+		localizeType
+	} from '#lib/i18n-data';
+	import {
+		localizedDisputed,
+		localizedHistorical,
+		localizedOrganization,
+		localizedSnippet
+	} from '#lib/i18n-data-en';
+	import { formatArea, formatCompact, formatIndicatorValue, formatRank } from '#lib/format';
 	import type { Country, IndicatorKey } from '#lib/types';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
+	const isEn = $derived(locale.value === 'en');
+	const tr = (pt: string, en: string) => (isEn ? en : pt);
 	const country = $derived(getCountry(data.code));
-	const capital = $derived(country ? capitalInPortuguese(country.code, country.capital) : null);
-	const historical = $derived(country ? getHistorical(country.code) : null);
-	const orgs = $derived(country ? organizationsForCountry(country.code) : []);
+	const displayName = $derived(country ? (isEn ? country.nameEn : country.name) : '');
+	const capital = $derived(country ? (isEn ? country.capital : capitalInPortuguese(country.code, country.capital)) : null);
+	const historical = $derived(
+		country ? localizedHistorical(getHistorical(country.code), locale.value) : null
+	);
+	const orgs = $derived(
+		country ? organizationsForCountry(country.code).map((org) => localizedOrganization(org, locale.value)) : []
+	);
 	const currentOrgs = $derived(orgs.filter((o) => o.era === 'current'));
 	const historicalOrgs = $derived(orgs.filter((o) => o.era === 'historical'));
 	const neighbors = $derived(
 		country ? (country.borders.map((b) => getCountry(b)).filter(Boolean) as Country[]) : []
 	);
-	const snippets = $derived(country ? (snippetsByCountry.get(country.code) ?? []) : []);
-	const disputed = $derived(country ? disputedInfo(country.code) : null);
+	const snippets = $derived(
+		country
+			? (snippetsByCountry.get(country.code) ?? []).map(
+					(snippet) => localizedSnippet(snippet, locale.value) ?? snippet
+				)
+			: []
+	);
+	const disputed = $derived(country ? localizedDisputed(disputedInfo(country.code), locale.value) : null);
 	const sovereign = $derived(country ? sovereignCountry(country) : null);
-	const dependency = $derived(country ? dependencyLabel(country) : null);
+	const dependency = $derived(country ? localizeDependency(country, locale.value) : null);
 	const silhouette = $derived(country ? silhouetteFor(country.code) : null);
 
 	const glance = $derived.by(() => {
@@ -50,31 +85,37 @@
 		return [
 			{
 				key: 'population',
-				label: 'População',
+				label: isEn ? 'Population' : 'População',
 				value: pop ? formatCompact(pop.v) : '—',
 				year: pop?.y ?? null,
-				meta: popRank ? `${popRank.rank}º de ${popRank.total}` : 'habitantes'
+				meta: popRank ? formatRank(popRank) : isEn ? 'people' : 'habitantes'
 			},
 			{
 				key: 'gdp',
-				label: 'PIB per capita',
+				label: isEn ? 'GDP per capita' : 'PIB per capita',
 				value: gdp ? formatIndicatorValue('gdpPerCapita', gdp) : '—',
 				year: gdp?.y ?? null,
-				meta: gdpRank ? `${gdpRank.rank}º de ${gdpRank.total}` : 'US$ correntes'
+				meta: gdpRank ? formatRank(gdpRank) : isEn ? 'current US$' : 'US$ correntes'
 			},
 			{
 				key: 'area',
-				label: 'Área',
+				label: isEn ? 'Area' : 'Área',
 				value: country.areaKm2 ? formatArea(country.areaKm2) : '—',
 				year: null,
-				meta: 'superfície terrestre'
+				meta: isEn ? 'land surface' : 'superfície terrestre'
 			},
 			{
 				key: 'capital',
-				label: 'Capital',
+				label: isEn ? 'Capital' : 'Capital',
 				value: capital ?? '—',
 				year: null,
-				meta: country.unMember ? 'Estado-membro da ONU' : 'Estatuto não membro'
+				meta: country.unMember
+					? isEn
+						? 'UN member state'
+						: 'Estado-membro da ONU'
+					: isEn
+						? 'Non-member status'
+						: 'Estatuto não membro'
 			}
 		];
 	});
@@ -84,7 +125,7 @@
 	let activeSection = $state('ficha');
 
 	onMount(() => {
-		const ids = ['ficha', 'demography', 'economy', 'environment', 'geopolitics', 'history', 'organizations', 'snippets'];
+		const ids = ['compare', 'ficha', 'demography', 'economy', 'environment', 'geopolitics', 'history', 'organizations', 'snippets'];
 		let frame = 0;
 
 		const update = () => {
@@ -119,6 +160,33 @@
 	});
 
 	const compareCountry = $derived(getCountry(compareCode));
+	const related = $derived(
+		country
+			? countries
+					.filter((item) => item.code !== country.code && item.continent === country.continent)
+					.sort(
+						(a, b) =>
+							(b.indicators.population?.v ?? 0) - (a.indicators.population?.v ?? 0)
+					)
+					.slice(0, 6)
+			: []
+	);
+
+	const SNIPPET_CATEGORY_EN: Record<string, string> = {
+		physical: 'Physical',
+		political: 'Political',
+		economic: 'Economic',
+		historical: 'Historical',
+		demographic: 'Demographic',
+		environment: 'Environment'
+	};
+
+	const GROUP_TITLES_EN: Record<string, string> = {
+		demography: 'Demography',
+		economy: 'Economy',
+		environment: 'Physical environment and climate',
+		geopolitics: 'Geopolitics and governance'
+	};
 
 	const GROUPS: {
 		id: string;
@@ -168,17 +236,25 @@
 			if (value && stats) {
 				const above = value.v >= stats.median;
 				const better = meta?.dir === 'lower' ? !above : above;
-				comparison = `${better ? 'Melhor que' : 'Pior que'} a mediana (${formatIndicatorValue(key, { v: stats.median, y: value.y })})`;
+				comparison = isEn
+					? `${better ? 'Better' : 'Worse'} than the median (${formatIndicatorValue(key, { v: stats.median, y: value.y })})`
+					: `${better ? 'Melhor que' : 'Pior que'} a mediana (${formatIndicatorValue(key, { v: stats.median, y: value.y })})`;
 			}
+			const unit = meta?.unit ?? '';
 			return {
 				key,
-				label: meta?.name ?? key,
+				label: indicatorName(key, locale.value),
 				value: value ? formatIndicatorValue(key, value) : 'Não disponível',
 				year: value?.y ?? null,
+				unit,
 				percentile: rank?.percentile ?? null,
+				median: stats?.median ?? null,
 				rank,
 				comparison,
-				series: value?.s ?? null
+				series: value?.s ?? null,
+				format: (next: number) => formatIndicatorValue(key, { v: next, y: value?.y ?? 0 }),
+				axisFormat: (next: number) => formatCompact(next),
+				deltaMode: deltaModeFor(key, unit)
 			};
 		});
 	}
@@ -193,9 +269,9 @@
 		if (historical?.independence) {
 			events.push({
 				year: historical.independence,
-				title: 'Marco de independência / formação',
+				title: isEn ? 'Independence / state formation' : 'Marco de independência / formação',
 				text: historical.independenceFrom
-					? `De: ${historical.independenceFrom}. ${historical.note ?? ''}`
+					? `${isEn ? 'From' : 'De'}: ${historical.independenceFrom}. ${historical.note ?? ''}`
 					: (historical.note ?? '')
 			});
 		}
@@ -203,7 +279,7 @@
 			events.push({
 				year: former.to ?? former.from ?? historical?.independence ?? 0,
 				title: former.name,
-				text: [former.from && `de ${former.from}`, former.to && `até ${former.to}`].filter(Boolean).join(' · ')
+				text: [former.from && `${isEn ? 'from' : 'de'} ${former.from}`, former.to && `${isEn ? 'to' : 'até'} ${former.to}`].filter(Boolean).join(' · ')
 			});
 		}
 		for (const org of currentOrgs) {
@@ -220,7 +296,7 @@
 			events.push({
 				year: org.founded,
 				title: org.short,
-				text: `${org.name} · ${org.founded}–${org.dissolved ?? 'hoje'}. ${org.note}`
+				text: `${org.name} · ${org.founded}–${org.dissolved ?? (isEn ? 'present' : 'hoje')}. ${org.note}`
 			});
 		}
 		return events.filter((e) => e.year > 0).sort((a, b) => a.year - b.year);
@@ -235,7 +311,7 @@
 			const max = Math.max(a?.v ?? 0, b?.v ?? 0) || 1;
 			return {
 				key,
-				label: indicatorMeta[key]?.name ?? key,
+				label: indicatorName(key, locale.value),
 				a,
 				b,
 				aWidth: a ? Math.max(2, (a.v / max) * 100) : 0,
@@ -252,7 +328,7 @@
 	async function share() {
 		const url = typeof location !== 'undefined' ? location.href : '';
 		try {
-			if (navigator.share) await navigator.share({ title: `${country?.name} — Mundivista`, url });
+			if (navigator.share) await navigator.share({ title: `${displayName} — Mundivista`, url });
 			else {
 				await navigator.clipboard.writeText(url);
 				copied = true;
@@ -268,14 +344,16 @@
 	}
 
 	function deltaFor(key: IndicatorKey): 'points' | 'percent' {
-		const unit = indicatorMeta[key]?.unit ?? '';
-		return unit.includes('%') || unit.includes('escore') || unit.includes('índice')
+		const unit = indicatorUnit(key, locale.value);
+		return unit.includes('%') || unit.includes('escore') || unit.includes('índice') || unit.includes('score') || unit.includes('index')
 			? 'points'
 			: 'percent';
 	}
 
 	function wikipediaUrl(target: Country): string {
-		return `https://pt.wikipedia.org/wiki/${encodeURIComponent(target.name.replaceAll(' ', '_'))}`;
+		const lang = isEn ? 'en' : 'pt';
+		const name = isEn ? target.nameEn : target.name;
+		return `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(name.replaceAll(' ', '_'))}`;
 	}
 
 	function britannicaUrl(target: Country): string {
@@ -284,12 +362,12 @@
 </script>
 
 <svelte:head>
-	<title>{country ? `${country.name} — Dossiê — Mundivista` : 'Dossiê — Mundivista'}</title>
+	<title>{country ? `${displayName} — ${tr('Dossiê', 'Dossier')} — Mundivista` : `${tr('Dossiê', 'Dossier')} — Mundivista`}</title>
 	<meta
 		name="description"
 		content={country
-			? `Dossiê de ${country.name}: demografia, economia, meio físico, geopolítica, história e fontes.`
-			: 'Dossiê de país'}
+			? `${tr('Dossiê de', 'Dossier of')} ${displayName}: ${tr('demografia, economia, meio físico, geopolítica, história e fontes.', 'demography, economy, physical environment, geopolitics, history and sources.')}`
+			: tr('Dossiê de país', 'Country dossier')}
 	/>
 </svelte:head>
 
@@ -297,17 +375,17 @@
 
 {#if !country}
 	<main id="conteudo" class="missing">
-		<h1>País não encontrado</h1>
-		<p>O código informado não corresponde a um território no atlas.</p>
-		<a class="btn btn-accent" href="/explore">Voltar ao mapa</a>
+		<h1>{tr('País não encontrado', 'Country not found')}</h1>
+		<p>{tr('O código informado não corresponde a um território no atlas.', 'The code does not match a territory in the atlas.')}</p>
+		<a class="btn btn-accent" href="/explore">{tr('Voltar ao mapa', 'Back to the map')}</a>
 	</main>
 {:else}
 	<main id="conteudo">
 		<nav class="crumbs" aria-label="Trilha">
-			<a href="/explore">Explorar</a>
+			<a href="/explore">{tr('Explorar', 'Explore')}</a>
 			<span>/</span>
-			{#if country.continent}<span>{country.continent}</span><span>/</span>{/if}
-			<span>{country.name}</span>
+			{#if country.continent}<span>{localizeContinent(country.continent, locale.value)}</span><span>/</span>{/if}
+			<span>{displayName}</span>
 		</nav>
 
 		<header class="hero">
@@ -319,54 +397,54 @@
 			<div class="title-block">
 				<div class="flag-row">
 					{#if country.iso2}<span class={`fi fi-${country.iso2} hero-flag`}></span>{/if}
-					<span class="eyebrow">Dossiê · {country.code}</span>
-					{#if dependency ?? country.type}<span class="type">{dependency ?? country.type}</span>{/if}
+					<span class="eyebrow">{tr('Dossiê', 'Dossier')} · {country.code}</span>
+					{#if dependency ?? country.type}<span class="type">{dependency ?? localizeType(country.type, locale.value)}</span>{/if}
 				</div>
-				<h1>{country.name}</h1>
-				{#if country.official && country.official !== country.name}
+				<h1>{displayName}</h1>
+				{#if country.official && country.official !== displayName}
 					<p class="official">{country.official}</p>
 				{/if}
 				<p class="lede">
-					{country.continent ?? 'Sem classificação continental'}{country.subregion && country.subregion !== country.continent ? ` · ${country.subregion}` : ''}.
-					{country.areaKm2 ? `Área de ${formatArea(country.areaKm2)}.` : ''}
-					{#if country.landlocked === true}País sem litoral.{:else if country.landlocked === false}Com saída para o mar.{/if}
+					{localizeContinent(country.continent, locale.value) || tr('Sem classificação continental', 'No continental classification')}{country.subregion && country.subregion !== country.continent ? ` · ${localizeSubregion(country.subregion, locale.value)}` : ''}.
+					{country.areaKm2 ? `${tr('Área de', 'Area of')} ${formatArea(country.areaKm2)}.` : ''}
+					{#if country.landlocked === true}{tr('País sem litoral.', 'Landlocked country.')}{:else if country.landlocked === false}{tr('Com saída para o mar.', 'With sea access.')}{/if}
 				</p>
 				<div class="hero-actions">
 					<a class="btn btn-accent" href={`/explore?country=${country.code}`}>
-						<Icon name="globe" size={14} /> Ver no mapa
+						<Icon name="globe" size={14} /> {tr('Ver no mapa', 'View on map')}
 					</a>
 					<a class="btn" href={wikipediaUrl(country)} target="_blank" rel="noopener noreferrer">
-						<Icon name="book" size={14} /> Wikipédia
+						<Icon name="book" size={14} /> {tr('Wikipédia', 'Wikipedia')}
 					</a>
 					<a class="btn" href={britannicaUrl(country)} target="_blank" rel="noopener noreferrer">
 						<Icon name="external" size={14} /> Britannica
 					</a>
 					<button class="btn" type="button" onclick={share}>
-						<Icon name={copied ? 'check' : 'link'} size={14} /> {copied ? 'Link copiado' : 'Compartilhar'}
+						<Icon name={copied ? 'check' : 'link'} size={14} /> {copied ? tr('Link copiado', 'Link copied') : tr('Compartilhar', 'Share')}
 					</button>
 				</div>
 			</div>
 
-			<aside class="hero-map" aria-label="Localização no mapa">
+			<aside class="hero-map" aria-label={tr('Localização no mapa', 'Location on the map')}>
 				<div class="hero-map-head">
-					<span class="eyebrow">No mapa</span>
-					<span class="coords">{country.latlng ? `${Math.abs(country.latlng[0]).toFixed(1)}°${country.latlng[0] >= 0 ? 'N' : 'S'} · ${Math.abs(country.latlng[1]).toFixed(1)}°${country.latlng[1] >= 0 ? 'L' : 'O'}` : '—'}</span>
+					<span class="eyebrow">{tr('No mapa', 'On the map')}</span>
+					<span class="coords">{country.latlng ? `${Math.abs(country.latlng[0]).toFixed(1)}°${country.latlng[0] >= 0 ? 'N' : 'S'} · ${Math.abs(country.latlng[1]).toFixed(1)}°${country.latlng[1] >= 0 ? (isEn ? 'E' : 'L') : isEn ? 'W' : 'O'}` : '—'}</span>
 				</div>
 				<LocatorMap {country} {neighbors} />
 				<div class="hero-neighbors">
 					{#each neighbors as neighbor (neighbor.code)}
 						<a href={`/country/${neighbor.code}`}>
 							{#if neighbor.iso2}<span class={`fi fi-${neighbor.iso2} mini`}></span>{/if}
-							{neighbor.name}
+							{isEn ? neighbor.nameEn : neighbor.name}
 						</a>
 					{:else}
-						<p class="empty">Sem fronteiras terrestres.</p>
+						<p class="empty">{tr('Sem fronteiras terrestres.', 'No land borders.')}</p>
 					{/each}
 				</div>
 			</aside>
 		</header>
 
-		<section class="glance" aria-label="Resumo">
+		<section class="glance" aria-label={tr('Resumo', 'Summary')}>
 			{#each glance as item (item.key)}
 				<div class:capital={item.key === 'capital'}>
 					<span class="glance-label">{item.label}</span>
@@ -379,48 +457,53 @@
 			{/each}
 		</section>
 
-		<nav class="section-nav" aria-label="Seções do dossiê">
-			<a href="#ficha" class:active={activeSection === 'ficha'}>Ficha</a>
-			<a href="#demography" class:active={activeSection === 'demography'}>Demografia</a>
-			<a href="#economy" class:active={activeSection === 'economy'}>Economia</a>
-			<a href="#environment" class:active={activeSection === 'environment'}>Meio físico</a>
-			<a href="#geopolitics" class:active={activeSection === 'geopolitics'}>Geopolítica</a>
-			<a href="#history" class:active={activeSection === 'history'}>História</a>
-			{#if currentOrgs.length || historicalOrgs.length}<a href="#organizations" class:active={activeSection === 'organizations'}>Organizações</a>{/if}
-			{#if snippets.length}<a href="#snippets" class:active={activeSection === 'snippets'}>Leituras</a>{/if}
+		<nav class="section-nav" aria-label={tr('Seções do dossiê', 'Dossier sections')}>
+			<a href="#compare" class:active={activeSection === 'compare'}>{tr('Comparar', 'Compare')}</a>
+			<a href="#ficha" class:active={activeSection === 'ficha'}>{tr('Ficha', 'Fact sheet')}</a>
+			<a href="#demography" class:active={activeSection === 'demography'}>{tr('Demografia', 'Demography')}</a>
+			<a href="#economy" class:active={activeSection === 'economy'}>{tr('Economia', 'Economy')}</a>
+			<a href="#environment" class:active={activeSection === 'environment'}>{tr('Meio físico', 'Environment')}</a>
+			<a href="#geopolitics" class:active={activeSection === 'geopolitics'}>{tr('Geopolítica', 'Geopolitics')}</a>
+			<a href="#history" class:active={activeSection === 'history'}>{tr('História', 'History')}</a>
+			{#if currentOrgs.length || historicalOrgs.length}<a href="#organizations" class:active={activeSection === 'organizations'}>{tr('Organizações', 'Organizations')}</a>{/if}
+			{#if snippets.length}<a href="#snippets" class:active={activeSection === 'snippets'}>{tr('Leituras', 'Reads')}</a>{/if}
 		</nav>
+
+		<section id="compare" class="compare-section">
+			<ComparePanel {country} {compareCountry} {compareCode} onchange={(code) => (compareCode = code)} />
+		</section>
 
 		<div class="layout">
 			<article class="main-col">
 				<section class="block" id="ficha">
 					<header class="block-head">
 						<span class="index">01</span>
-						<h2>Ficha técnica</h2>
+						<h2>{tr('Ficha técnica', 'Fact sheet')}</h2>
 					</header>
 					<div class="facts-grid">
-						<StatRow label="Continente" value={country.continent ?? 'Não disponível'} />
-						<StatRow label="Sub-região" value={country.subregion ?? 'Não disponível'} />
-						<StatRow label="Moeda" value={country.currency.length ? country.currency.map((c) => `${c.code} · ${c.symbol}`).join(', ') : 'Não disponível'} />
-						<StatRow label="Idiomas" value={country.languages.length ? country.languages.join(', ') : 'Não disponível'} />
-						<StatRow label="Membro da ONU" value={country.unMember === null ? 'Não disponível' : country.unMember ? 'Sim' : 'Não'} />
+						<StatRow label={tr('Continente', 'Continent')} value={localizeContinent(country.continent, locale.value) || tr('Não disponível', 'Not available')} />
+						<StatRow label={tr('Sub-região', 'Subregion')} value={localizeSubregion(country.subregion, locale.value) || tr('Não disponível', 'Not available')} />
+						<StatRow label={tr('Moeda', 'Currency')} value={country.currency.length ? country.currency.map((c) => `${c.code} · ${c.symbol}`).join(', ') : 'Não disponível'} />
+						<StatRow label={tr('Idiomas', 'Languages')} value={country.languages.length ? country.languages.map((lang) => localizeLanguage(lang, locale.value)).join(', ') : tr('Não disponível', 'Not available')} />
+						<StatRow label={tr('Membro da ONU', 'UN member')} value={country.unMember === null ? tr('Não disponível', 'Not available') : country.unMember ? tr('Sim', 'Yes') : tr('Não', 'No')} />
 						{#if sovereign}
-							<StatRow label="Soberania" value={sovereign.name} note={dependency ?? undefined} />
+							<StatRow label={tr('Soberania', 'Sovereignty')} value={isEn ? sovereign.nameEn : sovereign.name} note={dependency ?? undefined} />
 						{/if}
-						<StatRow label="Sem litoral" value={country.landlocked === null ? 'Não disponível' : country.landlocked ? 'Sim' : 'Não'} />
+						<StatRow label={tr('Sem litoral', 'Landlocked')} value={country.landlocked === null ? tr('Não disponível', 'Not available') : country.landlocked ? tr('Sim', 'Yes') : tr('Não', 'No')} />
 						{#if disputed}
-							<StatRow label="Estatuto" value={disputed.label} note={disputed.note} />
+							<StatRow label={tr('Estatuto', 'Status')} value={disputed.label} note={disputed.note} />
 						{:else if country.type}
-							<StatRow label="Estatuto no Natural Earth" value={country.type} />
+							<StatRow label={tr('Estatuto no Natural Earth', 'Natural Earth status')} value={localizeType(country.type, locale.value)} />
 						{/if}
 					</div>
 					{#if sovereign}
 						<a class="sovereign-link" href={`/country/${sovereign.code}`}>
-							Dossiê de {sovereign.name} <Icon name="arrowRight" size={11} />
+							{tr('Dossiê de', 'Dossier of')} {isEn ? sovereign.nameEn : sovereign.name} <Icon name="arrowRight" size={11} />
 						</a>
 					{/if}
 					{#if disputed}
 						<a class="disputed-source" href={disputed.source.url} target="_blank" rel="noopener noreferrer">
-							Fonte do estatuto: {disputed.source.name} <Icon name="external" size={10} />
+							{tr('Fonte do estatuto', 'Status source')}: {disputed.source.name} <Icon name="external" size={10} />
 						</a>
 					{/if}
 				</section>
@@ -429,28 +512,20 @@
 					<section class="block" id={group.id}>
 						<header class="block-head">
 							<span class="index">{group.index}</span>
-							<h2>{group.title}</h2>
+							<h2>{isEn ? (GROUP_TITLES_EN[group.id] ?? group.title) : group.title}</h2>
 							<a class="map-link" href={`/explore?country=${country.code}&layer=${group.layer}`}>
-								Ver no mapa <Icon name="arrowUpRight" size={12} />
+								{tr('Ver no mapa', 'View on map')} <Icon name="arrowUpRight" size={12} />
 							</a>
 						</header>
-						<div class="metrics-grid">
-							{#each group.rows as row (row.key)}
-								<StatRow
-									variant="metric"
-									label={row.label}
-									value={row.value}
-									year={row.year}
-									percentile={row.percentile}
-									comparison={row.comparison}
-									series={row.series}
-									format={(v) => fmt(row.key, v)}
-									delta={deltaFor(row.key)}
-								/>
-							{/each}
-						</div>
+						<IndicatorGroup rows={group.rows} flag={country.iso2} />
+						{#if group.id === 'economy'}
+							<div class="economy-extras">
+								<TradePanel {country} />
+								<CompaniesPanel {country} />
+							</div>
+						{/if}
 						<footer class="source">
-							<span>Fonte: Banco Mundial — {group.rows.length} indicadores, observação mais recente entre 2016 e 2025.</span>
+							<span>{tr('Fonte: Banco Mundial', 'Source: World Bank')} — {group.rows.length} {tr('indicadores, observação mais recente entre 2016 e 2025.', 'indicators, latest observation between 2016 and 2025.')}</span>
 							<a href="https://data.worldbank.org" target="_blank" rel="noopener noreferrer">data.worldbank.org <Icon name="external" size={10} /></a>
 						</footer>
 					</section>
@@ -459,9 +534,9 @@
 				<section class="block" id="history">
 					<header class="block-head">
 						<span class="index">06</span>
-						<h2>História</h2>
+						<h2>{tr('História', 'History')}</h2>
 						<a class="map-link" href={`/explore?country=${country.code}&layer=history`}>
-							Ver no mapa <Icon name="arrowUpRight" size={12} />
+							{tr('Ver no mapa', 'View on map')} <Icon name="arrowUpRight" size={12} />
 						</a>
 					</header>
 					{#if timeline.length}
@@ -477,11 +552,11 @@
 							{/each}
 						</ol>
 					{:else}
-						<p class="empty">Sem marcos históricos curados para este país.</p>
+						<p class="empty">{tr('Sem marcos históricos curados para este país.', 'No curated historical milestones for this country.')}</p>
 					{/if}
 					<footer class="source">
-						<span>{historicalSource.name} — {historicalSource.note}</span>
-						<a href={historicalSource.url} target="_blank" rel="noopener noreferrer">Britannica <Icon name="external" size={10} /></a>
+						<span>{(isEn ? historicalSourceEn : historicalSource).name} — {(isEn ? historicalSourceEn : historicalSource).note}</span>
+						<a href={(isEn ? historicalSourceEn : historicalSource).url} target="_blank" rel="noopener noreferrer">Britannica <Icon name="external" size={10} /></a>
 					</footer>
 				</section>
 
@@ -489,7 +564,7 @@
 					<section class="block" id="organizations">
 						<header class="block-head">
 							<span class="index">07</span>
-							<h2>Organizações</h2>
+							<h2>{tr('Organizações', 'Organizations')}</h2>
 						</header>
 						<div class="org-grid">
 							{#each currentOrgs as org (org.id)}
@@ -502,7 +577,7 @@
 							{/each}
 							{#each historicalOrgs as org (org.id)}
 								<div class="org historical">
-									<div class="org-head"><span>{org.short}</span><em>{org.founded}–{org.dissolved ?? 'hoje'}</em></div>
+									<div class="org-head"><span>{org.short}</span><em>{org.founded}–{org.dissolved ?? (isEn ? 'present' : 'hoje')}</em></div>
 									<p>{org.name}</p>
 									<small>{org.note}</small>
 									<a href={org.source.url} target="_blank" rel="noopener noreferrer">{org.source.name}</a>
@@ -516,12 +591,12 @@
 					<section class="block" id="snippets">
 						<header class="block-head">
 							<span class="index">08</span>
-							<h2>Leituras rápidas</h2>
+							<h2>{tr('Leituras rápidas', 'Quick reads')}</h2>
 						</header>
 						<div class="snippets">
 							{#each snippets as snippet (snippet.id)}
 								<article>
-									<span class="eyebrow">{snippet.category}</span>
+									<span class="eyebrow">{isEn ? SNIPPET_CATEGORY_EN[snippet.category] ?? snippet.category : snippet.category}</span>
 									<h3>{snippet.title}</h3>
 									<p>{snippet.body}</p>
 									<a href={snippet.sourceUrl} target="_blank" rel="noopener noreferrer">
@@ -537,68 +612,43 @@
 			<aside class="side-col">
 				<section class="side-block">
 					<header class="block-head">
-						<span class="index">B</span>
-						<h2>Comparar</h2>
-					</header>
-					<label class="select-label">
-						<span class="sr-only">País de comparação</span>
-						<select bind:value={compareCode}>
-							{#each countries as option (option.code)}
-								<option value={option.code}>{option.name}</option>
-							{/each}
-						</select>
-					</label>
-					{#if compareCountry}
-						<div class="compare">
-							<div class="compare-head">
-								<span>{country.name}</span>
-								<span>{compareCountry.name}</span>
-							</div>
-							{#each compareRows as row (row.key)}
-								<div class="compare-row">
-									<span class="compare-label">{row.label}</span>
-									<div class="bars">
-										<div class="bar-line">
-											<span class="bar a" style:width={`${row.aWidth}%`}></span>
-											<em>{row.a ? row.a.y : '—'}</em>
-										</div>
-										<div class="bar-line">
-											<span class="bar b" style:width={`${row.bWidth}%`}></span>
-											<em>{row.b ? row.b.y : '—'}</em>
-										</div>
-									</div>
-									<div class="compare-values">
-										<span>{row.a ? fmt(row.key, row.a.v) : '—'}</span>
-										<span>{row.b ? fmt(row.key, row.b.v) : '—'}</span>
-									</div>
-								</div>
-							{/each}
-						</div>
-						<p class="method">Barras normalizadas pelo maior valor do par. Anos diferentes são mostrados em cada linha. Comparações entre anos não equivalem a séries ajustadas.</p>
-					{/if}
-				</section>
-
-				<section class="side-block">
-					<header class="block-head">
 						<span class="index">C</span>
-						<h2>Metadados</h2>
+						<h2>{tr('Metadados', 'Metadata')}</h2>
 					</header>
 					<dl class="metadata">
-						<div><dt>Código</dt><dd>{country.code} · {country.iso3}</dd></div>
-						<div><dt>Fonte de fatos</dt><dd>{country.factSource ?? 'Natural Earth'}</dd></div>
-						<div><dt>Extração</dt><dd>{retrievedAt}</dd></div>
-						<div><dt>Fronteiras</dt><dd>Natural Earth 1:50m</dd></div>
-						<div><dt>Indicadores</dt><dd>World Bank, 20+ séries</dd></div>
+						<div><dt>{tr('Código', 'Code')}</dt><dd>{country.code} · {country.iso3}</dd></div>
+						<div><dt>{tr('Fonte de fatos', 'Fact source')}</dt><dd>{country.factSource ?? 'Natural Earth'}</dd></div>
+						<div><dt>{tr('Extração', 'Retrieved')}</dt><dd>{retrievedAt}</dd></div>
+						<div><dt>{tr('Fronteiras', 'Borders')}</dt><dd>Natural Earth 1:50m</dd></div>
+						<div><dt>{tr('Indicadores', 'Indicators')}</dt><dd>{tr('World Bank, 20+ séries', 'World Bank, 20+ series')}</dd></div>
 					</dl>
-					<a class="sources-link" href="/sobre">Fontes, licenças e limitações <Icon name="arrowRight" size={12} /></a>
+					<a class="sources-link" href="/sobre">{tr('Fontes, licenças e limitações', 'Sources, licences and limitations')} <Icon name="arrowRight" size={12} /></a>
+				</section>
+				<section class="side-block">
+					<header class="block-head">
+						<span class="index">B</span>
+						<h2>{tr('Explore também', 'Explore too')}</h2>
+					</header>
+					<div class="related-list">
+						{#each related as item (item.code)}
+							<a href={`/country/${item.code}`}>
+								{#if item.iso2}<span class={`fi fi-${item.iso2}`}></span>{/if}
+								<span>
+									<strong>{isEn ? item.nameEn : item.name}</strong>
+									<em>{item.indicators.population ? formatCompact(item.indicators.population.v) : '—'}</em>
+								</span>
+								<Icon name="arrowUpRight" size={12} />
+							</a>
+						{/each}
+					</div>
 				</section>
 			</aside>
 		</div>
 
 		<footer class="page-footer">
-			<a href="/explore">← Voltar ao mapa</a>
-			<span>{countries.length} territórios · atualizado em {retrievedAt}</span>
-			<a href="/play">Jogar com o mapa →</a>
+			<a href="/explore">← {tr('Voltar ao mapa', 'Back to the map')}</a>
+			<span>{countries.length} {tr('territórios', 'territories')} · {tr('atualizado em', 'updated')} {retrievedAt}</span>
+			<a href="/play">{tr('Jogar com o mapa', 'Play with the map')} →</a>
 		</footer>
 	</main>
 {/if}
@@ -834,6 +884,15 @@
 	}
 	.main-col {
 		min-width: 0;
+	}
+	.compare-section {
+		margin: 0.9rem 0 1.3rem;
+		scroll-margin-top: calc(var(--header-h) + 3.8rem);
+	}
+	.economy-extras {
+		display: grid;
+		gap: 0.75rem;
+		margin-top: 0.85rem;
 	}
 	.block {
 		margin-bottom: 1rem;
@@ -1088,6 +1147,52 @@
 		margin-bottom: 0.7rem;
 		padding-bottom: 0.5rem;
 	}
+	.related-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+	.related-list a {
+		display: grid;
+		grid-template-columns: 2.2rem minmax(0, 1fr) auto;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.42rem 0.45rem;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-sm);
+		background: var(--surface-1);
+		color: var(--text-2);
+		text-decoration: none;
+		transition: border-color 0.16s ease, transform 0.16s ease;
+	}
+	.related-list a:hover {
+		border-color: var(--line-strong);
+		transform: translateY(-1px);
+	}
+	.related-list .fi {
+		width: 2.2rem;
+		height: 1.5rem;
+		border: 1px solid var(--line-strong);
+		background-size: cover;
+	}
+	.related-list a > span {
+		display: flex;
+		flex-direction: column;
+		gap: 0.08rem;
+		min-width: 0;
+	}
+	.related-list strong {
+		font-size: 0.84rem;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.related-list em {
+		font-style: normal;
+		font-family: var(--font-mono);
+		font-size: 0.66rem;
+		color: var(--text-4);
+	}
 	.side-block .block-head h2 {
 		font-size: 1.06rem;
 	}
@@ -1128,16 +1233,6 @@
 		width: 1.1rem;
 		height: 0.75rem;
 		background-size: cover;
-	}
-	.select-label select {
-		width: 100%;
-		height: 2.2rem;
-		border: 1px solid var(--line-strong);
-		border-radius: 0.15rem;
-		background: var(--surface-1);
-		color: var(--text-1);
-		font-size: 0.8rem;
-		padding: 0 0.5rem;
 	}
 	.compare {
 		margin-top: 0.7rem;
@@ -1195,12 +1290,6 @@
 	}
 	.bar.b {
 		background: var(--clay);
-	}
-	.bar-line em {
-		font-style: normal;
-		font-family: var(--font-mono);
-		font-size: 0.7rem;
-		color: var(--text-4);
 	}
 	.compare-values {
 		display: flex;
