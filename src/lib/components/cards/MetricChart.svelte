@@ -13,6 +13,10 @@
 		compact?: boolean;
 		reference?: number | null;
 		referenceLabel?: string;
+		secondary?: [number, number][] | null;
+		secondaryAccent?: string;
+		secondaryLabel?: string;
+		primaryLabel?: string;
 	}
 
 	let {
@@ -24,18 +28,24 @@
 		label = 'Série temporal',
 		compact = false,
 		reference = null,
-		referenceLabel = 'mediana mundial'
+		referenceLabel = 'mediana mundial',
+		secondary = null,
+		secondaryAccent = 'var(--accent-2)',
+		secondaryLabel = 'Comparação',
+		primaryLabel = 'País'
 	}: Props = $props();
 
 	let hover = $state<number | null>(null);
 
 	const values = $derived(series.map(([, value]) => value));
+	const secondaryValues = $derived(secondary?.map(([, value]) => value) ?? []);
+	const allValues = $derived([...values, ...secondaryValues]);
 	const n = $derived(series.length);
 
 	const bounds = $derived.by(() => {
-		if (!values.length) return { lo: 0, hi: 1 };
-		let lo = Math.min(...values);
-		let hi = Math.max(...values);
+		if (!allValues.length) return { lo: 0, hi: 1 };
+		let lo = Math.min(...allValues);
+		let hi = Math.max(...allValues);
 		if (variant === 'bars') {
 			lo = Math.min(0, lo);
 			hi = Math.max(0, hi);
@@ -69,6 +79,17 @@
 			x: xPercent(index),
 			y: yPercent(value)
 		}))
+	);
+	const pointsB = $derived(
+		(secondary ?? []).map(([year, value], index) => ({
+			year,
+			value,
+			x: xPercent(index),
+			y: yPercent(value)
+		}))
+	);
+	const linePathB = $derived(
+		pointsB.map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(' ')
 	);
 
 	const linePath = $derived(
@@ -107,6 +128,7 @@
 	});
 
 	const active = $derived(hover !== null && points[hover] ? points[hover] : null);
+	const activeB = $derived(hover !== null && pointsB[hover] ? pointsB[hover] : null);
 	const referenceY = $derived(
 		reference !== null && reference >= bounds.lo && reference <= bounds.hi ? yPercent(reference) : null
 	);
@@ -115,7 +137,11 @@
 		if (!series.length) return `${label}: série indisponível.`;
 		const first = series[0];
 		const last = series[series.length - 1];
-		return `${label}: de ${format(first[1])} em ${first[0]} para ${format(last[1])} em ${last[0]}. Use as setas para percorrer os anos.`;
+		const base = `${label}: de ${format(first[1])} em ${first[0]} para ${format(last[1])} em ${last[0]}.`;
+		const second = secondary && secondary.length
+			? ` ${secondaryLabel}: de ${format(secondary[0][1])} em ${secondary[0][0]} para ${format(secondary[secondary.length - 1][1])} em ${secondary[secondary.length - 1][0]}.`
+			: '';
+		return `${base}${second} Use as setas para percorrer os anos.`;
 	});
 
 	function indexFromEvent(event: PointerEvent): number {
@@ -160,7 +186,7 @@
 				aria-valuemin="0"
 				aria-valuemax={Math.max(0, n - 1)}
 				aria-valuenow={hover ?? 0}
-				aria-valuetext={active ? `${active.year}: ${format(active.value)}` : description}
+				aria-valuetext={active ? `${active.year}: ${primaryLabel} ${format(active.value)}${activeB ? `; ${secondaryLabel} ${format(activeB.value)}` : ''}` : description}
 				tabindex="0"
 				onpointermove={onMove}
 				onpointerleave={() => (hover = null)}
@@ -192,6 +218,9 @@
 					{:else}
 						<path class="area" d={areaPath} fill={`url(#${gid})`} />
 						<path class="line" d={linePath} pathLength="1" vector-effect="non-scaling-stroke" />
+						{#if secondary && secondary.length > 1}
+							<path class="line secondary" d={linePathB} pathLength="1" vector-effect="non-scaling-stroke" style:stroke={secondaryAccent} />
+						{/if}
 					{/if}
 
 					{#if referenceY !== null}
@@ -208,6 +237,9 @@
 					{#if variant !== 'bars'}
 						<span class="dot" style:left={`${points[0].x}%`} style:top={`${points[0].y}%`} aria-hidden="true"></span>
 						<span class="dot end" style:left={`${points[points.length - 1].x}%`} style:top={`${points[points.length - 1].y}%`} aria-hidden="true"></span>
+						{#if pointsB.length}
+							<span class="dot end secondary" style:left={`${pointsB[pointsB.length - 1].x}%`} style:top={`${pointsB[pointsB.length - 1].y}%`} style:--dot-accent={secondaryAccent} aria-hidden="true"></span>
+						{/if}
 					{/if}
 					{#if active}
 						<span class="dot hover" style:left={`${active.x}%`} style:top={`${active.y}%`} aria-hidden="true"></span>
@@ -221,6 +253,9 @@
 						style:top={`${active.y}%`}
 					>
 						<strong>{format(active.value)}</strong>
+						{#if activeB}
+							<strong class="secondary-value" style:color={secondaryAccent}>{format(activeB.value)}</strong>
+						{/if}
 						<span>{active.year}</span>
 					</div>
 				{/if}
@@ -296,6 +331,17 @@
 	}
 	.area {
 		stroke: none;
+	}
+	.line.secondary {
+		stroke-width: 2.2;
+		opacity: 0.9;
+	}
+	.dot.secondary {
+		border-color: var(--dot-accent);
+		background: var(--dot-accent);
+	}
+	.secondary-value {
+		font-size: 0.9rem;
 	}
 	.line {
 		fill: none;

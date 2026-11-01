@@ -253,7 +253,7 @@
 
 	<TopBar />
 
-	<LayerRail active={layerId} onchange={changeLayer} {bloc} onbloc={toggleBloc} />
+	<LayerRail active={layerId} onchange={changeLayer} {bloc} onbloc={toggleBloc} compact={!!country} />
 
 	<Legend {layer} {bloc} />
 

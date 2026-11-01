@@ -197,6 +197,7 @@
 		color: var(--text-1);
 	}
 	h1 em {
+		font-family: var(--font-serif);
 		font-style: italic;
 		font-weight: 500;
 		color: color-mix(in oklab, var(--accent-1) 82%, var(--text-1));

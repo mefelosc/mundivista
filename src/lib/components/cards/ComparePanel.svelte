@@ -3,7 +3,8 @@
 	import { locale } from '#lib/locale.svelte';
 	import { countries, indicatorMeta, rankOf } from '#lib/data/countries';
 	import { indicatorIcon } from '#lib/data/indicator-icons';
-	import { formatIndicatorValue, formatRank } from '#lib/format';
+	import { formatCompact, formatIndicatorValue, formatRank } from '#lib/format';
+	import MetricChart from './MetricChart.svelte';
 	import type { Country, IndicatorKey } from '#lib/types';
 
 	interface Props {
@@ -74,47 +75,35 @@
 		});
 	});
 
-	const RADAR_KEYS = ['population', 'gdpPerCapita', 'lifeExpectancy', 'co2PerCapita', 'unemployment', 'forestShare'] as const;
-	const RADAR = 130;
-	const CENTER = 180;
-
-	const axes = $derived(
-		RADAR_KEYS.map((key, index) => {
-			const angle = (Math.PI * 2 * index) / RADAR_KEYS.length - Math.PI / 2;
-			const meta = indicatorMeta[key];
-			return {
-				key,
-				label: isEn ? (shortEn[key] ?? key) : (shortPt[key] ?? key),
-				angle,
-				x: CENTER + Math.cos(angle) * (RADAR + 32),
-				y: CENTER + Math.sin(angle) * (RADAR + 32),
-				anchor: Math.cos(angle) > 0.3 ? 'start' : Math.cos(angle) < -0.3 ? 'end' : 'middle',
-				lowerBetter: meta?.dir === 'lower'
-			};
-		})
+	let trendKey = $state<IndicatorKey>('population');
+	let trendMode = $state<'index' | 'values'>('index');
+	const trendRow = $derived(rows.find((row) => row.key === trendKey) ?? rows[0]);
+	const trendFormat = $derived((value: number) =>
+		trendMode === 'index'
+			? value.toLocaleString(isEn ? 'en-US' : 'pt-BR', { maximumFractionDigits: 0 })
+			: formatIndicatorValue(trendKey, { v: value, y: trendRaw?.a.at(-1)?.[0] ?? 0 })
 	);
-
-	function score(code: string, key: string): number {
-		const percentile = rankOf(code, key as IndicatorKey)?.percentile;
-		if (percentile === undefined) return 0;
-		const meta = indicatorMeta[key as IndicatorKey];
-		return Math.max(0.04, meta?.dir === 'lower' ? 1 - percentile : percentile);
-	}
-
-	function polygon(code: string): string {
-		return RADAR_KEYS.map((key, index) => {
-			const angle = (Math.PI * 2 * index) / RADAR_KEYS.length - Math.PI / 2;
-			const radius = score(code, key) * RADAR;
-			return `${CENTER + Math.cos(angle) * radius},${CENTER + Math.sin(angle) * radius}`;
-		}).join(' ');
-	}
-
-	function gridRing(radius: number): string {
-		return RADAR_KEYS.map((_, index) => {
-			const angle = (Math.PI * 2 * index) / RADAR_KEYS.length - Math.PI / 2;
-			return `${CENTER + Math.cos(angle) * radius},${CENTER + Math.sin(angle) * radius}`;
-		}).join(' ');
-	}
+	const trendRaw = $derived.by(() => {
+		const a = country.indicators[trendKey]?.s ?? [];
+		const b = compareCountry?.indicators[trendKey]?.s ?? [];
+		const years = a
+			.map(([year]) => year)
+			.filter((year) => (b.length ? b.some(([other]) => other === year) : true))
+			.sort((left, right) => left - right);
+		const pick = (series: [number, number][]) =>
+			years
+				.map((year) => series.find(([candidate]) => candidate === year))
+				.filter((item): item is [number, number] => Boolean(item));
+		return { a: pick(a), b: pick(b) };
+	});
+	const trend = $derived.by(() => {
+		if (trendMode === 'values') return trendRaw;
+		const index = (series: [number, number][]) => {
+			const first = series[0]?.[1];
+			return first ? series.map(([year, value]) => [year, (value / first) * 100] as [number, number]) : series;
+		};
+		return { a: index(trendRaw.a), b: index(trendRaw.b) };
+	});
 
 	function fmt(key: IndicatorKey, value: { v: number; y: number } | undefined): string {
 		return value ? formatIndicatorValue(key, value) : '—';
@@ -189,29 +178,44 @@
 				{/each}
 			</div>
 
-			<div class="radar-wrap">
-				<div class="radar-head">
-					<span class="eyebrow">{tr('Perfil', 'Profile')}</span>
-					<p>{tr('Para desemprego e CO₂, o exterior representa melhor desempenho.', 'For unemployment and CO₂, the outer edge means better performance.')}</p>
+			<div class="trend-wrap">
+				<div class="trend-head">
+					<div class="trend-title">
+						<span class="eyebrow">{tr('Evolução', 'Trend')}</span>
+						<span class="trend-mode-note">{trendMode === 'index' ? tr('início = 100', 'first year = 100') : tr('valores absolutos', 'absolute values')}</span>
+					</div>
+					<div class="trend-chips" role="group" aria-label={tr('Indicador da comparação', 'Comparison indicator')}>
+						{#each rows as row (row.key)}
+							<button
+								type="button"
+								class:active={trendKey === row.key}
+								onclick={() => (trendKey = row.key)}
+							>
+								<Icon name={row.icon} size={13} />
+								{row.label}
+							</button>
+						{/each}
+					</div>
+					<div class="trend-mode" role="group" aria-label={tr('Modo do gráfico', 'Chart mode')}>
+						<button type="button" class:active={trendMode === 'index'} onclick={() => (trendMode = 'index')}>{tr('Índice', 'Index')}</button>
+						<button type="button" class:active={trendMode === 'values'} onclick={() => (trendMode = 'values')}>{tr('Valores', 'Values')}</button>
+					</div>
 				</div>
-				{#key `${country.code}-${compareCountry.code}`}
-					<svg class="radar" viewBox="0 0 360 360" role="img" aria-label={tr(`Comparação de perfil entre ${countryName} e ${otherName}`, `Profile comparison between ${countryName} and ${otherName}`)}>
-						{#each [0.25, 0.5, 0.75, 1] as ring (ring)}
-							<polygon class="ring" points={gridRing(RADAR * ring)} />
-						{/each}
-						{#each axes as axis (axis.key)}
-							<line class="axis" x1={CENTER} y1={CENTER} x2={CENTER + Math.cos(axis.angle) * RADAR} y2={CENTER + Math.sin(axis.angle) * RADAR} />
-							<text class="axis-label" x={axis.x} y={axis.y} text-anchor={axis.anchor} dominant-baseline="middle">{axis.label}</text>
-						{/each}
-						<polygon class="area b" points={polygon(compareCountry.code)} />
-						<polygon class="area a" points={polygon(country.code)} />
-					</svg>
-				{/key}
+				<MetricChart
+					series={trend.a}
+					secondary={trend.b.length ? trend.b : null}
+					accent="var(--accent-1)"
+					secondaryAccent="var(--accent-2)"
+					primaryLabel={countryName}
+					secondaryLabel={otherName}
+					label={trendRow?.label ?? 'Indicador'}
+					format={trendFormat}
+					axisFormat={(value) => formatCompact(value)}
+				/>
 				<div class="radar-legend">
 					<span class="legend-a"><i></i>{countryName}</span>
 					<span class="legend-b"><i></i>{otherName}</span>
 				</div>
-				<p class="radar-note">{tr('Percentis globais (0–100). Indicadores sem série aparecem no centro.', 'Global percentiles (0–100). Indicators without a series sit at the centre.')}</p>
 			</div>
 		</div>
 	{:else}
@@ -393,73 +397,84 @@
 		font-size: 0.62rem;
 		color: var(--text-4);
 	}
-	.radar-wrap {
+	.trend-wrap {
 		display: flex;
 		flex-direction: column;
-		align-items: stretch;
-		gap: 0.35rem;
+		gap: 0.5rem;
 		padding: 0.7rem;
 		border: 1px solid var(--line);
 		border-radius: var(--radius-md);
 		background: var(--surface-2);
 	}
-	.radar-head p {
-		margin: 0.15rem 0 0;
-		font-size: 0.72rem;
-		line-height: 1.45;
-		color: var(--text-4);
+	.trend-head {
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
 	}
-	.radar {
-		display: block;
-		width: 100%;
-		height: auto;
-		max-height: 24rem;
-		overflow: visible;
+	.trend-title {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.5rem;
 	}
-	.ring {
-		fill: none;
-		stroke: var(--line);
-		stroke-width: 1;
-	}
-	.axis {
-		stroke: var(--line);
-		stroke-width: 0.8;
-	}
-	.axis-label {
+	.trend-mode-note {
 		font-family: var(--font-mono);
-		font-size: 10px;
-		fill: var(--text-4);
-	}
-	.area {
-		stroke-width: 2;
-		stroke-linejoin: round;
-		transform-origin: 180px 180px;
-		animation: radar-in 0.6s var(--ease-out-soft) both;
-	}
-	.area.a {
-		fill: color-mix(in oklab, var(--accent-1) 18%, transparent);
-		stroke: var(--accent-1);
-	}
-	.area.b {
-		fill: color-mix(in oklab, var(--accent-2) 14%, transparent);
-		stroke: var(--accent-2);
-		animation-delay: 0.08s;
-	}
-	@keyframes radar-in {
-		from {
-			opacity: 0;
-			transform: scale(0.82);
-		}
-		to {
-			opacity: 1;
-			transform: scale(1);
-		}
-	}
-	.radar-note {
-		margin: 0;
 		font-size: 0.66rem;
-		line-height: 1.4;
 		color: var(--text-4);
+	}
+	.trend-mode {
+		display: inline-flex;
+		align-self: flex-start;
+		gap: 0.15rem;
+		padding: 0.15rem;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-pill);
+		background: var(--surface-1);
+	}
+	.trend-mode button {
+		border: 0;
+		border-radius: var(--radius-pill);
+		background: transparent;
+		color: var(--text-3);
+		padding: 0.24rem 0.55rem;
+		font-size: 0.7rem;
+		font-weight: 600;
+	}
+	.trend-mode button.active {
+		background: color-mix(in oklab, var(--accent-1) 15%, var(--surface-2));
+		color: var(--accent-0);
+	}
+	.trend-chips {
+		display: flex;
+		gap: 0.25rem;
+		overflow-x: auto;
+		padding-bottom: 0.15rem;
+		scrollbar-width: none;
+	}
+	.trend-chips::-webkit-scrollbar {
+		display: none;
+	}
+	.trend-chips button {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.28rem;
+		flex-shrink: 0;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-pill);
+		background: var(--surface-1);
+		color: var(--text-3);
+		padding: 0.3rem 0.55rem;
+		font-size: 0.72rem;
+		font-weight: 600;
+	}
+	.trend-chips button:hover {
+		color: var(--text-1);
+		border-color: var(--line-strong);
+	}
+	.trend-chips button.active {
+		border-color: color-mix(in oklab, var(--accent-1) 55%, var(--line));
+		background: color-mix(in oklab, var(--accent-1) 13%, var(--surface-1));
+		color: var(--accent-0);
 	}
 	.compare-foot {
 		display: flex;

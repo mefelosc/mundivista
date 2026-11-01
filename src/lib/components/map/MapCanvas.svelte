@@ -754,9 +754,9 @@
 
 			const font =
 				entry.kind === 'country'
-					? '600 10.5px "Instrument Sans Variable", system-ui, sans-serif'
+					? '600 10.5px "Geist Variable", system-ui, sans-serif'
 					: entry.kind === 'capital' || entry.kind === 'city'
-						? '500 10px "Instrument Sans Variable", system-ui, sans-serif'
+						? '500 10px "Geist Variable", system-ui, sans-serif'
 						: entry.kind === 'marine'
 							? 'italic 500 11px "Newsreader Variable", serif'
 							: entry.kind === 'unit'
@@ -1222,7 +1222,7 @@
 			(projection === 'flat' ? FLAT_ZOOM_OFFSET : 0);
 		const padding = mobile
 			? { bottom: Math.min(430, Math.round(window.innerHeight * 0.55)) }
-			: { right: Math.min(700, Math.max(540, Math.round(window.innerWidth * 0.47))) };
+			: { right: Math.min(640, Math.max(500, Math.round(window.innerWidth * 0.43))) };
 		map.flyTo({
 			center,
 			zoom,

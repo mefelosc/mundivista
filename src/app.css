@@ -1,10 +1,8 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/instrument-sans';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
 @import '@fontsource-variable/newsreader/opsz.css';
 @import '@fontsource-variable/newsreader/opsz-italic.css';
-@import '@fontsource/ibm-plex-mono/400.css';
-@import '@fontsource/ibm-plex-mono/500.css';
-@import '@fontsource/ibm-plex-mono/600.css';
 @import 'flag-icons/css/flag-icons.min.css';
 @import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -16,10 +14,10 @@
  */
 
 @theme {
-	--font-sans: 'Instrument Sans Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-	--font-display: 'Instrument Sans Variable', ui-sans-serif, system-ui, sans-serif;
+	--font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--font-display: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
 	--font-serif: 'Newsreader Variable', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
-	--font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+	--font-mono: 'Geist Mono Variable', ui-monospace, 'SFMono-Regular', monospace;
 
 	--color-ink-950: var(--surface-0);
 	--color-ink-900: var(--surface-1);
@@ -64,7 +62,7 @@
 		color-scheme: light;
 		--header-h: 4.25rem;
 		--rail-w: 12rem;
-		--sheet-w: clamp(32rem, 40vw, 38rem);
+		--sheet-w: clamp(30rem, 34vw, 35rem);
 
 		/* Papel e tinta — modo claro (padrão) */
 		--surface-0: #f1f5ef;
@@ -150,6 +148,7 @@
 
 	body {
 		background-color: var(--surface-0);
+		font-feature-settings: 'ss01' 1, 'cv01' 1;
 		color: var(--text-1);
 		font-family: var(--font-sans);
 		font-optical-sizing: auto;

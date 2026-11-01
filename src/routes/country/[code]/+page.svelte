@@ -776,7 +776,7 @@
 	}
 	.official {
 		margin: 0.2rem 0 0;
-		font-family: var(--font-display);
+		font-family: var(--font-serif);
 		font-style: italic;
 		font-size: 1.12rem;
 		color: var(--text-3);

@@ -16,7 +16,7 @@
 	const tr = (pt: string, en: string) => (isEn ? en : pt);
 	const display = $derived(localizedLayer(layer, locale.value) as typeof layer);
 
-	let collapsed = $state(false);
+	let collapsed = $state(true);
 
 	const org = $derived(bloc ? organizationById.get(bloc) : null);
 	const displayOrg = $derived(org ? localizedOrganization(org, locale.value) : null);

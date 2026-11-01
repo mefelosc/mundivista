@@ -13,9 +13,10 @@
 		onchange: (id: LayerId) => void;
 		bloc?: string | null;
 		onbloc?: (id: string | null) => void;
+		compact?: boolean;
 	}
 
-	let { active, onchange, bloc = null, onbloc }: Props = $props();
+	let { active, onchange, bloc = null, onbloc, compact = false }: Props = $props();
 
 	const isEn = $derived(locale.value === 'en');
 	const tr = (pt: string, en: string) => (isEn ? en : pt);
@@ -33,9 +34,12 @@
 	);
 
 	let collapsed = $state(false);
+	$effect(() => {
+		if (compact) collapsed = true;
+	});
 
 	onMount(() => {
-		collapsed = localStorage.getItem('mundivista:rail') === 'collapsed';
+		collapsed = compact || localStorage.getItem('mundivista:rail') === 'collapsed';
 	});
 
 	function toggleCollapsed() {
