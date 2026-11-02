@@ -27,38 +27,40 @@ export type SubdivisionCollection = FeatureCollection<
 
 /**
  * As URLs entram no bundle como assets; o arquivo de cada país só é baixado
- * quando o usuário o seleciona no mapa político.
+ * quando o usuário o seleciona no mapa político. O glob é preguiçoso: evita
+ * importar ~190 módulos de URL no primeiro carregamento da rota (e evita que
+ * um arquivo problemático derrube o preload inteiro no modo dev).
  */
-const modules = import.meta.glob('./generated/subdivisions/*.json', {
+const loaders = import.meta.glob<string>('./generated/subdivisions/*.json', {
 	query: '?url',
-	import: 'default',
-	eager: true
-}) as Record<string, string>;
+	import: 'default'
+});
 
-const urls = new Map(
-	Object.entries(modules).map(([file, url]) => [
+const byCode = new Map(
+	Object.entries(loaders).map(([file, load]) => [
 		file.slice(file.lastIndexOf('/') + 1, -'.json'.length),
-		url
+		load
 	])
 );
 
-export const subdivisionCountries = [...urls.keys()].sort();
+export const subdivisionCountries = [...byCode.keys()].sort();
 
 export function hasSubdivisions(code: string | null | undefined): boolean {
-	return Boolean(code && urls.has(code));
+	return Boolean(code && byCode.has(code));
 }
 
 const cache = new Map<string, Promise<SubdivisionCollection | null>>();
 
 export function loadSubdivisions(code: string | null | undefined): Promise<SubdivisionCollection | null> {
 	if (!code) return Promise.resolve(null);
-	const url = urls.get(code);
-	if (!url) return Promise.resolve(null);
+	const load = byCode.get(code);
+	if (!load) return Promise.resolve(null);
 
 	const cached = cache.get(code);
 	if (cached) return cached;
 
-	const request = fetch(url)
+	const request = load()
+		.then((url) => fetch(url))
 		.then((res) => {
 			if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
 			return res.json() as Promise<SubdivisionCollection>;

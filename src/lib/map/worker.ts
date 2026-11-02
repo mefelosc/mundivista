@@ -4,7 +4,7 @@
  * O worker padrão é importado como classe e instanciado se o próprio módulo já
  * não tiver feito isso. Em seguida registramos o handler que converte o
  * `definition` (PROJ string) com proj4 — necessário para o GeoJSON dos países
- * ser tiled corretamente em Equal Earth.
+ * ser tiled corretamente na projeção plana.
  */
 import MapLibreWorker from 'maplibre-gl/dist/maplibre-gl-worker.mjs';
 import proj4 from 'proj4';

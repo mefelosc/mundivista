@@ -41,6 +41,10 @@ export interface IndicatorValue {
 	y: number;
 	/** Série observada [[ano, valor], …] quando há mais de um ponto. */
 	s?: [number, number][];
+	/** Fonte quando difere da fonte principal do indicador. */
+	source?: string;
+	/** Link da fonte alternativa. */
+	sourceUrl?: string;
 }
 
 export interface Currency {
@@ -91,6 +95,12 @@ export interface IndicatorMeta {
 	license: string;
 	lastUpdated: string | null;
 	unavailable?: boolean;
+	/** Fonte complementar para países fora da cobertura principal. */
+	fallback?: {
+		name: string;
+		url: string;
+		license: string;
+	};
 }
 
 export interface SourceInfo {
@@ -107,6 +117,7 @@ export interface DataManifest {
 		boundaries: SourceInfo;
 		facts: SourceInfo;
 		indicators: SourceInfo;
+		population: SourceInfo;
 		physical: SourceInfo;
 		marine: SourceInfo;
 	};

@@ -15,6 +15,7 @@
 		"data:build": "node tools/build-data.mjs",
 		"data:refresh": "node tools/build-data.mjs --refresh",
 		"data:subdivisions": "node tools/build-subdivisions.mjs",
+		"data:summaries": "node tools/build-summaries.mjs",
 		"shots": "node tools/screenshots.mjs",
 		"smoke": "node tools/smoke.mjs",
 		"a11y": "node tools/a11y.mjs"

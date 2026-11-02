@@ -2,7 +2,7 @@
 	import TopBar from '#lib/components/navigation/TopBar.svelte';
 	import Icon from '#lib/components/ui/Icon.svelte';
 	import { brand } from '#lib/brand';
-	import { countries, indicatorKeys } from '#lib/data/countries';
+	import { countryCount, indicatorKeys, territoryCount } from '#lib/data/countries';
 	import { games } from '#lib/engines/game-engine/registry';
 	import { mapLayers } from '#lib/configurations/map-layers';
 	import { worldOutline } from '#lib/data/world-silhouette';
@@ -32,18 +32,12 @@
 			label: t('landing.countries', text),
 			desc: t('landing.countriesDesc', text),
 			icon: 'dossier'
-		},
-		{
-			index: '04',
-			href: '/sobre',
-			label: t('landing.about', text),
-			desc: t('landing.aboutDesc', text),
-			icon: 'info'
 		}
 	]);
 
 	const stats = $derived([
-		{ value: countries.length, label: t('landing.territories', text) },
+		{ value: countryCount, label: t('landing.countries', text) },
+		{ value: territoryCount, label: t('landing.territories', text) },
 		{ value: indicatorKeys.length, label: t('landing.indicators', text) },
 		{ value: games.length, label: t('landing.games', text) },
 		{ value: mapLayers.length, label: t('landing.layers', text) }
@@ -75,10 +69,8 @@
 				<span class="line"></span>
 				<span class="edition">Natural Earth · World Bank</span>
 			</div>
-			<h1>
-				{t('landing.titleA', text)}<br />
-				<em>{t('landing.titleB', text)}</em>
-			</h1>
+			<h1>{brand.name}</h1>
+			<p class="tagline">{brand.tagline}</p>
 			<p class="lede">{t('landing.lede', text)}</p>
 		</header>
 
@@ -109,7 +101,6 @@
 			</dl>
 			<div class="foot-links">
 				<span>{t('landing.footer', text)}</span>
-				<a href="/sobre">{t('landing.sources', text)}</a>
 			</div>
 		</footer>
 	</main>
@@ -196,10 +187,13 @@
 		text-transform: uppercase;
 		color: var(--text-1);
 	}
-	h1 em {
+	.tagline {
+		margin: 0.55rem 0 0;
 		font-family: var(--font-serif);
 		font-style: italic;
+		font-size: clamp(1.15rem, 1.9vw, 1.55rem);
 		font-weight: 500;
+		letter-spacing: -0.01em;
 		color: color-mix(in oklab, var(--accent-1) 82%, var(--text-1));
 	}
 	.lede {
@@ -211,7 +205,7 @@
 	}
 	.choices {
 		display: grid;
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
 		gap: 0.75rem;
 		margin-top: clamp(1.8rem, 5vh, 3.2rem);
 	}
@@ -304,6 +298,7 @@
 	}
 	.stats {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 1.8rem;
 		margin: 0;
 	}
@@ -336,13 +331,6 @@
 		font-size: 0.64rem;
 		color: var(--text-4);
 		text-align: right;
-	}
-	.foot-links a {
-		color: var(--text-3);
-		text-decoration: none;
-	}
-	.foot-links a:hover {
-		color: var(--accent-0);
 	}
 	@keyframes map-drift {
 		from {

@@ -43,9 +43,9 @@ O `smoke`, `a11y` e `shots` esperam um preview em `http://localhost:4173`.
 
 ### Atlas
 
-- Mapa MapLibre com 241 territórios, Natural Earth 1:50m, rios, lagos, litoral, cidades e
-  nomes de oceanos, mares, baías e golfos.
-- Abre no **mapa base 2D em Equal Earth** (área preservada), sem camada temática ativa. As
+- Mapa MapLibre com 197 países e 44 territórios (241 entidades), Natural Earth 1:50m, rios,
+  lagos, litoral, cidades e nomes de oceanos, mares, baías e golfos.
+- Abre no **mapa base 2D em Robinson** (forma e área equilibradas), sem camada temática ativa. As
   seis camadas — político, físico, demografia, economia, geopolítica e história — são
   escolhidas no filtro de camadas; clicar de novo na camada ativa volta ao mapa padrão.
 - Pan **horizontal infinito** no 2D: arrastar para leste ou oeste dá a volta no mundo; cima e
@@ -133,6 +133,10 @@ O `smoke`, `a11y` e `shots` esperam um preview em `http://localhost:4173`.
   Códigos históricos do recorte Natural Earth são normalizados (ZAR→COD, ROM→ROU,
   TMP→TLS, WBG→PSE) para não perder países como República Democrática do Congo, Noruega,
   Romênia, Timor-Leste, Palestina e Nauru.
+- **UN DESA — World Population Prospects 2024** (CC BY 3.0 IGO): população total e
+  densidade da variante média para países e territórios sem série no Banco Mundial
+  (Taiwan, Vaticano, Anguilla, Ilhas Cook, Malvinas, Sara Ocidental e outros). O valor
+  mantém o ano e a fonte alternativa aparece no dossiê.
 - **Curadoria Mundivista** (fatos pontuais com fonte): Somalilândia não herda dados da
   Somália; capital, área, moeda e línguas vêm de fonte própria. A moeda da Micronésia
   (dólar americano) também é complementada.
@@ -177,12 +181,15 @@ O motor de jogos não importa o mapa. O mapa é um renderizador entre outros pos
   disponível varia por país (estado, província, distrito ou município) e os contornos não
   substituem uma base oficial.
 - O relevo sombreado e o modo 3D dependem de tiles públicos carregados pela rede e ficam
-  disponíveis no globo; o modo 2D Equal Earth é plano e não usa DEM.
+  disponíveis no globo; o modo 2D Robinson é plano e não usa DEM.
 - Blocos históricos e a linha do tempo usam os polígonos atuais; não são fronteiras do período.
 - Bathymetria, fluxos comerciais e biomas/clima ainda não estão implementados.
 - Indicadores em dólares correntes não são comparáveis entre anos sem ajuste; o ano é sempre exibido.
-- Taiwan, Vaticano e pequenos territórios sem série no Banco Mundial aparecem sem indicadores;
-  a lacuna é explícita, não estimada. O Vaticano é o único membro da ONU sem população na base.
+- Todos os 197 países do atlas têm população; onde o Banco Mundial não publica série,
+  população e densidade vêm da UN WPP 2024. Dez territórios seguem sem série: cinco não
+  têm população permanente (Siachen, Heard, Geórgia do Sul, Terras Austrais e
+  Chagos) e cinco são pequenos ou de estatuto não reconhecido (Åland, Norfolk,
+  Pitcairn, Chipre do Norte e Somalilândia). A lacuna é explícita, não estimada.
 - HDI, corrupção (TI) e liberdade (Freedom House/RSF) não foram adicionados: exigem revisão
   de licença e metodologia fora do Banco Mundial.
 - A interface do shell, portal, Play e configurações está em PT/EN; o conteúdo editorial

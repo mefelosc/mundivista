@@ -10,7 +10,7 @@
 	import TopBar from '#lib/components/navigation/TopBar.svelte';
 		import Icon from '#lib/components/ui/Icon.svelte';
 	import { getLayer } from '#lib/configurations/map-layers';
-	import { countries, getCountry, indicatorKeys } from '#lib/data/countries';
+	import { countryCount, getCountry, indicatorKeys, territoryCount } from '#lib/data/countries';
 	import { organizationById } from '#lib/data/organizations';
 	import { loadSubdivisions, type SubdivisionCollection } from '#lib/data/subdivisions';
 	import { formatLatLng } from '#lib/format';
@@ -314,7 +314,7 @@
 						type="button"
 						class:active={projection === 'flat'}
 						onclick={() => setProjection('flat')}
-						title={tr('Mapa 2D em Equal Earth, com áreas proporcionais (padrão)', '2D Equal Earth map with proportional areas (default)')}
+						title={tr('Mapa 2D em Robinson, com forma e área equilibradas (padrão)', '2D Robinson map with balanced shape and area (default)')}
 					>
 						<Icon name="compass" size={14} /> 2D
 					</button>
@@ -365,7 +365,7 @@
 
 	{#if mobileLegend}
 		<div class="mobile-legend panel">
-			<Legend {layer} {bloc} />
+			<Legend {layer} {bloc} embedded />
 			<button type="button" class="legend-close" onclick={() => (mobileLegend = false)}>
 				Fechar legenda
 			</button>
@@ -373,11 +373,11 @@
 	{/if}
 
 	<div class="statusbar" class:hidden={layerId === 'history' || !!country} aria-hidden="true">
-		<span>{countries.length} territórios</span>
+		<span>{countryCount} {tr('países', 'countries')} · {territoryCount} {tr('territórios', 'territories')}</span>
 		<span>·</span>
 		<span>{indicatorKeys.length} indicadores</span>
 		<span>·</span>
-		<span>{projection === 'flat' ? '2D · Equal Earth' : tr('Globo 3D', '3D Globe')}</span>
+		<span>{projection === 'flat' ? '2D · Robinson' : tr('Globo 3D', '3D Globe')}</span>
 		<span>·</span>
 		<span>Natural Earth 1:50m</span>
 		{#if terrain}
@@ -595,9 +595,8 @@
 	}
 	.statusbar {
 		position: fixed;
-		left: 50%;
+		right: calc(15rem + 1.5rem);
 		bottom: 0.8rem;
-		transform: translateX(-50%);
 		z-index: 24;
 		display: none;
 		align-items: center;

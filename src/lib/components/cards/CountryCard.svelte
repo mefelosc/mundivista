@@ -844,8 +844,8 @@
 		position: relative;
 		display: flex;
 		align-items: flex-start;
-		gap: 0.8rem;
-		padding: 1rem 1rem 0.8rem;
+		gap: 0.7rem;
+		padding: 0.8rem 0.9rem 0.65rem;
 		overflow: hidden;
 	}
 	.flag-glow {
@@ -866,8 +866,8 @@
 	}
 	.flag {
 		display: block;
-		width: 4.2rem;
-		height: 2.8rem;
+		width: 3.4rem;
+		height: 2.27rem;
 		border: 1px solid var(--line-strong);
 		background-size: cover;
 		box-shadow: 0 8px 18px -12px rgb(0 0 0 / 0.55);
@@ -875,11 +875,11 @@
 	.flag-fallback {
 		display: grid;
 		place-items: center;
-		width: 4.2rem;
-		height: 2.8rem;
+		width: 3.4rem;
+		height: 2.27rem;
 		border: 1px solid var(--line-strong);
 		font-family: var(--font-mono);
-		font-size: 0.85rem;
+		font-size: 0.78rem;
 		color: var(--text-3);
 	}
 	.titles {
@@ -893,14 +893,14 @@
 	h2 {
 		margin: 0.16rem 0 0;
 		font-family: var(--font-display);
-		font-size: 2.2rem;
+		font-size: 1.8rem;
 		font-weight: 600;
 		line-height: 1;
 		letter-spacing: -0.035em;
 	}
 	.official {
-		margin: 0.26rem 0 0;
-		font-size: 0.78rem;
+		margin: 0.24rem 0 0;
+		font-size: 0.72rem;
 		line-height: 1.35;
 		color: var(--text-3);
 	}
@@ -954,7 +954,7 @@
 		flex-direction: column;
 		gap: 0.06rem;
 		min-width: 0;
-		padding: 0.72rem 1rem;
+		padding: 0.5rem 0.7rem;
 		border-right: 1px solid var(--line);
 		border-bottom: 1px solid var(--line);
 		transition: background 0.18s ease;
@@ -970,14 +970,14 @@
 	}
 	.key-label {
 		font-family: var(--font-mono);
-		font-size: 0.72rem;
-		letter-spacing: 0.07em;
+		font-size: 0.66rem;
+		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--text-4);
 	}
 	.key strong {
 		font-family: var(--font-display);
-		font-size: clamp(1.4rem, 2.6vw, 1.75rem);
+		font-size: clamp(1.1rem, 1.9vw, 1.35rem);
 		font-weight: 600;
 		line-height: 1.05;
 		letter-spacing: -0.02em;
@@ -985,11 +985,11 @@
 		font-variant-numeric: tabular-nums;
 	}
 	.key.small strong {
-		font-size: clamp(1.15rem, 2.2vw, 1.4rem);
+		font-size: clamp(0.95rem, 1.6vw, 1.15rem);
 	}
 	.key-meta {
 		font-family: var(--font-mono);
-		font-size: 0.68rem;
+		font-size: 0.62rem;
 		line-height: 1.35;
 		color: var(--text-4);
 	}
@@ -1015,8 +1015,8 @@
 		border-radius: var(--radius-pill);
 		background: transparent;
 		color: var(--text-3);
-		padding: 0.45rem 0.65rem;
-		font-size: 0.78rem;
+		padding: 0.35rem 0.55rem;
+		font-size: 0.72rem;
 		font-weight: 600;
 		white-space: nowrap;
 	}
@@ -1033,11 +1033,11 @@
 		flex: 1;
 		overflow-y: auto;
 		overscroll-behavior: contain;
-		padding: 0 1rem 1rem;
+		padding: 0 0.9rem 0.8rem;
 		scrollbar-width: thin;
 	}
 	.section {
-		padding: 0.9rem 0 1rem;
+		padding: 0.7rem 0 0.85rem;
 		border-bottom: 1px solid var(--line);
 		animation: card-section-in 0.45s var(--ease-out-soft) both;
 	}

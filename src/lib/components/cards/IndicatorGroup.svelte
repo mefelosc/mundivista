@@ -15,6 +15,8 @@
 		percentile: number | null;
 		comparison: string | null;
 		series: [number, number][] | null;
+		source?: string | null;
+		sourceUrl?: string | null;
 		median: number | null;
 		format: (value: number) => string;
 		axisFormat: (value: number) => string;
@@ -87,6 +89,13 @@
 				<div class="value-line">
 					<strong>{active.value}</strong>
 					{#if active.year}<span class="year">{active.year}</span>{/if}
+					{#if active.source}
+						{#if active.sourceUrl}
+							<a class="source-tag" href={active.sourceUrl} target="_blank" rel="noopener noreferrer">{active.source}</a>
+						{:else}
+							<span class="source-tag">{active.source}</span>
+						{/if}
+					{/if}
 					{#if active.percentile !== null}
 						<span class="percentile">{isEn ? 'percentile' : 'percentil'} {Math.round(active.percentile * 100)}</span>
 					{/if}
@@ -157,6 +166,9 @@
 					<span class="metric-body">
 						<span class="metric-label">{row.label}</span>
 						<span class="metric-value">{row.value}</span>
+						{#if !compact && row.source}
+							<span class="metric-source">{row.source}</span>
+						{/if}
 						{#if !compact && row.comparison}
 							<span class="metric-comparison">{row.comparison}</span>
 						{/if}
@@ -234,6 +246,17 @@
 		font-family: var(--font-mono);
 		font-size: 0.72rem;
 		color: var(--text-4);
+	}
+	.source-tag {
+		font-family: var(--font-mono);
+		font-size: 0.62rem;
+		letter-spacing: 0.04em;
+		color: var(--accent-0);
+		text-decoration: none;
+		border: 1px solid color-mix(in oklab, var(--accent-0) 35%, var(--line));
+		border-radius: var(--radius-pill);
+		padding: 0.1rem 0.4rem;
+		white-space: nowrap;
 	}
 	.percentile {
 		border: 1px solid var(--line);
@@ -391,6 +414,12 @@
 		font-size: 0.7rem;
 		line-height: 1.3;
 		color: var(--text-4);
+	}
+	.metric-source {
+		font-family: var(--font-mono);
+		font-size: 0.62rem;
+		line-height: 1.3;
+		color: var(--accent-0);
 	}
 	.metric-meta {
 		grid-area: meta;

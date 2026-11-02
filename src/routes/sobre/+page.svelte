@@ -43,6 +43,11 @@
 		'https://data.worldbank.org': {
 			name: 'World Bank Open Data',
 			note: 'Most recent series per country within the window. Historical Natural Earth codes are normalised; territories without a series appear as not available.'
+		},
+		'https://population.un.org/wpp/': {
+			name: 'UN DESA — World Population Prospects 2024',
+			license: 'CC BY 3.0 IGO',
+			note: 'Total population and density (medium variant) only where the World Bank has no series, such as Taiwan, the Holy See and small islands.'
 		}
 	};
 
@@ -50,6 +55,7 @@
 		manifest.sources.boundaries,
 		manifest.sources.facts,
 		manifest.sources.indicators,
+		manifest.sources.population,
 		manifest.sources.physical,
 		manifest.sources.marine
 	].filter(Boolean);
@@ -260,6 +266,13 @@
 								<a href={indicatorMeta[key].sourceUrl} target="_blank" rel="noopener noreferrer">
 									{tr('Banco Mundial', 'World Bank')} <Icon name="external" size={10} />
 								</a>
+								{#if indicatorMeta[key].fallback}
+									<span class="alt-source">
+										+ <a href={indicatorMeta[key].fallback!.url} target="_blank" rel="noopener noreferrer">
+											{tr('UN WPP 2024', 'UN WPP 2024')}
+										</a>
+									</span>
+								{/if}
 							</td>
 						</tr>
 					{/each}
@@ -267,7 +280,7 @@
 			</table>
 		</div>
 		<p class="footnote">
-			{indicatorKeys.length} {tr('séries do World Bank Open Data (CC BY 4.0). Indicadores de governança usam os Worldwide Governance Indicators (WGI), também publicados pelo Banco Mundial. Dívida pública tem cobertura menor e é exibida apenas quando há observação.', 'series from World Bank Open Data (CC BY 4.0). Governance indicators use the Worldwide Governance Indicators (WGI), also published by the World Bank. Public debt has lower coverage and is shown only when an observation exists.')}
+			{indicatorKeys.length} {tr('séries do World Bank Open Data (CC BY 4.0). Indicadores de governança usam os Worldwide Governance Indicators (WGI), também publicados pelo Banco Mundial. População e densidade de países fora da cobertura do Banco usam a UN WPP 2024 (CC BY 3.0 IGO); a fonte alternativa aparece no dossiê. Dívida pública tem cobertura menor e é exibida apenas quando há observação.', 'series from World Bank Open Data (CC BY 4.0). Governance indicators use the Worldwide Governance Indicators (WGI), also published by the World Bank. Population and density for countries outside World Bank coverage use UN WPP 2024 (CC BY 3.0 IGO); the alternative source is shown in the dossier. Public debt has lower coverage and is shown only when an observation exists.')}
 		</p>
 	</section>
 
@@ -534,6 +547,11 @@
 		font-size: 0.64rem;
 		color: var(--accent-0);
 		text-decoration: none;
+	}
+	.alt-source {
+		display: block;
+		font-size: 0.6rem;
+		color: var(--text-4);
 	}
 	.footnote {
 		margin: 0.6rem 0 0;

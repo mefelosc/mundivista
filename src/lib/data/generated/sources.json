@@ -1,5 +1,5 @@
 {
-  "retrieved": "2026-10-31",
+  "retrieved": "2026-11-02",
   "sources": {
     "boundaries": {
       "name": "Natural Earth — Admin 0 Countries (1:50m)",
@@ -33,6 +33,12 @@
       "url": "https://data.worldbank.org",
       "license": "CC BY 4.0",
       "note": "Série mais recente disponível por país dentro da janela consultada. Códigos históricos do Natural Earth são normalizados; territórios sem série aparecem como não disponíveis."
+    },
+    "population": {
+      "name": "UN DESA — World Population Prospects 2024",
+      "url": "https://population.un.org/wpp/",
+      "license": "CC BY 3.0 IGO",
+      "note": "População total e densidade da variante média usadas apenas onde o Banco Mundial não publica série (por exemplo, Taiwan, Vaticano e pequenas ilhas)."
     }
   }
 }

@@ -10,13 +10,15 @@
 	interface Props {
 		layer: ResolvedLayer;
 		bloc?: string | null;
+		embedded?: boolean;
 	}
-	let { layer, bloc = null }: Props = $props();
+	let { layer, bloc = null, embedded = false }: Props = $props();
 	const isEn = $derived(locale.value === 'en');
 	const tr = (pt: string, en: string) => (isEn ? en : pt);
 	const display = $derived(localizedLayer(layer, locale.value) as typeof layer);
 
-	let collapsed = $state(true);
+	// svelte-ignore state_referenced_locally
+	let collapsed = $state(embedded ? false : true);
 
 	const org = $derived(bloc ? organizationById.get(bloc) : null);
 	const displayOrg = $derived(org ? localizedOrganization(org, locale.value) : null);
@@ -25,7 +27,7 @@
 	);
 </script>
 
-<section class="legend" class:collapsed aria-label={tr('Legenda do mapa', 'Map legend')}>
+<section class="legend" class:collapsed class:embedded aria-label={tr('Legenda do mapa', 'Map legend')}>
 	<div class="head">
 		<div class="titles">
 			<span class="eyebrow">{display.index} · {tr('Camada', 'Layer')}</span>
@@ -96,15 +98,29 @@
 <style>
 	.legend {
 		position: fixed;
-		left: 0.75rem;
+		left: calc(var(--rail-w) + 1.1rem);
 		bottom: 0.75rem;
 		z-index: 25;
 		width: 19rem;
+		max-height: calc(100dvh - 1.5rem);
+		overflow-y: auto;
 		padding: 0.7rem 0.72rem 0.6rem;
 		background: color-mix(in oklab, var(--surface-2) 96%, transparent);
 		border: 1px solid var(--line);
 		border-radius: 0.25rem;
 		box-shadow: 0 20px 40px -30px rgb(0 0 0 / 0.55);
+	}
+	.legend.embedded {
+		position: static;
+		left: auto;
+		bottom: auto;
+		width: 100%;
+		max-height: none;
+		overflow: visible;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		box-shadow: none;
 	}
 	.head {
 		display: flex;
@@ -280,7 +296,7 @@
 		color: var(--text-4);
 	}
 	@media (max-width: 900px) {
-		.legend {
+		.legend:not(.embedded) {
 			display: none;
 		}
 	}

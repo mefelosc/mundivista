@@ -25,10 +25,10 @@ interface central e dados verificáveis.
 ## 2. O que já existe
 
 - SvelteKit 3 + Svelte 5 + TypeScript + Tailwind 4 + MapLibre 6, adapter-static.
-- Mapa 1:50m com 241 territórios, seleção, hover, rótulos com colisão, graticula,
+- Mapa 1:50m com 197 países e 44 territórios (241 entidades), seleção, hover, rótulos com colisão, graticula,
   rios/lagos, litoral, cidades, capitais e relevo sombreado opcional.
 - 6 camadas: político, físico, demografia, economia, geopolítica, história.
-- Mapa base 2D em Equal Earth (padrão) e globo 3D opcional (via projeção customizada +
+- Mapa base 2D em Robinson (padrão) e globo 3D opcional (via projeção customizada +
   proj4), relevo 3D no globo, tema claro/escuro/sistema, crossfade de camada.
 - Na camada política, unidades administrativas de primeiro nível por país (Natural Earth
   1:10m), carregadas sob demanda e listadas no card.
@@ -75,7 +75,7 @@ comparáveis em `docs/screenshots/` (desktop/mobile, claro/escuro).
 - [x] Crossfade de camada com duas camadas de fill e transição de 340 ms.
 - [x] Rótulos DOM com cache de medida, prioridade, colisão e teto de 82.
 - [x] Escala gráfica, rosa dos ventos, coordenadas e projeção.
-- [x] Mapa base 2D em Equal Earth como padrão e globo 3D opcional via
+- [x] Mapa base 2D em Robinson como padrão e globo 3D opcional via
       `addProjection` + proj4 (main e worker), com área proporcional e sem a distorção do
       Mercator. Relevo fica restrito ao globo, porque o DEM é servido em Mercator.
 - [x] Camada `standard` sem coroplético como estado inicial; camadas temáticas só quando

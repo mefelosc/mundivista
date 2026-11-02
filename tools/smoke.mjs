@@ -197,7 +197,7 @@ await check('globo 3D alterna sem reload e ativa relevo', async () => {
 	if (Number(pitch) < 30) throw new Error(`pitch=${pitch}`);
 });
 
-await check('2D Equal Earth volta e desativa relevo', async () => {
+await check('2D Robinson volta e desativa relevo', async () => {
 	await page.locator('.segmented button[title^="Mapa 2D"]').click();
 	await page.waitForTimeout(2800);
 	const projectionActive = await page.locator('.segmented button.active').innerText();

@@ -18,6 +18,7 @@ export const capitalsPt: Record<string, string> = {
 	IRN: 'Teerã',
 	LBN: 'Beirute',
 	DNK: 'Copenhague',
+	VAT: 'Cidade do Vaticano',
 	BEL: 'Bruxelas',
 	POL: 'Varsóvia',
 	CZE: 'Praga',

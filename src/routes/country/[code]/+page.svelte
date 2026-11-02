@@ -10,12 +10,14 @@
 	import ComparePanel from '#lib/components/cards/ComparePanel.svelte';
 	import {
 		countries,
+		countryCount,
 		getCountry,
 		indicatorMeta,
 		rankOf,
 		retrievedAt,
 		dependencyLabel,
 		sovereignCountry,
+		territoryCount,
 		worldStats
 	} from '#lib/data/countries';
 	import { capitalInPortuguese } from '#lib/data/capitals-pt';
@@ -25,6 +27,14 @@
 	import { snippetsByCountry } from '#lib/data/snippets';
 	import { deltaModeFor } from '#lib/data/indicator-icons';
 	import { silhouetteFor } from '#lib/data/silhouettes';
+	import {
+		countrySummary,
+		demographySummary,
+		economySummary,
+		geographySummary,
+		geopoliticsSummary,
+		historySummary
+	} from '#lib/data/summaries';
 	import { locale } from '#lib/locale.svelte';
 	import {
 		historicalSourceEn,
@@ -43,6 +53,7 @@
 		localizedSnippet
 	} from '#lib/i18n-data-en';
 	import { formatArea, formatCompact, formatIndicatorValue, formatRank } from '#lib/format';
+	import type { Locale } from '#lib/i18n';
 	import type { Country, IndicatorKey } from '#lib/types';
 	import type { PageData } from './$types';
 
@@ -122,10 +133,19 @@
 
 	let compareCode = $state<string | null>(null);
 	let copied = $state(false);
-	let activeSection = $state('ficha');
+	let activeSection = $state('resumo');
+
+	const overviewSummary = $derived(country ? countrySummary(country, locale.value) : '');
+	const historyText = $derived(country ? historySummary(country, locale.value) : '');
+	const THEME_SUMMARIES: Record<string, (target: Country, lang: Locale) => string> = {
+		demography: demographySummary,
+		economy: economySummary,
+		environment: geographySummary,
+		geopolitics: geopoliticsSummary
+	};
 
 	onMount(() => {
-		const ids = ['compare', 'ficha', 'demography', 'economy', 'environment', 'geopolitics', 'history', 'organizations', 'snippets'];
+		const ids = ['resumo', 'compare', 'ficha', 'demography', 'economy', 'environment', 'geopolitics', 'history', 'organizations', 'snippets'];
 		let frame = 0;
 
 		const update = () => {
@@ -184,7 +204,7 @@
 	const GROUP_TITLES_EN: Record<string, string> = {
 		demography: 'Demography',
 		economy: 'Economy',
-		environment: 'Physical environment and climate',
+		environment: 'Geography and environment',
 		geopolitics: 'Geopolitics and governance'
 	};
 
@@ -212,7 +232,7 @@
 		{
 			id: 'environment',
 			index: '04',
-			title: 'Meio físico e clima',
+			title: 'Geografia e meio físico',
 			layer: 'physical',
 			keys: ['forestShare', 'renewableShare', 'electricityAccess', 'co2PerCapita', 'co2Total', 'energyUse', 'healthShare', 'internetShare']
 		},
@@ -252,6 +272,8 @@
 				rank,
 				comparison,
 				series: value?.s ?? null,
+				source: value?.source ?? null,
+				sourceUrl: value?.sourceUrl ?? null,
 				format: (next: number) => formatIndicatorValue(key, { v: next, y: value?.y ?? 0 }),
 				axisFormat: (next: number) => formatCompact(next),
 				deltaMode: deltaModeFor(key, unit)
@@ -260,7 +282,11 @@
 	}
 
 	const groupRows = $derived.by(() =>
-		GROUPS.map((group) => ({ ...group, rows: rowsFor(group.keys, country) }))
+		GROUPS.map((group) => ({
+			...group,
+			summary: country ? (THEME_SUMMARIES[group.id]?.(country, locale.value) ?? '') : '',
+			rows: rowsFor(group.keys, country)
+		}))
 	);
 
 	const timeline = $derived.by(() => {
@@ -457,12 +483,21 @@
 			{/each}
 		</section>
 
+		<section id="resumo" class="block summary-block">
+			<header class="block-head">
+				<span class="index">00</span>
+				<h2>{tr('Resumo', 'Summary')}</h2>
+			</header>
+			<p class="country-summary">{overviewSummary}</p>
+		</section>
+
 		<nav class="section-nav" aria-label={tr('Seções do dossiê', 'Dossier sections')}>
+			<a href="#resumo" class:active={activeSection === 'resumo'}>{tr('Resumo', 'Summary')}</a>
 			<a href="#compare" class:active={activeSection === 'compare'}>{tr('Comparar', 'Compare')}</a>
 			<a href="#ficha" class:active={activeSection === 'ficha'}>{tr('Ficha', 'Fact sheet')}</a>
 			<a href="#demography" class:active={activeSection === 'demography'}>{tr('Demografia', 'Demography')}</a>
 			<a href="#economy" class:active={activeSection === 'economy'}>{tr('Economia', 'Economy')}</a>
-			<a href="#environment" class:active={activeSection === 'environment'}>{tr('Meio físico', 'Environment')}</a>
+			<a href="#environment" class:active={activeSection === 'environment'}>{tr('Geografia', 'Geography')}</a>
 			<a href="#geopolitics" class:active={activeSection === 'geopolitics'}>{tr('Geopolítica', 'Geopolitics')}</a>
 			<a href="#history" class:active={activeSection === 'history'}>{tr('História', 'History')}</a>
 			{#if currentOrgs.length || historicalOrgs.length}<a href="#organizations" class:active={activeSection === 'organizations'}>{tr('Organizações', 'Organizations')}</a>{/if}
@@ -517,6 +552,7 @@
 								{tr('Ver no mapa', 'View on map')} <Icon name="arrowUpRight" size={12} />
 							</a>
 						</header>
+						{#if group.summary}<p class="section-summary">{group.summary}</p>{/if}
 						<IndicatorGroup rows={group.rows} flag={country.iso2} />
 						{#if group.id === 'economy'}
 							<div class="economy-extras">
@@ -525,8 +561,13 @@
 							</div>
 						{/if}
 						<footer class="source">
-							<span>{tr('Fonte: Banco Mundial', 'Source: World Bank')} — {group.rows.length} {tr('indicadores, observação mais recente entre 2016 e 2025.', 'indicators, latest observation between 2016 and 2025.')}</span>
-							<a href="https://data.worldbank.org" target="_blank" rel="noopener noreferrer">data.worldbank.org <Icon name="external" size={10} /></a>
+							{#if group.rows.some((row) => row.source)}
+								<span>{tr('Fonte: Banco Mundial; UN WPP 2024 para população e densidade fora da cobertura.', 'Source: World Bank; UN WPP 2024 for population and density outside coverage.')}</span>
+								<a href="https://population.un.org/wpp/" target="_blank" rel="noopener noreferrer">population.un.org/wpp <Icon name="external" size={10} /></a>
+							{:else}
+								<span>{tr('Fonte: Banco Mundial', 'Source: World Bank')} — {group.rows.length} {tr('indicadores, observação mais recente entre 2016 e 2025.', 'indicators, latest observation between 2016 and 2025.')}</span>
+								<a href="https://data.worldbank.org" target="_blank" rel="noopener noreferrer">data.worldbank.org <Icon name="external" size={10} /></a>
+							{/if}
 						</footer>
 					</section>
 				{/each}
@@ -539,6 +580,7 @@
 							{tr('Ver no mapa', 'View on map')} <Icon name="arrowUpRight" size={12} />
 						</a>
 					</header>
+					{#if historyText}<p class="section-summary">{historyText}</p>{/if}
 					{#if timeline.length}
 						<ol class="timeline">
 							{#each timeline as event (event.year + event.title)}
@@ -620,7 +662,7 @@
 						<div><dt>{tr('Fonte de fatos', 'Fact source')}</dt><dd>{country.factSource ?? 'Natural Earth'}</dd></div>
 						<div><dt>{tr('Extração', 'Retrieved')}</dt><dd>{retrievedAt}</dd></div>
 						<div><dt>{tr('Fronteiras', 'Borders')}</dt><dd>Natural Earth 1:50m</dd></div>
-						<div><dt>{tr('Indicadores', 'Indicators')}</dt><dd>{tr('World Bank, 20+ séries', 'World Bank, 20+ series')}</dd></div>
+						<div><dt>{tr('Indicadores', 'Indicators')}</dt><dd>{tr('World Bank + UN WPP, 20+ séries', 'World Bank + UN WPP, 20+ series')}</dd></div>
 					</dl>
 					<a class="sources-link" href="/sobre">{tr('Fontes, licenças e limitações', 'Sources, licences and limitations')} <Icon name="arrowRight" size={12} /></a>
 				</section>
@@ -647,7 +689,7 @@
 
 		<footer class="page-footer">
 			<a href="/explore">← {tr('Voltar ao mapa', 'Back to the map')}</a>
-			<span>{countries.length} {tr('territórios', 'territories')} · {tr('atualizado em', 'updated')} {retrievedAt}</span>
+			<span>{countryCount} {tr('países', 'countries')} · {territoryCount} {tr('territórios', 'territories')} · {tr('atualizado em', 'updated')} {retrievedAt}</span>
 			<a href="/play">{tr('Jogar com o mapa', 'Play with the map')} →</a>
 		</footer>
 	</main>
@@ -907,6 +949,24 @@
 	.block:hover {
 		border-color: var(--line-strong);
 		box-shadow: 0 16px 34px -32px rgb(0 0 0 / 0.45);
+	}
+	.summary-block {
+		background: color-mix(in oklab, var(--accent-1) 5%, var(--surface-2));
+		border-left: 3px solid var(--accent-1);
+	}
+	.country-summary {
+		margin: 0;
+		max-width: 70ch;
+		font-size: 1.02rem;
+		line-height: 1.7;
+		color: var(--text-2);
+	}
+	.section-summary {
+		margin: -0.15rem 0 0.95rem;
+		max-width: 74ch;
+		font-size: 0.9rem;
+		line-height: 1.65;
+		color: var(--text-3);
 	}
 	@keyframes dossier-in {
 		from {

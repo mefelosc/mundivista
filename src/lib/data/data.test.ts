@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 import {
 	countries,
 	countryByCode,
+	countryCount,
 	getCountry,
+	isCountry,
 	sovereignCountry,
 	dependencyLabel,
 	indicatorMeta,
 	manifest,
-	retrievedAt
+	retrievedAt,
+	territoryCount
 } from './countries';
 import { organizations, organizationById } from './organizations';
 import { snippets } from './snippets';
@@ -150,9 +153,31 @@ describe('integridade dos dados', () => {
 		expect(somaliland?.unMember).toBe(false);
 	});
 
-	it('membros da ONU têm população, exceto o Vaticano', () => {
+	it('membros da ONU e Estados observadores têm população', () => {
 		const missing = countries.filter((country) => country.unMember && !country.indicators.population);
-		expect(missing.map((country) => country.code)).toEqual(['VAT']);
+		expect(missing.map((country) => country.code)).toEqual([]);
+	});
+
+	it('territórios fora do Banco Mundial usam a UN WPP 2024', () => {
+		for (const code of ['TWN', 'VAT', 'AIA', 'COK', 'SAH']) {
+			const value = getCountry(code)?.indicators.population;
+			expect(value, code).toBeTruthy();
+			expect(value?.source, code).toBe('UN WPP 2024');
+			expect(value?.y, code).toBeGreaterThanOrEqual(2016);
+		}
+		expect(manifest.sources.population.license).toBe('CC BY 3.0 IGO');
+	});
+
+	it('separa países de territórios', () => {
+		expect(countryCount + territoryCount).toBe(countries.length);
+		expect(countryCount).toBeGreaterThan(190);
+		expect(territoryCount).toBeGreaterThan(30);
+		for (const code of ['TWN', 'KOS', 'PSX', 'VAT', 'BRA']) {
+			expect(isCountry(getCountry(code)!), code).toBe(true);
+		}
+		for (const code of ['GRL', 'ALD', 'FLK', 'SOL', 'SAH']) {
+			expect(isCountry(getCountry(code)!), code).toBe(false);
+		}
 	});
 
 	it('rótulos marinhos têm nome, coordenadas e zoom', () => {

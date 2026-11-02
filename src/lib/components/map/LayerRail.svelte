@@ -126,6 +126,7 @@
 		flex-direction: column;
 		gap: 0.4rem;
 		width: var(--rail-w);
+		max-height: calc(100dvh - var(--header-h) - 1.5rem);
 		transition: width 0.2s var(--ease-out-soft);
 	}
 	.rail.collapsed {
@@ -177,6 +178,8 @@
 	.layers {
 		display: flex;
 		flex-direction: column;
+		min-height: 0;
+		overflow-y: auto;
 		padding: 0.22rem;
 		background: color-mix(in oklab, var(--surface-2) 95%, transparent);
 		border: 1px solid var(--line);
@@ -292,6 +295,7 @@
 			bottom: 0;
 			transform: none;
 			width: auto;
+			max-height: none;
 			gap: 0;
 			padding: 0.35rem 0.4rem calc(0.35rem + env(safe-area-inset-bottom));
 			background: color-mix(in oklab, var(--surface-0) 96%, transparent);

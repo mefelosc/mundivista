@@ -4,6 +4,7 @@
 	import Icon from '#lib/components/ui/Icon.svelte';
 	import GameCover from '#lib/components/games/GameCover.svelte';
 	import { games } from '#lib/engines/game-engine/registry';
+	import type { GameDefinition } from '#lib/engines/game-engine/types';
 	import { gameAccent } from '#lib/engines/game-engine/theme';
 	import { locale } from '#lib/locale.svelte';
 	import { t } from '#lib/i18n';
@@ -20,6 +21,7 @@
 	} from '#lib/progress';
 
 	const text = $derived(locale.value);
+	const tr = (pt: string, en: string) => (text === 'en' ? en : pt);
 	const localizedGames = $derived(games.map((game) => localizedGame(game, text)));
 	const categories = ['Todos', ...new Set(games.map((g) => g.category))];
 	const CATEGORY_EN: Record<string, string> = {
@@ -38,11 +40,55 @@
 		text === 'en' ? (CATEGORY_EN[category] ?? category) : category;
 	const difficultyLabel = (difficulty: string) =>
 		text === 'en' ? (DIFFICULTY_EN[difficulty] ?? difficulty) : difficulty;
+	const CATEGORY_DESC: Record<string, { pt: string; en: string }> = {
+		Geografia: { pt: 'Mapa, bandeiras, capitais, fronteiras e silhuetas.', en: 'Map, flags, capitals, borders and silhouettes.' },
+		Dados: { pt: 'Compare indicadores reais do Banco Mundial.', en: 'Compare real World Bank indicators.' },
+		Geopolítica: { pt: 'Blocos, alianças e países vizinhos.', en: 'Blocs, alliances and neighbouring countries.' },
+		História: { pt: 'Marcos históricos e organizações do passado.', en: 'Historical milestones and past organisations.' },
+		'Meio ambiente': { pt: 'Floresta, clima e recursos naturais.', en: 'Forest, climate and natural resources.' }
+	};
+	const orderBySlug = new Map(games.map((game, index) => [game.slug, index + 1]));
 	let activeCategory = $state('Todos');
-	const filtered = $derived(
-		activeCategory === 'Todos'
-			? localizedGames
-			: localizedGames.filter((g) => g.category === activeCategory)
+	let activeDifficulty = $state('Todas');
+	let query = $state('');
+	const DIFFICULTIES = ['Todas', 'Fácil', 'Médio', 'Difícil'];
+	const normalized = (value: string) =>
+		value
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '')
+			.toLowerCase();
+	const filtered = $derived.by(() => {
+		const q = normalized(query.trim());
+		return localizedGames.filter((game) => {
+			if (activeCategory !== 'Todos' && game.category !== activeCategory) return false;
+			if (activeDifficulty !== 'Todas' && game.difficulty !== activeDifficulty) return false;
+			if (!q) return true;
+			return normalized(`${game.title} ${game.tagline} ${game.mechanic} ${categoryLabel(game.category)}`).includes(q);
+		});
+	});
+	const isFiltering = $derived(
+		activeCategory !== 'Todos' || activeDifficulty !== 'Todas' || query.trim().length > 0
+	);
+	function onSearch(event: Event) {
+		const value = (event.currentTarget as HTMLInputElement).value;
+		if (value.trim()) {
+			activeCategory = 'Todos';
+			activeDifficulty = 'Todas';
+		}
+	}
+	function clearFilters() {
+		query = '';
+		activeCategory = 'Todos';
+		activeDifficulty = 'Todas';
+	}
+	const grouped = $derived(
+		categories
+			.slice(1)
+			.map((category) => ({
+				category,
+				games: filtered.filter((game) => game.category === category)
+			}))
+			.filter((group) => group.games.length > 0)
 	);
 
 	const counts = $derived(
@@ -171,59 +217,113 @@
 	</section>
 
 	<div class="toolbar">
-		<div class="filters" role="tablist" aria-label={text === 'en' ? 'Filter by category' : 'Filtrar por categoria'}>
-			{#each categories as category (category)}
-				<button
-					type="button"
-					role="tab"
-					aria-selected={activeCategory === category}
-					class:active={activeCategory === category}
-					style:--cat={category === 'Todos' ? 'var(--accent-1)' : gameAccent(category)}
-					onclick={() => (activeCategory = category)}
-				>
-					{category === 'Todos' ? t('play.all', text) : categoryLabel(category)}
-					<span>{counts[category]}</span>
+		<div class="toolbar-top">
+			<label class="search">
+				<Icon name="search" size={15} />
+				<input
+					bind:value={query}
+					oninput={onSearch}
+					type="search"
+					placeholder={text === 'en' ? 'Search games…' : 'Buscar jogos…'}
+					aria-label={text === 'en' ? 'Search games' : 'Buscar jogos'}
+				/>
+			</label>
+			<span class="toolbar-count">{filtered.length} {text === 'en' ? (filtered.length === 1 ? 'game' : 'games') : 'jogos'}</span>
+			{#if isFiltering}
+				<button type="button" class="clear-filters" onclick={clearFilters}>
+					<Icon name="close" size={12} /> {tr('Limpar filtros', 'Clear filters')}
 				</button>
-			{/each}
+			{/if}
 		</div>
-		<span class="toolbar-count">{filtered.length} {text === 'en' ? 'games' : 'jogos'}</span>
+		<div class="filter-row">
+			<div class="filters" role="tablist" aria-label={text === 'en' ? 'Filter by category' : 'Filtrar por categoria'}>
+				{#each categories as category (category)}
+					<button
+						type="button"
+						role="tab"
+						aria-selected={activeCategory === category}
+						class:active={activeCategory === category}
+						style:--cat={category === 'Todos' ? 'var(--accent-1)' : gameAccent(category)}
+						onclick={() => (activeCategory = category)}
+					>
+						{category === 'Todos' ? t('play.all', text) : categoryLabel(category)}
+						<span>{counts[category]}</span>
+					</button>
+				{/each}
+			</div>
+			<div class="filters difficulty" role="group" aria-label={text === 'en' ? 'Filter by difficulty' : 'Filtrar por dificuldade'}>
+				{#each DIFFICULTIES as level (level)}
+					<button
+						type="button"
+						class:active={activeDifficulty === level}
+						onclick={() => (activeDifficulty = level)}
+					>
+						{level === 'Todas' ? (text === 'en' ? 'All levels' : 'Todos os níveis') : difficultyLabel(level)}
+					</button>
+				{/each}
+			</div>
+		</div>
 	</div>
 
-	<section class="grid" aria-label={text === 'en' ? 'Available games' : 'Jogos disponíveis'}>
-		{#each filtered as game, i (game.slug)}
-			{@const best = bestFor(game.slug)}
-			{@const saved = progressFor(game.slug)}
-			<a
-				class="game"
-				href={`/game/${game.slug}${saved ? '?resume=1' : ''}`}
-				style:--cat={gameAccent(game.category)}
-				style:--index={i}
-			>
-				<div class="cover-wrap">
-					<GameCover slug={game.slug} icon={game.icon} />
+	{#snippet gameCard(game: GameDefinition, index: number)}
+		{@const best = bestFor(game.slug)}
+		{@const saved = progressFor(game.slug)}
+		<a
+			class="game"
+			href={`/game/${game.slug}${saved ? '?resume=1' : ''}`}
+			style:--cat={gameAccent(game.category)}
+			style:--index={index}
+		>
+			<div class="cover-wrap">
+				<GameCover slug={game.slug} icon={game.icon} />
+			</div>
+			<div class="top">
+				<span class="number">{String(orderBySlug.get(game.slug) ?? index + 1).padStart(2, '0')}</span>
+				<span class="category">{categoryLabel(game.category)}</span>
+				<span class="difficulty">{difficultyLabel(game.difficulty)}</span>
+				<span class="icon"><Icon name={game.icon} size={18} /></span>
+			</div>
+			<h2>{game.title}</h2>
+			<p class="tagline">{game.tagline}</p>
+			<div class="bottom">
+				<span class="meta">{game.mechanic}</span>
+				<span class="meta">{game.rounds} · {game.minutes} min</span>
+				{#if best !== null}
+					<span class="best" title={t('play.best', text)}><Icon name="trophy" size={12} /> {best}</span>
+				{/if}
+				{#if saved}
+					<span class="resume-chip">{t('play.resume', text)} · {saved.index + 1}/{saved.rounds.length}</span>
+				{/if}
+				<span class="play-cta">{t('play.play', text)} <Icon name="arrowRight" size={14} /></span>
+			</div>
+		</a>
+	{/snippet}
+
+	{#if isFiltering}
+		{#if filtered.length}
+			<section class="grid" aria-label={text === 'en' ? 'Search results' : 'Resultados da busca'}>
+				{#each filtered as game, i (game.slug)}{@render gameCard(game, i)}{/each}
+			</section>
+		{:else}
+			<p class="empty">
+				<Icon name="search" size={16} />
+				{text === 'en' ? 'No game matches these filters.' : 'Nenhum jogo combina com esses filtros.'}
+			</p>
+		{/if}
+	{:else}
+		{#each grouped as group (group.category)}
+			<section class="category-section" style:--cat={gameAccent(group.category)}>
+				<header class="category-head">
+					<span class="eyebrow">{group.games.length} {text === 'en' ? 'games' : 'jogos'}</span>
+					<h2>{categoryLabel(group.category)}</h2>
+					<p>{tr(CATEGORY_DESC[group.category]?.pt ?? '', CATEGORY_DESC[group.category]?.en ?? '')}</p>
+				</header>
+				<div class="grid">
+					{#each group.games as game, i (game.slug)}{@render gameCard(game, i)}{/each}
 				</div>
-				<div class="top">
-					<span class="number">{String(games.indexOf(game) + 1).padStart(2, '0')}</span>
-					<span class="category">{categoryLabel(game.category)}</span>
-					<span class="difficulty">{difficultyLabel(game.difficulty)}</span>
-					<span class="icon"><Icon name={game.icon} size={18} /></span>
-				</div>
-				<h2>{game.title}</h2>
-				<p class="tagline">{game.tagline}</p>
-				<div class="bottom">
-					<span class="meta">{game.mechanic}</span>
-					<span class="meta">{game.rounds} · {game.minutes} min</span>
-					{#if best !== null}
-						<span class="best" title={t('play.best', text)}><Icon name="trophy" size={12} /> {best}</span>
-					{/if}
-					{#if saved}
-						<span class="resume-chip">{t('play.resume', text)} · {saved.index + 1}/{saved.rounds.length}</span>
-					{/if}
-					<span class="play-cta">{t('play.play', text)} <Icon name="arrowRight" size={14} /></span>
-				</div>
-			</a>
+			</section>
 		{/each}
-	</section>
+	{/if}
 
 	{#if Object.keys(bests).length}
 		<section class="records">
@@ -256,7 +356,7 @@
 <style>
 	main {
 		min-height: 100dvh;
-		padding: calc(var(--header-h) + 2rem) clamp(1rem, 5vw, 4rem) 4rem;
+		padding: calc(var(--header-h) + 1.4rem) clamp(1rem, 5vw, 4rem) 4rem;
 		max-width: 84rem;
 		margin: 0 auto;
 		position: relative;
@@ -277,11 +377,11 @@
 		font-size: 0.66rem;
 	}
 	h1 {
-		margin: 0.45rem 0 0.55rem;
+		margin: 0.35rem 0 0.45rem;
 		font-family: var(--font-display);
-		font-size: clamp(3.4rem, 8vw, 6.6rem);
+		font-size: clamp(2.8rem, 6vw, 5rem);
 		font-weight: 600;
-		line-height: 0.82;
+		line-height: 0.84;
 		letter-spacing: -0.055em;
 		text-transform: uppercase;
 	}
@@ -366,7 +466,7 @@
 		grid-template-columns: 12rem minmax(0, 1fr) auto;
 		align-items: stretch;
 		gap: 1.2rem;
-		margin: 1.1rem 0 1.5rem;
+		margin: 0.9rem 0 1.1rem;
 		border: 1px solid color-mix(in oklab, var(--cat) 35%, var(--line));
 		border-left: 4px solid var(--cat);
 		border-radius: var(--radius-lg);
@@ -378,7 +478,7 @@
 	}
 	.daily-art {
 		height: 100%;
-		min-height: 8rem;
+		min-height: 6.5rem;
 	}
 	.daily-art :global(.cover) {
 		height: 100%;
@@ -448,11 +548,52 @@
 	}
 	.toolbar {
 		display: flex;
+		flex-direction: column;
+		gap: 0.55rem;
+		margin-bottom: 1.4rem;
+		padding-bottom: 0.75rem;
+		border-bottom: 1px solid var(--line);
+	}
+	.toolbar-top {
+		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 1rem;
-		margin-bottom: 1.1rem;
-		border-bottom: 1px solid var(--line);
+	}
+	.search {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		flex: 1;
+		max-width: 24rem;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-pill);
+		background: var(--surface-1);
+		padding: 0.42rem 0.7rem;
+		color: var(--text-4);
+	}
+	.search:focus-within {
+		border-color: var(--line-strong);
+		color: var(--text-2);
+	}
+	.search input {
+		flex: 1;
+		min-width: 0;
+		border: 0;
+		background: transparent;
+		color: var(--text-1);
+		font-size: 0.82rem;
+		outline: none;
+	}
+	.search input::placeholder {
+		color: var(--text-4);
+	}
+	.filter-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.8rem;
+		flex-wrap: wrap;
 	}
 	.filters {
 		display: flex;
@@ -468,13 +609,13 @@
 		border-radius: var(--radius-pill);
 		background: var(--surface-1);
 		color: var(--text-3);
-		padding: 0.5rem 0.8rem;
-		font-size: 0.86rem;
+		padding: 0.45rem 0.75rem;
+		font-size: 0.82rem;
 		font-weight: 600;
 	}
 	.filters button span {
 		font-family: var(--font-mono);
-		font-size: 0.7rem;
+		font-size: 0.68rem;
 		color: var(--text-4);
 	}
 	.filters button:hover {
@@ -483,17 +624,89 @@
 	}
 	.filters button.active {
 		color: var(--accent-0);
-		border-color: color-mix(in oklab, var(--cat) 55%, var(--line));
-		background: color-mix(in oklab, var(--cat) 12%, var(--surface-1));
+		border-color: color-mix(in oklab, var(--cat, var(--accent-1)) 55%, var(--line));
+		background: color-mix(in oklab, var(--cat, var(--accent-1)) 12%, var(--surface-1));
 	}
 	.filters button.active span {
-		color: var(--cat);
+		color: var(--cat, var(--accent-1));
+	}
+	.filters.difficulty button {
+		border-color: transparent;
+		background: transparent;
+		padding: 0.3rem 0.5rem;
+		font-size: 0.72rem;
+		color: var(--text-4);
+	}
+	.filters.difficulty button.active {
+		color: var(--accent-0);
+		border-color: color-mix(in oklab, var(--accent-1) 45%, var(--line));
+		background: color-mix(in oklab, var(--accent-1) 10%, var(--surface-1));
 	}
 	.toolbar-count {
+		margin-left: auto;
 		font-family: var(--font-mono);
 		font-size: 0.72rem;
 		color: var(--text-4);
 		white-space: nowrap;
+	}
+	.clear-filters {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-pill);
+		background: var(--surface-1);
+		color: var(--text-3);
+		padding: 0.25rem 0.55rem;
+		font-size: 0.68rem;
+	}
+	.clear-filters:hover {
+		color: var(--text-1);
+		border-color: var(--line-strong);
+	}
+	.category-section {
+		margin-top: 1.5rem;
+	}
+	.category-section:first-of-type {
+		margin-top: 0;
+	}
+	.category-head {
+		display: flex;
+		align-items: baseline;
+		flex-wrap: wrap;
+		gap: 0.1rem 0.9rem;
+		margin-bottom: 0.7rem;
+		padding-bottom: 0.45rem;
+		border-bottom: 1px solid var(--line);
+	}
+	.category-head .eyebrow {
+		width: 100%;
+		color: var(--cat);
+		font-size: 0.62rem;
+	}
+	.category-head h2 {
+		margin: 0;
+		font-family: var(--font-display);
+		font-size: 1.55rem;
+		font-weight: 600;
+		letter-spacing: -0.02em;
+	}
+	.category-head p {
+		margin: 0;
+		font-size: 0.82rem;
+		line-height: 1.4;
+		color: var(--text-3);
+	}
+	.empty {
+		display: flex;
+		align-items: center;
+		gap: 0.55rem;
+		margin: 1.5rem 0 0;
+		padding: 1rem 1.1rem;
+		border: 1px dashed var(--line-strong);
+		border-radius: var(--radius-lg);
+		color: var(--text-3);
+		font-size: 0.86rem;
 	}
 	.grid {
 		display: grid;
@@ -746,13 +959,23 @@
 		h1 {
 			font-size: clamp(3rem, 17vw, 4.5rem);
 		}
-		.toolbar {
-			align-items: flex-start;
+		.toolbar-top {
 			flex-direction: column;
-			gap: 0.2rem;
+			align-items: flex-start;
+			gap: 0.4rem;
+			width: 100%;
+		}
+		.search {
+			max-width: none;
+			width: 100%;
 		}
 		.toolbar-count {
-			padding-bottom: 0.5rem;
+			margin-left: 0;
+		}
+		.filter-row {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 0.35rem;
 		}
 		.resume {
 			flex-wrap: wrap;

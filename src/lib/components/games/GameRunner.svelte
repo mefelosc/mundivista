@@ -461,7 +461,7 @@
 		bind:this={mapRef}
 		layer={mapLayer}
 		interactive={isMapRound && !feedback && !showIntro}
-		showLabels={!game.hideMapLabels || Boolean(feedback)}
+		showLabels={!game.hideMapLabels}
 		focus={focusCodes}
 		highlight={
 			current?.interaction === 'order'

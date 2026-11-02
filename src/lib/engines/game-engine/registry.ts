@@ -1,4 +1,4 @@
-import { countries, indicatorMeta } from '#lib/data/countries';
+import { countries, indicatorMeta, isCountry } from '#lib/data/countries';
 import { capitalInPortuguese } from '#lib/data/capitals-pt';
 import { silhouettes } from '#lib/data/silhouettes';
 import { organizations, organizationById } from '#lib/data/organizations';
@@ -8,8 +8,16 @@ import type { GameDefinition, GameRound } from './types';
 import { createRng, pick, sample, shuffle, type Rng } from './random';
 import { normalizeText } from './validate';
 
-const sovereign = countries.filter((c) => c.unMember === true);
+/** Países do atlas (sem territórios), incluindo Taiwan, Kosovo e Palestina. */
+const countryPool = countries.filter(isCountry);
 const withPopulation = countries.filter((c) => c.indicators.population);
+
+/** Evita alternativas ambíguas quando dois países compartilham o mesmo nome em PT. */
+const nameCounts = new Map<string, number>();
+for (const country of countries) nameCounts.set(country.name, (nameCounts.get(country.name) ?? 0) + 1);
+function optionName(country: Country): string {
+	return (nameCounts.get(country.name) ?? 0) > 1 ? `${country.name} (${country.nameEn})` : country.name;
+}
 
 function topBy(key: IndicatorKey, n: number): Country[] {
 	const rows = countries
@@ -105,13 +113,13 @@ const CAPITAL_EXCLUDE = new Set([
 	'BOL', // capital constitucional x sede do governo
 	'LKA', // nome oficial extenso e sede em Sri Jayawardenepura Kotte
 	'ISR', // estatuto de Jerusalém disputado
-	'PSE', // estatuto disputado
+	'PSX', // estatuto disputado
 	'TWN', // estatuto disputado
 	'BEN', // capital oficial x sede do governo
 	'CIV' // capital oficial x sede do governo
 ]);
 
-const capitalPool = sovereign.filter((c) => {
+const capitalPool = countryPool.filter((c) => {
 	if (!c.capital || CAPITAL_EXCLUDE.has(c.code)) return false;
 	if ((c.indicators.population?.v ?? 0) < 1_000_000) return false;
 	return normalizeText(capitalOf(c)) !== normalizeText(c.name);
@@ -137,7 +145,7 @@ function countryExplanation(country: Country): string {
 	return parts.filter(Boolean).join(' ');
 }
 
-const finderPool = sovereign.filter((c) => (c.areaKm2 ?? 0) >= 90_000);
+const finderPool = countryPool.filter((c) => (c.areaKm2 ?? 0) >= 90_000);
 
 function buildCountryFinder(seed?: number): GameRound[] {
 	const rng = createRng(seed);
@@ -242,7 +250,7 @@ function buildBlocs(seed?: number): GameRound[] {
 	}));
 
 	const oddOrgs = ['nato', 'eu'].map((id) => organizationById.get(id)!);
-	const europeans = countries.filter((c) => c.continent === 'Europa');
+	const europeans = countries.filter((c) => c.continent === 'Europa' && isCountry(c));
 
 	const oddRounds = oddOrgs.map((org, i): GameRound => {
 		const members = sample(
@@ -299,7 +307,7 @@ function buildLandlocked(seed?: number): GameRound[] {
 	const used = new Set<string>();
 
 	for (const continent of LANDLOCKED_GROUPS) {
-		const group = sovereign.filter((c) => c.continent === continent && typeof c.landlocked === 'boolean');
+		const group = countryPool.filter((c) => c.continent === continent && typeof c.landlocked === 'boolean');
 		const landlockedAll = group.filter((c) => c.landlocked === true);
 		const coastalAll = group.filter((c) => c.landlocked === false);
 		if (landlockedAll.length < 1 || coastalAll.length < 3) continue;
@@ -336,7 +344,7 @@ function buildLandlocked(seed?: number): GameRound[] {
 	return rounds.slice(0, 8);
 }
 
-const silhouettePool = sovereign.filter(
+const silhouettePool = countryPool.filter(
 	(c) => silhouettes[c.code] && (c.areaKm2 ?? 0) >= 30_000
 );
 
@@ -348,7 +356,7 @@ function buildSilhouettes(seed?: number): GameRound[] {
 			(c) => c.code !== country.code && c.continent === country.continent
 		);
 		const others = sample(sameContinent.length >= 3 ? sameContinent : silhouettePool.filter((c) => c.code !== country.code), 3, rng);
-		const options = shuffle([country, ...others], rng).map((c) => ({ value: c.code, label: c.name }));
+		const options = shuffle([country, ...others], rng).map((c) => ({ value: c.code, label: optionName(c) }));
 		return {
 			id: `silhouette-${i}-${country.code}`,
 			prompt: 'Qual país tem este contorno?',
@@ -358,13 +366,13 @@ function buildSilhouettes(seed?: number): GameRound[] {
 			rule: { type: 'code', code: country.code },
 			silhouette: silhouettes[country.code],
 			options,
-			explanation: `${country.name} — ${country.continent ?? 'localização não classificada'}. ${country.areaKm2 ? `Área: ${Math.round(country.areaKm2).toLocaleString('pt-BR')} km².` : ''}`,
+			explanation: `${optionName(country)} — ${country.continent ?? 'localização não classificada'}. ${country.areaKm2 ? `Área: ${Math.round(country.areaKm2).toLocaleString('pt-BR')} km².` : ''}`,
 			source: { name: 'Natural Earth 1:50m', url: 'https://www.naturalearthdata.com/' }
 		};
 	});
 }
 
-const borderPool = sovereign.filter((c) => c.borders.length >= 3);
+const borderPool = countryPool.filter((c) => c.borders.length >= 3);
 
 function buildBorders(seed?: number): GameRound[] {
 	const rng = createRng(seed);
@@ -375,13 +383,13 @@ function buildBorders(seed?: number): GameRound[] {
 			.filter((c): c is Country => Boolean(c));
 		const nonNeighbors = countries.filter(
 			(c) =>
-				c.unMember &&
+				isCountry(c) &&
 				c.code !== country.code &&
 				!country.borders.includes(c.code) &&
 				c.continent === country.continent
 		);
 		const fallback = countries.filter(
-			(c) => c.unMember && c.code !== country.code && !country.borders.includes(c.code)
+			(c) => isCountry(c) && c.code !== country.code && !country.borders.includes(c.code)
 		);
 		const othersPool = nonNeighbors.length >= 3 ? nonNeighbors : fallback;
 		const askNeighbor = i % 2 === 1;
@@ -412,7 +420,7 @@ function buildBorders(seed?: number): GameRound[] {
 				if (!choices.some((chosen) => chosen.code === candidate.code)) choices.push(candidate);
 			}
 		}
-		const options = shuffle(choices, rng).map((c) => ({ value: c.code, label: c.name }));
+		const options = shuffle(choices, rng).map((c) => ({ value: c.code, label: optionName(c) }));
 
 		return {
 			id: `borders-${i}-${country.code}`,
@@ -434,14 +442,28 @@ function buildBorders(seed?: number): GameRound[] {
 }
 
 
-const flagPool = sovereign.filter((c) => c.iso2);
+const flagPool = countryPool.filter((c) => c.iso2);
+
+/** Bandeiras idênticas ou quase idênticas não podem disputar a mesma rodada. */
+const FLAG_TWINS: Record<string, string> = {
+	TD: 'RO',
+	RO: 'TD',
+	ID: 'MC',
+	MC: 'ID'
+};
 
 function buildFlags(seed?: number): GameRound[] {
 	const rng = createRng(seed);
 	const targets = sample(flagPool, 8, rng);
 	return targets.map((country, i) => {
-		const others = sample(flagPool.filter((c) => c.code !== country.code), 3, rng);
-		const options = shuffle([country, ...others], rng).map((c) => ({ value: c.code, label: c.name }));
+		const others = sample(
+			flagPool.filter(
+				(c) => c.code !== country.code && FLAG_TWINS[country.code] !== c.code
+			),
+			3,
+			rng
+		);
+		const options = shuffle([country, ...others], rng).map((c) => ({ value: c.code, label: optionName(c) }));
 		return {
 			id: `flag-${i}-${country.code}`,
 			prompt: 'Qual país usa esta bandeira?',
@@ -451,7 +473,7 @@ function buildFlags(seed?: number): GameRound[] {
 			rule: { type: 'code', code: country.code },
 			flag: country.iso2,
 			options,
-			explanation: `${country.name} — ${country.continent ?? 'localização não classificada'}. ${country.capital ? `Capital: ${capitalOf(country)}.` : ''}`,
+			explanation: `${optionName(country)} — ${country.continent ?? 'localização não classificada'}. ${country.capital ? `Capital: ${capitalOf(country)}.` : ''}`,
 			source: { name: 'mledoze/countries + flag-icons', url: 'https://github.com/mledoze/countries' }
 		};
 	});
@@ -473,7 +495,7 @@ function buildEconomy(seed?: number): GameRound[] {
 	const keys = shuffle(ECONOMY_INDICATORS, rng);
 	return keys.map((key, i) => {
 		const meta = indicatorMeta[key];
-		const pool = sovereign.filter((country) => country.indicators[key]);
+		const pool = countryPool.filter((country) => country.indicators[key]);
 		let group = sample(pool, 4, rng);
 		for (let attempt = 0; attempt < 6; attempt++) {
 			const values = new Set(group.map((country) => country.indicators[key]!.v));
@@ -486,7 +508,7 @@ function buildEconomy(seed?: number): GameRound[] {
 			return meta.dir === 'higher' ? bv - av : av - bv;
 		});
 		const target = sorted[0];
-		const options = shuffle(group, rng).map((c) => ({ value: c.code, label: c.name }));
+		const options = shuffle(group, rng).map((c) => ({ value: c.code, label: optionName(c) }));
 		return {
 			id: `economy-${i}-${key}`,
 			prompt: `Qual destes países tem o ${meta.dir === 'higher' ? 'maior' : 'menor'} ${meta.name.toLowerCase()}?`,
@@ -627,6 +649,7 @@ export const games: GameDefinition[] = [
 		minutes: 3,
 		mechanic: 'Múltipla escolha',
 		icon: 'flag',
+		hideMapLabels: true,
 		build: buildFlags
 	},
 	{

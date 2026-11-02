@@ -1,7 +1,7 @@
 # Handoff — como continuar em uma nova sessão
 
 **Estado:** P0 e P1 do roadmap executados em 2026-10-31. O projeto está em
-`~/projects/foss/mundivista`, com 77 testes, `svelte-check` sem erros, build estático,
+`~/projects/foss/mundivista`, com 85 testes, `svelte-check` sem erros, build estático,
 axe sem violações sérias e smoke test em Firefox.
 
 ---
@@ -49,7 +49,7 @@ Prioridades abertas (ver ROADMAP §3):
 cd ~/projects/foss/mundivista
 npm run dev        # dev
 npm run check      # svelte-check (deve dar 0)
-npm test           # 77 testes
+npm test           # 85 testes
 npm run build      # build estático em build/
 npm run preview    # preview do build (porta 4173)
 npm run data:build # regenera dados com cache
@@ -93,7 +93,7 @@ docs/{ROADMAP,INSPIRATION,HANDOFF}.md
 
 - **Identidade:** direção B (Atlas Editorial); o escuro é o atlas à noite. Azul/água só
   dentro do mapa; a UI fora dele fica na paleta papel frio/verde/ametista/malva.
-- **Mapa:** abre no mapa base **2D em Equal Earth** (`addProjection` + proj4 no main e no
+- **Mapa:** abre no mapa base **2D em Robinson** (`addProjection` + proj4 no main e no
   worker), sem camada temática; globo 3D e relevo ficam como opções no globo (DEM em
   Mercator). Crossfade por duas camadas de fill.
 - **Gráficos:** `MetricChart` usa SVG acessível (role slider, setas), eixos HTML fixos,
@@ -139,12 +139,15 @@ docs/{ROADMAP,INSPIRATION,HANDOFF}.md
 - **Dados:** 32 indicadores, séries 2016–2025, cidades, litoral e silhuetas no pipeline.
   Códigos históricos do WB são resolvidos por candidatos (COD, NOR, ROU, TLS, PSE, NRU);
   Somalilândia tem fatos próprios e não herda Somália; lacunas sem série continuam explícitas.
+  População e densidade fora da cobertura do WB vêm da UN WPP 2024 (Taiwan, Vaticano etc.).
+  O atlas separa 197 países de 44 territórios; Taiwan, Kosovo e Palestina contam como países.
 - **Jogos:** 9 jogos; novos Silhuetas, Cadeia de Fronteiras, Bandeiras e Economia em Números; progresso persistente.
   Acerto correto agenda auto-avanço (1 s; 1,3 s em `map-single`) com barra de tempo no feedback;
   erro e última rodada exigem clique em “Próxima”/“Ver resultado”.
   Rankings usa montagem por cliques (pool + lista), sem setas; a interface é toda focável.
-  A biblioteca usa capas visuais e tema por categoria; no jogo de países os rótulos do mapa
-  ficam ocultos, e no jogo de bandeiras as alternativas não mostram bandeiras.
+  A biblioteca usa capas visuais, tema por categoria, busca e filtros de categoria/dificuldade.
+  No jogo de países e no de bandeiras os rótulos do mapa ficam ocultos até a resposta, e no jogo
+  de bandeiras as alternativas não mostram bandeiras.
 - **Som:** `src/lib/sound.svelte.ts` sintetiza clique/acerto/erro/fim com WebAudio; botão de mudo no TopBar.
 - **Busca:** command palette carregada sob demanda no TopBar, disponível em todas as rotas.
 
@@ -171,7 +174,7 @@ docs/{ROADMAP,INSPIRATION,HANDOFF}.md
 - Rótulos DOM do mapa não devem capturar `pointer-events`: se capturarem, arrastar a partir de
   um nome de país deixa de mover o mapa.
 - O worker em `src/lib/map/worker.ts` importa o worker do MapLibre e registra o handler
-  do proj4. Sem ele, o GeoJSON é desenhado na posição errada em Equal Earth.
+  do proj4. Sem ele, o GeoJSON é desenhado na posição errada em Robinson.
 - `npm run preview` precisa ser reiniciado após build; se a porta estiver ocupada,
   `fuser -k 4173/tcp`.
 - Firefox do Playwright está em `~/.cache/ms-playwright/firefox-1555/firefox/firefox`;

@@ -14,6 +14,7 @@
  */
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -55,6 +56,12 @@ const SOURCES = {
 		url: 'https://data.worldbank.org',
 		license: 'CC BY 4.0',
 		note: 'Série mais recente disponível por país dentro da janela consultada. Códigos históricos do Natural Earth são normalizados; territórios sem série aparecem como não disponíveis.'
+	},
+	population: {
+		name: 'UN DESA — World Population Prospects 2024',
+		url: 'https://population.un.org/wpp/',
+		license: 'CC BY 3.0 IGO',
+		note: 'População total e densidade da variante média usadas apenas onde o Banco Mundial não publica série (por exemplo, Taiwan, Vaticano e pequenas ilhas).'
 	}
 };
 
@@ -98,6 +105,10 @@ const WB_YEARS = '2016:2025';
 /* Hachura apenas onde soberania ou traçado são disputados de forma documentada.
    Israel não entra: o Estado é reconhecido; o que se disputa são fronteiras. */
 const DISPUTED_CODES = new Set(['KOS', 'PSX', 'SAH', 'FLK', 'KAS', 'IOT', 'SOL']);
+
+/* Entidades tratadas como país além dos membros e observadores da ONU.
+   Mantém os jogos alinhados com a contagem do atlas. */
+const EXTRA_COUNTRY_CODES = new Set(['TWN', 'KOS', 'PSX']);
 
 /* Códigos divergentes entre Natural Earth e World Bank / mledoze. */
 const CODE_ALIASES = {
@@ -222,16 +233,24 @@ const TYPE_PT = {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function fetchCached(url, file, { json = true, attempts = 6 } = {}) {
+async function fetchCached(url, file, { json = true, binary = false, attempts = 6 } = {}) {
 	if (!existsSync(CACHE)) await mkdir(CACHE, { recursive: true });
 	const p = path.join(CACHE, file);
-	if (existsSync(p) && !REFRESH) return json ? JSON.parse(await readFile(p, 'utf8')) : await readFile(p);
+	if (existsSync(p) && !REFRESH) {
+		if (binary) return readFile(p);
+		return json ? JSON.parse(await readFile(p, 'utf8')) : await readFile(p);
+	}
 
 	let lastError;
 	for (let i = 1; i <= attempts; i++) {
 		try {
 			const res = await fetch(url, { headers: { 'user-agent': 'mundivista-data-pipeline/1.0' } });
 			if (!res.ok) throw new Error(`${res.status} ${res.statusText} — ${url}`);
+			if (binary) {
+				const buf = Buffer.from(await res.arrayBuffer());
+				await writeFile(p, buf);
+				return buf;
+			}
 			const text = await res.text();
 			await writeFile(p, text);
 			return json ? JSON.parse(text) : text;
@@ -570,6 +589,91 @@ function silhouettePath(geometry, { tolerance = 0, minRingArea = 0 } = {}) {
 		.join('');
 }
 
+function csvLine(line) {
+	const fields = [];
+	let current = '';
+	let quoted = false;
+	for (let i = 0; i < line.length; i++) {
+		const char = line[i];
+		if (quoted) {
+			if (char === '"') {
+				if (line[i + 1] === '"') {
+					current += '"';
+					i++;
+				} else {
+					quoted = false;
+				}
+			} else {
+				current += char;
+			}
+		} else if (char === '"') {
+			quoted = true;
+		} else if (char === ',') {
+			fields.push(current);
+			current = '';
+		} else {
+			current += char;
+		}
+	}
+	fields.push(current);
+	return fields;
+}
+
+/**
+ * Lê a variante média do WPP 2024 e devolve população/densidade por ISO3.
+ * Usado só para entidades sem série do Banco Mundial.
+ */
+async function loadWppPopulation(codes) {
+	const gz = await fetchCached(
+		'https://population.un.org/wpp/assets/Excel%20Files/1_Indicator%20(Standard)/CSV_FILES/WPP2024_TotalPopulationBySex.csv.gz',
+		'wpp_2024_total_population.csv.gz',
+		{ binary: true }
+	);
+	const text = gunzipSync(gz).toString('utf8');
+	const out = new Map();
+	let start = 0;
+	let header = null;
+	let iIso = -1;
+	let iTime = -1;
+	let iVariant = -1;
+	let iPop = -1;
+	let iDensity = -1;
+	while (start < text.length) {
+		let end = text.indexOf('\n', start);
+		if (end === -1) end = text.length;
+		const line = text.slice(start, end).replace(/\r$/, '');
+		start = end + 1;
+		if (!header) {
+			header = csvLine(line.replace(/^\uFEFF/, ''));
+			iIso = header.indexOf('ISO3_code');
+			iTime = header.indexOf('Time');
+			iVariant = header.indexOf('Variant');
+			iPop = header.indexOf('PopTotal');
+			iDensity = header.indexOf('PopDensity');
+			continue;
+		}
+		if (!line || !line.includes(',Medium,')) continue;
+		const fields = csvLine(line);
+		if (fields[iVariant] !== 'Medium') continue;
+		const iso = fields[iIso]?.toUpperCase();
+		if (!iso || !codes.has(iso)) continue;
+		const year = Number(fields[iTime]);
+		if (!Number.isFinite(year) || year < 2016 || year > 2025) continue;
+		const population = Math.round(Number(fields[iPop]) * 1000);
+		const density = Math.round(Number(fields[iDensity]) * 100) / 100;
+		if (!Number.isFinite(population) || population <= 0) continue;
+		const hit = out.get(iso) ?? { population: [], density: [] };
+		hit.population.push([year, population]);
+		if (Number.isFinite(density)) hit.density.push([year, density]);
+		out.set(iso, hit);
+	}
+	for (const hit of out.values()) {
+		hit.population.sort((a, b) => a[0] - b[0]);
+		hit.density.sort((a, b) => a[0] - b[0]);
+	}
+	return out;
+}
+
 async function main() {
 	console.log('› fronteiras (Natural Earth)');
 	const ne = await fetchCached(
@@ -785,6 +889,51 @@ async function main() {
 
 	countries.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 
+	/* ---------- população: complemento UN WPP 2024 ---------- */
+	const missingPopulation = countries.filter((country) => !country.indicators.population);
+	let filledFromWpp = 0;
+	if (missingPopulation.length) {
+		console.log('› população fora do Banco Mundial (UN WPP 2024)');
+		const wppCodes = new Set(
+			missingPopulation.map((country) => (country.iso3 || country.code).toUpperCase())
+		);
+		const wpp = await loadWppPopulation(wppCodes);
+		for (const country of missingPopulation) {
+			const iso = (country.iso3 || country.code).toUpperCase();
+			const hit = wpp.get(iso);
+			if (!hit?.population.length) continue;
+			const [year, value] = hit.population[hit.population.length - 1];
+			country.indicators.population = {
+				v: value,
+				y: year,
+				s: hit.population,
+				source: 'UN WPP 2024',
+				sourceUrl: SOURCES.population.url
+			};
+			const density = hit.density[hit.density.length - 1];
+			if (density) {
+				country.indicators.popDensity = {
+					v: density[1],
+					y: density[0],
+					s: hit.density,
+					source: 'UN WPP 2024',
+					sourceUrl: SOURCES.population.url
+				};
+			}
+			filledFromWpp++;
+		}
+		for (const key of ['population', 'popDensity']) {
+			if (wbMeta[key]) {
+				wbMeta[key].fallback = {
+					name: SOURCES.population.name,
+					url: SOURCES.population.url,
+					license: SOURCES.population.license
+				};
+			}
+		}
+		console.log(`  · ${filledFromWpp}/${missingPopulation.length} preenchidos pelo WPP`);
+	}
+
 	const coverage = {};
 	for (const ind of INDICATORS) {
 		coverage[ind.key] = countries.filter((c) => c.indicators[ind.key]).length;
@@ -903,7 +1052,7 @@ async function main() {
 	console.log('› silhuetas dos países');
 	const silhouettes = {};
 	for (const c of countries) {
-		if (!c.unMember || (c.areaKm2 ?? 0) < 20_000) continue;
+		if ((!c.unMember && !EXTRA_COUNTRY_CODES.has(c.code)) || (c.areaKm2 ?? 0) < 20_000) continue;
 		const feature = features.find((f) => f.properties.code === c.code);
 		if (!feature?.geometry) continue;
 		const d = silhouettePath(feature.geometry);
@@ -956,10 +1105,12 @@ async function main() {
 
 	console.log(`\n✓ ${countries.length} países/territórios com polígono`);
 	const withPopulation = countries.filter((country) => country.indicators.population);
-	console.log(`✓ população: ${withPopulation.length}/${countries.length} com série do Banco Mundial`);
-	const missingPopulation = countries.filter((country) => !country.indicators.population);
-	if (missingPopulation.length) {
-		console.log('  sem série: ' + missingPopulation.map((country) => country.code).join(' '));
+	console.log(
+		`✓ população: ${withPopulation.length}/${countries.length} (Banco Mundial + ${filledFromWpp} via UN WPP)`
+	);
+	const stillMissingPopulation = countries.filter((country) => !country.indicators.population);
+	if (stillMissingPopulation.length) {
+		console.log('  sem série: ' + stillMissingPopulation.map((country) => country.code).join(' '));
 	}
 	console.log(`✓ ${missing.length} Estados-membros da ONU sem polígono em 1:50m`);
 	if (missing.length) console.log('  ' + missing.map((c) => c.name.common).join(', '));

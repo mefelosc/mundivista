@@ -80,7 +80,7 @@ export function mapPalette(theme: ResolvedTheme): MapPalette {
 
 export type MapProjection = 'globe' | 'flat';
 
-export const EQUAL_EARTH_PROJECTION = 'mundivista:equal-earth';
+export const FLAT_PROJECTION = 'mundivista:flat';
 
 export function createMapStyle(
 	theme: ResolvedTheme = 'light',
@@ -381,7 +381,7 @@ export function createMapStyle(
 		version: 8,
 		name: `Mundivista — atlas ${theme}`,
 		projection: {
-			type: projection === 'flat' ? EQUAL_EARTH_PROJECTION : 'globe'
+			type: projection === 'flat' ? FLAT_PROJECTION : 'globe'
 		} as never,
 		sources: {
 			countries: {

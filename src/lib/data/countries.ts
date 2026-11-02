@@ -27,8 +27,10 @@ export const indicatorKeys = Object.keys(indicatorMeta) as IndicatorKey[];
 /** Códigos adicionais que apontam para o mesmo polígono/registro. */
 const aliases: Record<string, string> = {
 	XKX: 'KOS',
+	UNK: 'KOS',
 	SSD: 'SDS',
-	PSE: 'PSX'
+	PSE: 'PSX',
+	ESH: 'SAH'
 };
 
 export const countryByCode: ReadonlyMap<string, Country> = new Map(
@@ -44,6 +46,24 @@ export function getCountry(code: string | null | undefined): Country | null {
 	return countryByCode.get(aliases[code] ?? code) ?? null;
 }
 
+
+/**
+ * Entidades que não são membros ou observadores da ONU mas aparecem como país
+ * no atlas: Taiwan, Kosovo e Palestina. Os demais estatutos especiais
+ * (dependências, territórios disputados e separatistas) contam como território.
+ */
+const EXTRA_COUNTRY_CODES = new Set(['TWN', 'KOS', 'PSX']);
+
+/** País = Estado soberano, observador da ONU ou entidade listada acima. */
+export function isCountry(country: Country): boolean {
+	return (
+		country.status !== 'Dependency' &&
+		(country.unMember === true || EXTRA_COUNTRY_CODES.has(country.code))
+	);
+}
+
+export const countryCount = countries.filter(isCountry).length;
+export const territoryCount = countries.length - countryCount;
 
 /** País soberano associado a um território dependente (Natural Earth). */
 export function sovereignCountry(country: Country): Country | null {

@@ -93,6 +93,29 @@ describe('registro de jogos', () => {
 		}
 	});
 
+	it('alternativas de escolha têm rótulos distintos', () => {
+		for (const slug of ['silhouettes', 'borders', 'flags', 'economy-quiz']) {
+			for (const round of buildRounds(slug, 33)) {
+				const labels = (round.options ?? []).map((option) => option.label);
+				expect(new Set(labels).size, `${slug}/${round.id}: ${labels.join(', ')}`).toBe(labels.length);
+			}
+		}
+	});
+
+	it('bandeiras parecidas não aparecem na mesma rodada', () => {
+		const twins = new Set(['TD|RO', 'RO|TD', 'ID|MC', 'MC|ID']);
+		for (const seed of [1, 5, 12, 21, 33]) {
+			for (const round of buildRounds('flags', seed)) {
+				const codes = (round.options ?? []).map((option) => option.value);
+				for (const a of codes) {
+					for (const b of codes) {
+						expect(twins.has(`${a}|${b}`), `${round.id}: ${codes.join(', ')}`).toBe(false);
+					}
+				}
+			}
+		}
+	});
+
 	it('jogo de economia cita valores, anos e fonte', () => {
 		const rounds = buildRounds('economy-quiz', 15);
 		expect(rounds).toHaveLength(8);

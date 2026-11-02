@@ -1,7 +1,7 @@
 <script lang="ts">
 	import TopBar from '#lib/components/navigation/TopBar.svelte';
 	import Icon from '#lib/components/ui/Icon.svelte';
-	import { countries } from '#lib/data/countries';
+	import { countries, countryCount, territoryCount } from '#lib/data/countries';
 	import { formatCompact } from '#lib/format';
 	import { locale } from '#lib/locale.svelte';
 	import { t } from '#lib/i18n';
@@ -53,8 +53,14 @@
 			<p>{tr('Encontre um território, abra o dossiê ou veja no mapa.', 'Find a territory, open its dossier or view it on the map.')}</p>
 		</div>
 		<div class="count">
-			<strong>{countries.length}</strong>
-			<span>{tr('territórios', 'territories')}</span>
+			<div>
+				<strong>{countryCount}</strong>
+				<span>{tr('países', 'countries')}</span>
+			</div>
+			<div>
+				<strong>{territoryCount}</strong>
+				<span>{tr('territórios', 'territories')}</span>
+			</div>
 		</div>
 	</header>
 
@@ -140,10 +146,14 @@
 	}
 	.count {
 		display: flex;
-		flex-direction: column;
-		align-items: flex-end;
+		gap: 1.4rem;
 		font-family: var(--font-mono);
 		color: var(--text-4);
+	}
+	.count div {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
 	}
 	.count strong {
 		font-family: var(--font-display);
@@ -319,9 +329,18 @@
 		}
 		.hero {
 			align-items: flex-start;
+			flex-direction: column;
+			gap: 0.5rem;
 		}
 		.count {
-			display: none;
+			display: flex;
+			gap: 1.2rem;
+		}
+		.count div {
+			align-items: flex-start;
+		}
+		.count strong {
+			font-size: 1.7rem;
 		}
 	}
 </style>

@@ -1,5 +1,6 @@
 import type { Snippet } from './data/snippets';
 import type { DisputedInfo } from './data/disputed';
+import { disputedTerritories } from './data/disputed';
 import type { Organization } from './data/organizations';
 import type { HistoricalRecord } from './data/historical';
 
@@ -142,7 +143,12 @@ export function localizedDisputed(
 	locale: 'pt' | 'en'
 ): DisputedInfo | null {
 	if (!info || locale === 'pt') return info;
-	const translated = disputedEn[Object.keys(disputedEn).find((code) => disputedEn[code].label === info.label && disputedEn[code].note === info.note) ?? ''];
+	const code = Object.keys(disputedTerritories).find(
+		(key) =>
+			disputedTerritories[key].label === info.label &&
+			disputedTerritories[key].note === info.note
+	);
+	const translated = code ? disputedEn[code] : undefined;
 	return translated ? { ...info, ...translated } : info;
 }
 

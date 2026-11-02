@@ -18,7 +18,7 @@
 	import { buildChoropleth, withNoData } from '#lib/engines/map-engine/choropleth';
 	import {
 		createMapStyle,
-		EQUAL_EARTH_PROJECTION,
+		FLAT_PROJECTION,
 		MAP_LAYER,
 		mapPalette,
 		type MapProjection
@@ -94,13 +94,13 @@
 	let pitch = $state(0);
 	let wrapping = false;
 
-	const EQUAL_EARTH_DEFINITION =
-		'+proj=eqearth +lon_0=0 +x_0=0 +y_0=0 +R=6371008.8 +over +units=m +no_defs';
+	const FLAT_DEFINITION =
+		'+proj=robin +lon_0=0 +x_0=0 +y_0=0 +R=6371008.8 +over +units=m +no_defs';
 	let equalEarthRegistered = false;
 
 	const isEn = $derived(locale.value === 'en');
 	const projectionLabel = $derived(
-		projection === 'flat' ? '2D · Equal Earth' : isEn ? '3D Globe' : 'Globo 3D'
+		projection === 'flat' ? '2D · Robinson' : isEn ? '3D Globe' : 'Globo 3D'
 	);
 
 	function registerEqualEarth(
@@ -111,7 +111,7 @@
 		}
 	) {
 		if (equalEarthRegistered) return;
-		const converter = proj4('EPSG:4326', EQUAL_EARTH_DEFINITION);
+		const converter = proj4('EPSG:4326', FLAT_DEFINITION);
 		const edge = converter.forward([180, 0])[0];
 		const poleY = Math.abs(converter.forward([0, 90])[1]);
 		// A praça da projeção tem cantos vazios (fora do oval do mundo). Sem
@@ -131,8 +131,8 @@
 		// no antimeridiano para o pan ser infinito.
 		try {
 			maplibregl.addProjection({
-				name: EQUAL_EARTH_PROJECTION,
-				definition: EQUAL_EARTH_DEFINITION,
+				name: FLAT_PROJECTION,
+				definition: FLAT_DEFINITION,
 				projection: projection as never,
 				tileMatrixSet: {
 					origin: [-edge * WORLD_COPIES, edge],
@@ -222,7 +222,7 @@
 		if (!map || !ready) return;
 		const next = focus ? new Set(focus) : null;
 		if (next) {
-			// Mudança de rodada, não de hover: vale varrer os 241 territórios uma vez.
+			// Mudança de rodada, não de hover: vale varrer as 241 entidades uma vez.
 			for (const country of countries) {
 				const inside = next.has(country.code);
 				map.setFeatureState(
