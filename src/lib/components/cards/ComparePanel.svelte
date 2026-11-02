@@ -4,8 +4,7 @@
 	import { countries, indicatorMeta, rankOf } from '#lib/data/countries';
 	import { indicatorIcon } from '#lib/data/indicator-icons';
 	import { formatCompact, formatIndicatorValue, formatRank } from '#lib/format';
-	import MetricChart from './MetricChart.svelte';
-	import type { Country, IndicatorKey } from '#lib/types';
+	import type { Country, IndicatorKey, IndicatorValue } from '#lib/types';
 
 	interface Props {
 		country: Country;
@@ -27,9 +26,7 @@
 		'forestShare'
 	];
 
-	let hovered = $state<string | null>(null);
-
-	const metaEn: Record<string, string> = {
+	const LABELS_EN: Record<string, string> = {
 		population: 'Population',
 		gdpPerCapita: 'GDP per capita',
 		lifeExpectancy: 'Life expectancy',
@@ -38,83 +35,75 @@
 		forestShare: 'Forest area'
 	};
 
-	const shortEn: Record<string, string> = {
+	const SHORT_EN: Record<string, string> = {
 		population: 'Population',
 		gdpPerCapita: 'GDP pc',
-		lifeExpectancy: 'Life expectancy',
+		lifeExpectancy: 'Life',
 		co2PerCapita: 'CO₂ pc',
-		unemployment: 'Unemployment',
+		unemployment: 'Jobs',
 		forestShare: 'Forest'
 	};
 
-	const shortPt: Record<string, string> = {
+	const SHORT_PT: Record<string, string> = {
 		population: 'População',
 		gdpPerCapita: 'PIB pc',
-		lifeExpectancy: 'Expectativa',
+		lifeExpectancy: 'Vida',
 		co2PerCapita: 'CO₂ pc',
-		unemployment: 'Desemprego',
+		unemployment: 'Emprego',
 		forestShare: 'Floresta'
 	};
+
+	let hovered = $state<string | null>(null);
+
+	const countryName = $derived(isEn ? country.nameEn : country.name);
+	const otherName = $derived(compareCountry ? (isEn ? compareCountry.nameEn : compareCountry.name) : '—');
 
 	const rows = $derived.by(() => {
 		return KEYS.map((key) => {
 			const a = country.indicators[key];
 			const b = compareCountry?.indicators[key];
-			const max = Math.max(a?.v ?? 0, b?.v ?? 0) || 1;
 			const meta = indicatorMeta[key];
+			const max = Math.max(a?.v ?? 0, b?.v ?? 0) || 1;
 			return {
 				key,
-				label: isEn ? (metaEn[key] ?? meta?.name ?? key) : (meta?.name ?? key),
+				label: isEn ? (LABELS_EN[key] ?? meta?.name ?? key) : (meta?.name ?? key),
+				short: isEn ? (SHORT_EN[key] ?? key) : (SHORT_PT[key] ?? key),
 				icon: indicatorIcon(key),
 				a,
 				b,
-				aWidth: a ? Math.max(2, (a.v / max) * 100) : 0,
-				bWidth: b ? Math.max(2, (b.v / max) * 100) : 0,
-				lowerBetter: meta?.dir === 'lower'
+				aHeight: a ? Math.max(3, (a.v / max) * 100) : 0,
+				bHeight: b ? Math.max(3, (b.v / max) * 100) : 0,
+				aLabel: compactValue(key, a),
+				bLabel: compactValue(key, b),
+				aRank: formatRank(rankOf(country.code, key)),
+				bRank: compareCountry ? formatRank(rankOf(compareCountry.code, key)) : '—',
+				lowerBetter: meta?.dir === 'lower',
+				year: a?.y ?? b?.y ?? null
 			};
 		});
 	});
 
-	let trendKey = $state<IndicatorKey>('population');
-	let trendMode = $state<'index' | 'values'>('index');
-	const trendRow = $derived(rows.find((row) => row.key === trendKey) ?? rows[0]);
-	const trendFormat = $derived((value: number) =>
-		trendMode === 'index'
-			? value.toLocaleString(isEn ? 'en-US' : 'pt-BR', { maximumFractionDigits: 0 })
-			: formatIndicatorValue(trendKey, { v: value, y: trendRaw?.a.at(-1)?.[0] ?? 0 })
-	);
-	const trendRaw = $derived.by(() => {
-		const a = country.indicators[trendKey]?.s ?? [];
-		const b = compareCountry?.indicators[trendKey]?.s ?? [];
-		const years = a
-			.map(([year]) => year)
-			.filter((year) => (b.length ? b.some(([other]) => other === year) : true))
-			.sort((left, right) => left - right);
-		const pick = (series: [number, number][]) =>
-			years
-				.map((year) => series.find(([candidate]) => candidate === year))
-				.filter((item): item is [number, number] => Boolean(item));
-		return { a: pick(a), b: pick(b) };
-	});
-	const trend = $derived.by(() => {
-		if (trendMode === 'values') return trendRaw;
-		const index = (series: [number, number][]) => {
-			const first = series[0]?.[1];
-			return first ? series.map(([year, value]) => [year, (value / first) * 100] as [number, number]) : series;
-		};
-		return { a: index(trendRaw.a), b: index(trendRaw.b) };
-	});
-
-	function fmt(key: IndicatorKey, value: { v: number; y: number } | undefined): string {
-		return value ? formatIndicatorValue(key, value) : '—';
+	function compactValue(key: IndicatorKey, value: IndicatorValue | undefined): string {
+		if (!value) return '—';
+		if (key === 'gdpPerCapita') return `US$ ${formatCompact(value.v)}`;
+		if (key === 'population' || key === 'co2Total') {
+			return formatCompact(value.v);
+		}
+		return formatIndicatorValue(key, value);
 	}
 
-	const countryName = $derived(isEn ? country.nameEn : country.name);
-	const otherName = $derived(compareCountry ? (isEn ? compareCountry.nameEn : compareCountry.name) : '—');
-
-	function yearOf(row: (typeof rows)[number]): number | null {
-		return row.a?.y ?? row.b?.y ?? null;
-	}
+	const leadership = $derived.by(() => {
+		let a = 0;
+		let b = 0;
+		for (const row of rows) {
+			if (!row.a || !row.b) continue;
+			const aBetter = row.lowerBetter ? row.a.v < row.b.v : row.a.v > row.b.v;
+			const bBetter = row.lowerBetter ? row.b.v < row.a.v : row.b.v > row.a.v;
+			if (aBetter) a += 1;
+			else if (bBetter) b += 1;
+		}
+		return { a, b };
+	});
 </script>
 
 <section class="compare-panel" aria-label={tr('Comparação entre países', 'Country comparison')}>
@@ -122,7 +111,12 @@
 		<div>
 			<span class="eyebrow">{tr('Comparar', 'Compare')}</span>
 			<h2>{tr('Dois países, lado a lado', 'Two countries, side by side')}</h2>
-			<p>{tr('Percentis globais, valores brutos e a diferença em cada indicador.', 'Global percentiles, raw values and the gap in each indicator.')}</p>
+			<p>
+				{tr(
+					'Barras verticais por indicador, normalizadas pelo maior valor do par. O valor absoluto e o ano aparecem sob cada grupo.',
+					'Vertical bars per indicator, normalised by the larger value in each pair. The absolute value and year appear below each group.'
+				)}
+			</p>
 		</div>
 		<div class="compare-actions">
 			<div class="compare-flags">
@@ -141,82 +135,71 @@
 	</header>
 
 	{#if compareCountry}
-		<div class="compare-grid">
-			<div class="bars">
-				<div class="bars-legend">
-					<span class="legend-a"><i></i>{countryName}</span>
-					<span class="legend-b"><i></i>{otherName}</span>
+		<div class="compare-summary">
+			<div class="legend">
+				<span class="legend-a"><i></i>{countryName}</span>
+				<span class="legend-b"><i></i>{otherName}</span>
+			</div>
+			<p>
+				<strong>{countryName}</strong>
+				{tr('lidera em', 'leads in')}
+				<strong>{leadership.a}</strong>
+				{tr('de 6 indicadores', 'of 6 indicators')}
+				{#if leadership.b}· <strong>{otherName}</strong> {tr('em', 'in')} <strong>{leadership.b}</strong>{/if}
+			</p>
+		</div>
+
+		<div class="chart-shell">
+			<div class="axis-title">{tr('maior = 100', 'larger = 100')}</div>
+			<div class="chart">
+				<div class="y-axis" aria-hidden="true">
+					<span>100</span><span>75</span><span>50</span><span>25</span><span>0</span>
 				</div>
+				<div class="plot">
+					<div class="grid-lines" aria-hidden="true">
+						<i></i><i></i><i></i><i></i><i></i>
+					</div>
+					<div class="groups">
+						{#each rows as row (row.key)}
+							<div
+								class="group"
+								class:hovered={hovered === row.key}
+								role="group"
+								aria-label={tr(
+									`${row.label}: ${countryName} ${row.aLabel}, ${otherName} ${row.bLabel}`,
+									`${row.label}: ${countryName} ${row.aLabel}, ${otherName} ${row.bLabel}`
+								)}
+								onpointerenter={() => (hovered = row.key)}
+								onpointerleave={() => (hovered = null)}
+							>
+								<div class="bars">
+									<div class="bar-wrap">
+										<div class="bar a" style:height={`${row.aHeight}%`}></div>
+									</div>
+									<div class="bar-wrap">
+										<div class="bar b" style:height={`${row.bHeight}%`}></div>
+									</div>
+								</div>
+							</div>
+						{/each}
+					</div>
+				</div>
+			</div>
+			<div class="x-spacer"></div>
+			<div class="x-labels">
 				{#each rows as row (row.key)}
-					<div
-						role="group"
-						class="compare-row"
-						class:hovered={hovered === row.key}
-						onpointerenter={() => (hovered = row.key)}
-						onpointerleave={() => (hovered = null)}
-					>
-						<div class="row-head">
-							<span class="row-label"><Icon name={row.icon} size={15} />{row.label}</span>
-							<span class="row-meta">
-								{row.lowerBetter ? tr('menor é melhor', 'lower is better') : tr('maior é melhor', 'higher is better')}
-								{#if yearOf(row)}<em>{yearOf(row)}</em>{/if}
-							</span>
-						</div>
-						<div class="bar-line">
-							<span class="bar a" style:width={`${row.aWidth}%`}></span>
-							<strong>{fmt(row.key, row.a)}</strong>
-						</div>
-						<div class="bar-line">
-							<span class="bar b" style:width={`${row.bWidth}%`}></span>
-							<strong>{fmt(row.key, row.b)}</strong>
-						</div>
-						<div class="row-foot">
-							<span>{formatRank(rankOf(country.code, row.key))}</span>
-							<span>{compareCountry ? formatRank(rankOf(compareCountry.code, row.key)) : '—'}</span>
-						</div>
+					<div class="x-label">
+						<span class="x-title"><Icon name={row.icon} size={14} />{row.short}</span>
+						{#if row.year}<span class="x-year">{row.year}</span>{/if}
+						<span class="x-value"><i class="dot a"></i>{row.aLabel}</span>
+						<span class="x-value"><i class="dot b"></i>{row.bLabel}</span>
 					</div>
 				{/each}
 			</div>
+		</div>
 
-			<div class="trend-wrap">
-				<div class="trend-head">
-					<div class="trend-title">
-						<span class="eyebrow">{tr('Evolução', 'Trend')}</span>
-						<span class="trend-mode-note">{trendMode === 'index' ? tr('início = 100', 'first year = 100') : tr('valores absolutos', 'absolute values')}</span>
-					</div>
-					<div class="trend-chips" role="group" aria-label={tr('Indicador da comparação', 'Comparison indicator')}>
-						{#each rows as row (row.key)}
-							<button
-								type="button"
-								class:active={trendKey === row.key}
-								onclick={() => (trendKey = row.key)}
-							>
-								<Icon name={row.icon} size={13} />
-								{row.label}
-							</button>
-						{/each}
-					</div>
-					<div class="trend-mode" role="group" aria-label={tr('Modo do gráfico', 'Chart mode')}>
-						<button type="button" class:active={trendMode === 'index'} onclick={() => (trendMode = 'index')}>{tr('Índice', 'Index')}</button>
-						<button type="button" class:active={trendMode === 'values'} onclick={() => (trendMode = 'values')}>{tr('Valores', 'Values')}</button>
-					</div>
-				</div>
-				<MetricChart
-					series={trend.a}
-					secondary={trend.b.length ? trend.b : null}
-					accent="var(--accent-1)"
-					secondaryAccent="var(--accent-2)"
-					primaryLabel={countryName}
-					secondaryLabel={otherName}
-					label={trendRow?.label ?? 'Indicador'}
-					format={trendFormat}
-					axisFormat={(value) => formatCompact(value)}
-				/>
-				<div class="radar-legend">
-					<span class="legend-a"><i></i>{countryName}</span>
-					<span class="legend-b"><i></i>{otherName}</span>
-				</div>
-			</div>
+		<div class="compare-notes">
+			<span>{tr('Barras normalizadas pelo maior valor do par; os valores absolutos estão sob cada grupo.', 'Bars normalised by the larger value in each pair; absolute values sit below each group.')}</span>
 		</div>
 	{:else}
 		<p class="empty">{tr('Escolha um país para comparar.', 'Choose a country to compare.')}</p>
@@ -224,7 +207,9 @@
 
 	<footer class="compare-foot">
 		<span>{tr('Fonte: Banco Mundial — observação mais recente disponível.', 'Source: World Bank — latest available observation.')}</span>
-		<a href="https://data.worldbank.org" target="_blank" rel="noopener noreferrer">data.worldbank.org <Icon name="external" size={10} /></a>
+		<a href="https://data.worldbank.org" target="_blank" rel="noopener noreferrer">
+			data.worldbank.org <Icon name="external" size={10} />
+		</a>
 	</footer>
 </section>
 
@@ -256,7 +241,7 @@
 	}
 	.compare-head p {
 		margin: 0;
-		max-width: 34rem;
+		max-width: 38rem;
 		font-size: 0.86rem;
 		line-height: 1.5;
 		color: var(--text-3);
@@ -289,34 +274,29 @@
 		font-size: 0.9rem;
 		padding: 0 0.8rem;
 	}
-	.compare-grid {
-		display: grid;
-		grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-		gap: 1.2rem;
-		padding-top: 0.9rem;
-	}
-	.bars {
+	.compare-summary {
 		display: flex;
-		flex-direction: column;
-		gap: 0.35rem;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.75rem 0 0.45rem;
 	}
-	.bars-legend,
-	.radar-legend {
+	.legend {
 		display: flex;
-		gap: 0.8rem;
-		font-size: 0.76rem;
+		gap: 0.9rem;
+		font-size: 0.8rem;
 		color: var(--text-3);
 	}
 	.legend-a,
 	.legend-b {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.3rem;
+		gap: 0.32rem;
 	}
 	.legend-a i,
 	.legend-b i {
-		width: 0.7rem;
-		height: 0.7rem;
+		width: 0.8rem;
+		height: 0.8rem;
 		border-radius: 50%;
 	}
 	.legend-a i {
@@ -325,156 +305,188 @@
 	.legend-b i {
 		background: var(--accent-2);
 	}
-	.compare-row {
-		padding: 0.55rem 0.5rem 0.45rem;
-		border-radius: var(--radius-md);
-		transition: background 0.18s ease;
-	}
-	.compare-row.hovered {
-		background: color-mix(in oklab, var(--accent-1) 7%, transparent);
-	}
-	.row-head {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 0.5rem;
-	}
-	.row-label {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.35rem;
+	.compare-summary p {
+		margin: 0;
 		font-size: 0.82rem;
-		font-weight: 600;
-		color: var(--text-2);
+		color: var(--text-3);
 	}
-	.row-meta {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
+	.compare-summary strong {
+		color: var(--text-1);
+	}
+	.chart-shell {
+		padding: 0.6rem 0 0;
+	}
+	.axis-title {
 		font-family: var(--font-mono);
-		font-size: 0.7rem;
+		font-size: 0.66rem;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
 		color: var(--text-4);
+		padding-left: 3.5rem;
 	}
-	.row-meta em {
-		font-style: normal;
-		border: 1px solid var(--line);
-		border-radius: 999px;
-		padding: 0.08rem 0.35rem;
-	}
-	.bar-line {
+	.chart {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto;
-		align-items: center;
-		gap: 0.5rem;
-		margin-top: 0.3rem;
+		grid-template-columns: 3.5rem minmax(0, 1fr);
+		margin-top: 0.25rem;
 	}
-	.bar {
-		display: block;
-		height: 0.55rem;
-		min-width: 2px;
-		border-radius: 999px;
-		transition: width 0.65s var(--ease-out-soft);
-	}
-	.bar.a {
-		background: var(--accent-1);
-	}
-	.bar.b {
-		background: var(--accent-2);
-		opacity: 0.85;
-	}
-	.bar-line strong {
-		font-family: var(--font-mono);
-		font-size: 0.72rem;
-		font-weight: 600;
-		color: var(--text-2);
-		font-variant-numeric: tabular-nums;
-	}
-	.row-foot {
+	.y-axis {
 		display: flex;
+		flex-direction: column;
 		justify-content: space-between;
-		margin-top: 0.18rem;
+		height: 310px;
+		padding: 0 0.55rem 0 0;
 		font-family: var(--font-mono);
 		font-size: 0.68rem;
 		color: var(--text-4);
+		text-align: right;
 	}
-	.trend-wrap {
+	.plot {
+		position: relative;
+		height: 310px;
+		border-left: 1px solid var(--line);
+		border-bottom: 1px solid var(--line);
+	}
+	.grid-lines {
+		position: absolute;
+		inset: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
-		padding: 0.7rem;
-		border: 1px solid var(--line);
-		border-radius: var(--radius-md);
-		background: var(--surface-2);
-	}
-	.trend-head {
-		display: flex;
-		flex-direction: column;
-		gap: 0.4rem;
-	}
-	.trend-title {
-		display: flex;
-		align-items: baseline;
 		justify-content: space-between;
-		gap: 0.5rem;
+		pointer-events: none;
 	}
-	.trend-mode-note {
-		font-family: var(--font-mono);
-		font-size: 0.66rem;
-		color: var(--text-4);
+	.grid-lines i {
+		display: block;
+		height: 1px;
+		background: var(--line);
 	}
-	.trend-mode {
-		display: inline-flex;
-		align-self: flex-start;
-		gap: 0.15rem;
-		padding: 0.15rem;
-		border: 1px solid var(--line);
-		border-radius: var(--radius-pill);
-		background: var(--surface-1);
+	.groups {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		grid-template-columns: repeat(6, minmax(0, 1fr));
+		gap: 0.4rem;
+		padding: 0 0.4rem;
 	}
-	.trend-mode button {
-		border: 0;
-		border-radius: var(--radius-pill);
-		background: transparent;
-		color: var(--text-3);
-		padding: 0.24rem 0.55rem;
-		font-size: 0.7rem;
-		font-weight: 600;
-	}
-	.trend-mode button.active {
-		background: color-mix(in oklab, var(--accent-1) 15%, var(--surface-2));
-		color: var(--accent-0);
-	}
-	.trend-chips {
+	.group {
+		position: relative;
 		display: flex;
-		gap: 0.25rem;
-		overflow-x: auto;
-		padding-bottom: 0.15rem;
-		scrollbar-width: none;
+		align-items: flex-end;
+		height: 100%;
+		padding-top: 1.7rem;
+		border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+		outline: none;
+		transition: background 0.16s ease;
 	}
-	.trend-chips::-webkit-scrollbar {
-		display: none;
+	.group.hovered {
+		background: color-mix(in oklab, var(--accent-1) 6%, transparent);
 	}
-	.trend-chips button {
+	.bars {
+		display: flex;
+		align-items: flex-end;
+		justify-content: center;
+		gap: 0.35rem;
+		width: 100%;
+		height: 100%;
+	}
+	.bar-wrap {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-end;
+		align-items: center;
+		width: 2.2rem;
+		max-width: 40%;
+		height: 100%;
+	}
+	.bar {
+		position: relative;
+		width: 100%;
+		border-radius: 0.35rem 0.35rem 0 0;
+		transform-origin: bottom;
+		animation: bar-rise 0.55s var(--ease-out-soft) both;
+	}
+	.bar.a {
+		background: linear-gradient(180deg, var(--accent-1), color-mix(in oklab, var(--accent-1) 72%, var(--surface-2)));
+	}
+	.bar.b {
+		background: linear-gradient(180deg, var(--accent-2), color-mix(in oklab, var(--accent-2) 72%, var(--surface-2)));
+	}
+	@keyframes bar-rise {
+		from {
+			transform: scaleY(0);
+		}
+		to {
+			transform: scaleY(1);
+		}
+	}
+	.x-spacer {
+		height: 0;
+	}
+	.x-labels {
+		display: grid;
+		grid-template-columns: repeat(6, minmax(0, 1fr));
+		gap: 0.4rem;
+		padding: 0.45rem 0.4rem 0;
+	}
+	.x-label {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.16rem;
+		text-align: center;
+		min-width: 0;
+		padding-bottom: 0.2rem;
+	}
+	.x-title {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.28rem;
-		flex-shrink: 0;
-		border: 1px solid var(--line);
-		border-radius: var(--radius-pill);
-		background: var(--surface-1);
-		color: var(--text-3);
-		padding: 0.3rem 0.55rem;
-		font-size: 0.72rem;
+		justify-content: center;
+		gap: 0.22rem;
+		font-size: 0.74rem;
 		font-weight: 600;
+		line-height: 1.2;
+		color: var(--text-2);
 	}
-	.trend-chips button:hover {
-		color: var(--text-1);
-		border-color: var(--line-strong);
+	.x-year {
+		font-family: var(--font-mono);
+		font-size: 0.62rem;
+		line-height: 1.2;
+		color: var(--text-4);
 	}
-	.trend-chips button.active {
-		border-color: color-mix(in oklab, var(--accent-1) 55%, var(--line));
-		background: color-mix(in oklab, var(--accent-1) 13%, var(--surface-1));
-		color: var(--accent-0);
+	.x-value {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		font-family: var(--font-mono);
+		font-size: 0.68rem;
+		font-weight: 600;
+		line-height: 1.2;
+		color: var(--text-2);
+		white-space: nowrap;
+	}
+	.compare-notes {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		padding-top: 0.55rem;
+		font-size: 0.68rem;
+		color: var(--text-4);
+	}
+	.compare-notes span {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+	}
+	.dot {
+		width: 0.55rem;
+		height: 0.55rem;
+		border-radius: 50%;
+	}
+	.dot.a {
+		background: var(--accent-1);
+	}
+	.dot.b {
+		background: var(--accent-2);
 	}
 	.compare-foot {
 		display: flex;
@@ -499,9 +511,6 @@
 		color: var(--text-4);
 	}
 	@media (max-width: 900px) {
-		.compare-grid {
-			grid-template-columns: 1fr;
-		}
 		.compare-head {
 			flex-direction: column;
 		}
@@ -514,6 +523,18 @@
 		}
 		.select select {
 			width: 100%;
+		}
+		.compare-summary {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 0.35rem;
+		}
+		.chart-shell {
+			overflow-x: auto;
+			padding-bottom: 0.4rem;
+		}
+		.chart {
+			min-width: 620px;
 		}
 	}
 </style>

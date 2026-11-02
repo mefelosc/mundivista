@@ -294,8 +294,8 @@ await check('dossiê estático carrega com comparação', async () => {
 	await page.waitForTimeout(600);
 	const heading = await page.locator('h1').first().textContent();
 	if (heading?.trim() !== 'Brasil') throw new Error(`h1=${heading}`);
-	const compare = await page.locator('.compare-row').count();
-	if (compare < 3) throw new Error(`comparações=${compare}`);
+	const compare = await page.locator('.compare-panel .group').count();
+	if (compare < 6) throw new Error(`comparações=${compare}`);
 });
 
 await browser.close();
